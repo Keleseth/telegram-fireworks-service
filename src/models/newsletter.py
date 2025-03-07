@@ -1,12 +1,22 @@
 from typing import List
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Text, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database import BaseJFModel
+from models.base import BaseJFModel
 
 
 class Newsletter(BaseJFModel):
+    """Основная модель для рассылок.
+
+    Поля:
+        id: обычный айди.
+        content: текст рассылки, информация о новостях и т.п.
+        datetime_send: дата отправки.
+        switch_send: статус отправки.
+        mediafiles: поле для связи с моделью NewsletterMedia.
+    """
+
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True,
     )
@@ -15,11 +25,32 @@ class Newsletter(BaseJFModel):
     switch_send: Mapped[bool] = mapped_column(
         default=False, server_default=text("'false'"),
         )
+    mediafiles: Mapped["NewsletterMedia"] = relationship(
+        "NewsletterMedia",
+        back_populates="newsletter",
+        uselist=False,
+        lazy="joined"
+    )
 
 
 class NewsletterMedia(BaseJFModel):
+    """модель для медиа файлов рассылок.
+
+    Поля:
+        id: обычный айди.
+        newsletter_id: рассылка, к которой относятся медифайлы.
+        media_url: список ссылок на медиафайлы.
+        newsletter: поле для связи с моделью Newsletter.
+    """
+
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True,
     )
     newsletter_id: Mapped[int] = mapped_column(ForeignKey('newsletter.id'))
     media_url: Mapped[List[str]]
+    newsletter: Mapped["Newsletter"] = relationship(
+        "Newsletter",
+        back_populates="newsletter",
+        uselist=False,
+        lazy="joined"
+    )
