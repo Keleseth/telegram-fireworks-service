@@ -29,7 +29,7 @@ class Newsletter(BaseJFModel):
         "NewsletterMedia",
         back_populates="newsletter",
         uselist=False,
-        lazy="joined"
+        lazy="joined",
     )
 
 
@@ -52,5 +52,5 @@ class NewsletterMedia(BaseJFModel):
         "Newsletter",
         back_populates="newsletter",
         uselist=False,
-        lazy="joined"
+        lazy="joined",
     )
