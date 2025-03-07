@@ -1,5 +1,3 @@
-from typing import List
-
 from sqlalchemy import DateTime, ForeignKey, Integer, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,11 +23,9 @@ class Newsletter(BaseJFModel):
     switch_send: Mapped[bool] = mapped_column(
         default=False, server_default=text("'false'"),
         )
-    mediafiles: Mapped["NewsletterMedia"] = relationship(
-        "NewsletterMedia",
-        back_populates="newsletter",
-        uselist=False,
-        lazy="joined",
+    mediafiles: Mapped['NewsletterMedia'] = relationship(
+        back_populates='newsletter',
+        lazy='joined',
     )
 
 
@@ -47,10 +43,8 @@ class NewsletterMedia(BaseJFModel):
         Integer, primary_key=True, autoincrement=True,
     )
     newsletter_id: Mapped[int] = mapped_column(ForeignKey('newsletter.id'))
-    media_url: Mapped[List[str]]
-    newsletter: Mapped["Newsletter"] = relationship(
-        "Newsletter",
-        back_populates="newsletter",
-        uselist=False,
-        lazy="joined",
+    media_url: Mapped[str]
+    newsletter: Mapped['Newsletter'] = relationship(
+        back_populates='mediafiles',
+        lazy='joined',
     )
