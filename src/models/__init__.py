@@ -1,1 +1,1 @@
-from .newsletter import Newsletter, NewsletterMedia # noqa
+from .newsletter import Newsletter, NewsletterMedia  # noqa

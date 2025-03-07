@@ -1,11 +1,12 @@
 from typing import List
 
-from database import Base
 from sqlalchemy import DateTime, ForeignKey, Integer, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
+from database import BaseJFModel
 
-class Newsletter(Base):
+
+class Newsletter(BaseJFModel):
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True,
     )
@@ -16,9 +17,9 @@ class Newsletter(Base):
         )
 
 
-class NewsletterMedia(Base):
+class NewsletterMedia(BaseJFModel):
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True,
     )
-    newsletter_id: Mapped[int] = mapped_column(ForeignKey('newsletters.id'))
+    newsletter_id: Mapped[int] = mapped_column(ForeignKey('newsletter.id'))
     media_url: Mapped[List[str]]
