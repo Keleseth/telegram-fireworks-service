@@ -1,6 +1,7 @@
 """Базовые модели проекта."""
 
 from datetime import datetime
+from typing import Annotated
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import TIMESTAMP
@@ -13,6 +14,9 @@ from sqlalchemy.orm import (
 )
 
 
+unique_str_annotate = Annotated[str, mapped_column(unique=True)]
+
+
 class BaseJFModel(AsyncAttrs, DeclarativeBase):
     """Базовая модель Joker Fireworks проекта.
 
@@ -23,20 +27,24 @@ class BaseJFModel(AsyncAttrs, DeclarativeBase):
     Задает наследникам имя таблицы в бд строчными буквами от названия модели.
     """
 
-    abstract = True
+    __abstract__ = True
 
-    @declared_attr.directive
-    def tablename(cls) -> str:  # noqa: N805
+    @declared_attr
+    def tablename(cls):  # noqa: N805
         return cls.__name__.lower()
 
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        autoincrement=True
+    )
     created_at: Mapped[datetime] = mapped_column(
-        type=TIMESTAMP(
+        TIMESTAMP(
             timezone=True,
         ),
         server_default=func.now(),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        type=TIMESTAMP(
+        TIMESTAMP(
             timezone=True,
         ),
         server_default=func.now(),

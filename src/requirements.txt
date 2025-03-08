@@ -1,7 +1,6 @@
 # Основные зависимости здесь
 fastapi==0.115.11
 uvicorn==0.34.0
-alembic==1.14.1
 sqlalchemy==2.0.38
 asyncpg==0.30.0
 pydantic-settings==2.7.0
