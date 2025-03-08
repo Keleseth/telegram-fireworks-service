@@ -26,7 +26,7 @@ class Newsletter(BaseJFModel):
     datetime_send: Mapped[datetime]
     switch_send: Mapped[bool] = mapped_column(
         default=False,
-        server_default=text("'false'"),
+        server_default=text('false'),
     )
     mediafiles: Mapped['NewsletterMedia'] = relationship(
         back_populates='newsletter',

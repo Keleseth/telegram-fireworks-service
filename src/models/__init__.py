@@ -1,2 +1,2 @@
-from .base import BaseJFModel as BaseJFModel
+from .base import BaseJFModel  # noqa
 from .newsletter import Newsletter, NewsletterMedia  # noqa
