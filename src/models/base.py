@@ -1,11 +1,7 @@
 """Базовые модели проекта."""
 
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import (
-    DeclarativeBase,
-    Mapped,
-    declared_attr,
-)
+from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr
 
 from src.database.annotations import created_at, updated_at
 
