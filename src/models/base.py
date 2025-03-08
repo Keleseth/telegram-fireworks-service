@@ -1,17 +1,16 @@
 """Базовые модели проекта."""
 
-from datetime import datetime
 from typing import Annotated
 
-from sqlalchemy import func
-from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
-    declared_attr,
     mapped_column,
+    declared_attr,
 )
+
+from src.database.annotations import created_at, updated_at
 
 
 unique_str_annotate = Annotated[str, mapped_column(unique=True)]
@@ -29,23 +28,9 @@ class BaseJFModel(AsyncAttrs, DeclarativeBase):
 
     __abstract__ = True
 
-    @declared_attr
-    def tablename(cls):  # noqa: N805
+    @declared_attr.directive
+    def __tablename__(cls) -> str:  # noqa: N805
         return cls.__name__.lower()
 
-    id: Mapped[int] = mapped_column(
-        primary_key=True,
-        autoincrement=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(
-            timezone=True,
-        ),
-        server_default=func.now(),
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(
-            timezone=True,
-        ),
-        server_default=func.now(),
-    )
+    created_at: Mapped[created_at]
+    updated_at: Mapped[updated_at]
