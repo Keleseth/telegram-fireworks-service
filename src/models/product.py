@@ -19,7 +19,6 @@ class FireworkTag(BaseJFModel):
         firework_id: id товара.
     """
 
-    __allow_unmapped__ = True
     __tablename__ = 'firework_tag'
 
     tag_id: Mapped[int] = mapped_column(
@@ -64,7 +63,8 @@ class Category(BaseJFModel):
     name: Mapped[str] = mapped_column(unique=True)
     parent_category_id: Mapped[int] = mapped_column(
         ForeignKey('category.id'),
-        nullable=True
+        nullable=True,
+        
     )
     categories: Mapped[list['Category']] = relationship(
         'Category',
@@ -73,7 +73,8 @@ class Category(BaseJFModel):
     )
     parent_category: Mapped['Category'] = relationship(
         'Category',
-        back_populates='categories'
+        back_populates='categories',
+        remote_side=[id]
     )
     fireworks: Mapped[list['Firework']] = relationship(
         'Firework',
@@ -116,7 +117,7 @@ class Firework(BaseJFModel):
         'Category',
         back_populates='fireworks'
     )
-    tags: Mapped[list['Firework']] = relationship(
+    tags: Mapped[list['Tag']] = relationship(
         'Tag',
         secondary='firework_tag',
         back_populates='fireworks',
