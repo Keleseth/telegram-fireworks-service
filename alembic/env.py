@@ -1,8 +1,6 @@
-import os
 import asyncio
 from logging.config import fileConfig
 
-from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -11,15 +9,14 @@ from alembic import context
 from src.models import BaseJFModel
 from src.config import settings
 
+from src.config import settings
+from src.models import BaseJFModel
 
-load_dotenv('.env')
 config = context.config
 config.set_main_option('sqlalchemy.url', os.getenv('DATABASE_URL'))
 
-
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
 
 target_metadata = BaseJFModel.metadata
 
@@ -36,12 +33,12 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = config.get_main_option('sqlalchemy.url')
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
+        dialect_opts={'paramstyle': 'named'},
     )
 
     with context.begin_transaction():
@@ -59,11 +56,10 @@ async def run_async_migrations() -> None:
     """In this scenario we need to create an Engine
     and associate a connection with the context.
 
-    """
-
+    """  # noqa: D205
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+        prefix='sqlalchemy.',
         poolclass=pool.NullPool,
     )
 
@@ -75,7 +71,6 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-
     asyncio.run(run_async_migrations())
 
 
