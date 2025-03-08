@@ -1,9 +1,8 @@
-from typing import ClassVar
-
 from sqlalchemy import String, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import BaseJFModel, unique_str_annotate
+from .base import BaseJFModel
+from src.database.annotations import int_pk
 
 
 FIREWORK_PRICE_NUMBER_OF_DIGITS = 10
@@ -15,12 +14,12 @@ class FireworkTag(BaseJFModel):
     Связывает между собой модели Tag и Firework.
 
     Поля:
+        id: универсальный индетификатор.
         tag_id: id тега.
         firework_id: id товара.
     """
 
-    __tablename__ = 'firework_tag'
-
+    id: Mapped[int_pk]
     tag_id: Mapped[int] = mapped_column(
         ForeignKey('tag.id')
     )
@@ -33,12 +32,13 @@ class Tag(BaseJFModel):
     """Модель тегов.
 
     Поля:
+        id: универсальный индетификатор.
         name: уникальное название тега (обязательное поле).
         fireworks: объекты модели Firework с текущим тегом.
     
     """
-    __tablename__ = 'tag'
 
+    id: Mapped[int_pk]
     name: Mapped[str] = mapped_column(unique=True)
     fireworks: Mapped[list['Firework']] = relationship(
         'Firework',
@@ -52,14 +52,14 @@ class Category(BaseJFModel):
     """Модель категорий.
 
     Поля:
+        id: универсальный индетификатор.
         name: уникальное название категории (обязательное поле).
         parent_category_id: id родительской категории (опционально).
         categories: все подкатегории текущей категории.
         fireworks: все товары с текущей категорией.
     """
 
-    __tablename__ = 'category'
-
+    id: Mapped[int_pk]
     name: Mapped[str] = mapped_column(unique=True)
     parent_category_id: Mapped[int] = mapped_column(
         ForeignKey('category.id'),
@@ -87,6 +87,7 @@ class Firework(BaseJFModel):
     """Модель товара.
 
     Поля:
+        id: универсальный индетификатор.
         name: уникальное название товара (обязательное поле).
         description: описание товара (опционально).
         price: цена за единицу товара (опционально).
@@ -96,10 +97,10 @@ class Firework(BaseJFModel):
         tags: теги, относящиеся к товару (опционально).
         image_url: ссылки на изображения (опционально).
         video_url: ссылки на видео (опционально).
-        external_id: артикул  (обязательное поле).
+        external_id: артикул (обязательное поле).
     """
-    __tablename__ = 'firework'
 
+    id: Mapped[int_pk]
     name: Mapped[str] = mapped_column(unique=True)
     description: Mapped[str | None]
     price: Mapped[Numeric] = mapped_column(

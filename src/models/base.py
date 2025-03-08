@@ -1,19 +1,13 @@
 """Базовые модели проекта."""
 
-from typing import Annotated
-
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
-    mapped_column,
     declared_attr,
 )
 
 from src.database.annotations import created_at, updated_at
-
-
-unique_str_annotate = Annotated[str, mapped_column(unique=True)]
 
 
 class BaseJFModel(AsyncAttrs, DeclarativeBase):
