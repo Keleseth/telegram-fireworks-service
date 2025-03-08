@@ -21,7 +21,12 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self):
-        return os.getenv('DATABASE_URL')
+        return (
+            f'{self.db_type}+{self.db_api}://'
+            f'{self.postgres_user}:{self.postgres_password}@'
+            f'{self.db_host}:{self.port_db_postgres}'
+            f'/{self.postgres_db}'
+        )
 
     model_config = ConfigDict(env_file='.env', extra='ignore')
 
