@@ -1,16 +1,13 @@
 """Базовые модели проекта."""
 
-from datetime import datetime
-
-from sqlalchemy import func
-from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
     declared_attr,
-    mapped_column,
 )
+
+from src.database.annotations import created_at, updated_at
 
 
 class BaseJFModel(AsyncAttrs, DeclarativeBase):
@@ -23,21 +20,11 @@ class BaseJFModel(AsyncAttrs, DeclarativeBase):
     Задает наследникам имя таблицы в бд строчными буквами от названия модели.
     """
 
-    abstract = True
+    __abstract__ = True
 
     @declared_attr.directive
-    def tablename(cls) -> str:  # noqa: N805
+    def __tablename__(cls) -> str:  # noqa: N805
         return cls.__name__.lower()
 
-    created_at: Mapped[datetime] = mapped_column(
-        type=TIMESTAMP(
-            timezone=True,
-        ),
-        server_default=func.now(),
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        type=TIMESTAMP(
-            timezone=True,
-        ),
-        server_default=func.now(),
-    )
+    created_at: Mapped[created_at]
+    updated_at: Mapped[updated_at]

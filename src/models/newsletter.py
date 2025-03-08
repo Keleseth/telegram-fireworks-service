@@ -1,7 +1,9 @@
-from sqlalchemy import DateTime, ForeignKey, Integer, Text, text
+from datetime import datetime
+
+from sqlalchemy import ForeignKey, Integer, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from models.base import BaseJFModel
+from src.models.base import BaseJFModel
 
 
 class Newsletter(BaseJFModel):
@@ -16,13 +18,16 @@ class Newsletter(BaseJFModel):
     """
 
     id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True,
+        Integer,
+        primary_key=True,
+        autoincrement=True,
     )
-    content: Mapped[Text]
-    datetime_send: Mapped[DateTime]
+    content: Mapped[str]
+    datetime_send: Mapped[datetime]
     switch_send: Mapped[bool] = mapped_column(
-        default=False, server_default=text("'false'"),
-        )
+        default=False,
+        server_default=text('false'),
+    )
     mediafiles: Mapped['NewsletterMedia'] = relationship(
         back_populates='newsletter',
         lazy='joined',
@@ -40,7 +45,9 @@ class NewsletterMedia(BaseJFModel):
     """
 
     id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True,
+        Integer,
+        primary_key=True,
+        autoincrement=True,
     )
     newsletter_id: Mapped[int] = mapped_column(ForeignKey('newsletter.id'))
     media_url: Mapped[str]
