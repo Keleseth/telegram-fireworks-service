@@ -28,7 +28,7 @@ class Newsletter(BaseJFModel):
         default=False,
         server_default=text('false'),
     )
-    mediafiles: Mapped['NewsletterMedia'] = relationship(
+    mediafiles: Mapped[list['NewsletterMedia']] = relationship(
         back_populates='newsletter',
         lazy='joined',
     )

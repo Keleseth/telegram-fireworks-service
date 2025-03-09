@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -6,6 +8,10 @@ from src.database.annotations import int_pk, not_null_and_unique
 
 FIREWORK_PRICE_NUMBER_OF_DIGITS = 10
 FIREWORK_PRICE_FRACTIONAL_PART = 2
+
+
+if TYPE_CHECKING:
+    from src.models.media import Media
 
 
 class FireworkTag(BaseJFModel):
@@ -22,12 +28,8 @@ class FireworkTag(BaseJFModel):
     __tablename__ = 'firework_tag'
 
     id: Mapped[int_pk]
-    tag_id: Mapped[int] = mapped_column(
-        ForeignKey('tag.id')
-    )
-    firework_id: Mapped[int] = mapped_column(
-        ForeignKey('firework.id')
-    )
+    tag_id: Mapped[int] = mapped_column(ForeignKey('tag.id'))
+    firework_id: Mapped[int] = mapped_column(ForeignKey('firework.id'))
 
 
 class Tag(BaseJFModel):
@@ -46,7 +48,7 @@ class Tag(BaseJFModel):
         'Firework',
         secondary='firework_tag',
         back_populates='tags',
-        lazy='joined'
+        lazy='joined',
     )
 
 
@@ -63,23 +65,17 @@ class Category(BaseJFModel):
 
     id: Mapped[int_pk]
     name: Mapped[not_null_and_unique]
-    parent_category_id: Mapped[int] = mapped_column(
-        ForeignKey('category.id')
-    )
+    parent_category_id: Mapped[int] = mapped_column(ForeignKey('category.id'))
     categories: Mapped[list['Category']] = relationship(
         'Category',
         back_populates='parent_category',
-        cascade='all, delete-orphan'
+        cascade='all, delete-orphan',
     )
     parent_category: Mapped['Category'] = relationship(
-        'Category',
-        back_populates='categories',
-        remote_side=[id]
+        'Category', back_populates='categories', remote_side=[id]
     )
     fireworks: Mapped[list['Firework']] = relationship(
-        'Firework',
-        back_populates='category',
-        lazy='joined'
+        'Firework', back_populates='category', lazy='joined'
     )
 
 
@@ -106,29 +102,26 @@ class Firework(BaseJFModel):
     description: Mapped[str | None]
     price: Mapped[Numeric] = mapped_column(
         Numeric(
-            FIREWORK_PRICE_NUMBER_OF_DIGITS,
-            FIREWORK_PRICE_FRACTIONAL_PART
+            FIREWORK_PRICE_NUMBER_OF_DIGITS, FIREWORK_PRICE_FRACTIONAL_PART
         )
     )
     category_id: Mapped[int] = mapped_column(
-        ForeignKey('category.id'),
-        nullable=True
+        ForeignKey('category.id'), nullable=True
     )
     category: Mapped['Category'] = relationship(
-        'Category',
-        back_populates='fireworks'
+        'Category', back_populates='fireworks'
     )
     tags: Mapped[list['Tag']] = relationship(
         'Tag',
         secondary='firework_tag',
         back_populates='fireworks',
-        lazy='joined'
+        lazy='joined',
     )
     media: Mapped[list['Media']] = relationship(
         'Media',
         secondary='firework_media',
         back_populates='fireworks',
-        lazy='joined'
+        lazy='joined',
     )
     image_url: Mapped[str | None]
     video_url: Mapped[str | None]

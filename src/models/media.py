@@ -1,8 +1,13 @@
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from . import BaseJFModel
 from src.database.annotations import int_pk
+
+if TYPE_CHECKING:
+    from src.models.product import Firework
 
 
 class FireworkMedia(BaseJFModel):
@@ -19,12 +24,8 @@ class FireworkMedia(BaseJFModel):
     __tablename__ = 'firework_media'
 
     id: Mapped[int_pk]
-    firework_id: Mapped[int] = mapped_column(
-        ForeignKey('firework.id')
-    )
-    image_id: Mapped[int] = mapped_column(
-        ForeignKey('media.id')
-    )
+    firework_id: Mapped[int] = mapped_column(ForeignKey('firework.id'))
+    image_id: Mapped[int] = mapped_column(ForeignKey('media.id'))
 
 
 class Media(BaseJFModel):
@@ -45,5 +46,5 @@ class Media(BaseJFModel):
         secondary='firework_media',
         back_populates='media',
         lazy='joined',
-        cascade='all, delete'
+        cascade='all, delete',
     )
