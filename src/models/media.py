@@ -4,7 +4,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from . import BaseJFModel
-from src.database.annotations import int_pk
+from src.database.annotations import int_pk, str_not_null_and_unique
 
 if TYPE_CHECKING:
     from src.models.product import Firework
@@ -14,9 +14,9 @@ class FireworkMedia(BaseJFModel):
     """Промежуточная модель many-to-many.
 
     Поля:
-        id: уникальный индетификатор.
-        firework_id: id товара.
-        image_id: id медиа.
+        1. id: уникальный индетификатор.
+        2. firework_id: id товара.
+        3. image_id: id медиа.
 
     Связывает между собой модели Media и Firework.
     """
@@ -32,14 +32,14 @@ class Media(BaseJFModel):
     """Модель для хранения медиа-файлов.
 
     Поля:
-        id: уникальный индетификатор.
-        media_url: ссылка на медиа-файл.
-        media_type: тип медиа-файла.
-        fireworks: товары, относящиеся к медиа-файлу.
+        1. id: уникальный индетификатор.
+        2. media_url: ссылка на медиа-файл.
+        3. media_type: тип медиа-файла.
+        4. fireworks: товары, относящиеся к медиа-файлу.
     """
 
     id: Mapped[int_pk]
-    media_url: Mapped[str] = mapped_column(unique=True, nullable=False)
+    media_url: Mapped[str_not_null_and_unique]
     media_type: Mapped[str] = mapped_column(nullable=False)
     fireworks: Mapped[list['Firework']] = relationship(
         'Firework',

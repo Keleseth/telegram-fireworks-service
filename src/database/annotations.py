@@ -6,13 +6,9 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import mapped_column
 
-int_pk = Annotated[
-    int,
-    mapped_column(primary_key=True, unique=True)
-]
-not_null_and_unique = Annotated[
-    str,
-    mapped_column(unique=True, nullable=False)
+int_pk = Annotated[int, mapped_column(primary_key=True, unique=True)]
+str_not_null_and_unique = Annotated[
+    str, mapped_column(unique=True, nullable=False)
 ]
 created_at = Annotated[
     datetime,
