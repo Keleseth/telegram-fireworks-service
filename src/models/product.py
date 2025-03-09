@@ -12,6 +12,7 @@ FIREWORK_PRICE_FRACTIONAL_PART = 2
 
 if TYPE_CHECKING:
     from src.models.media import Media
+    from src.models.order import OrderFirework
 
 
 class FireworkTag(BaseJFModel):
@@ -122,6 +123,9 @@ class Firework(BaseJFModel):
         secondary='firework_media',
         back_populates='fireworks',
         lazy='joined',
+    )
+    order_fireworks: Mapped[list['OrderFirework']] = relationship(
+        back_populates='firework'
     )
     image_url: Mapped[str | None]
     video_url: Mapped[str | None]
