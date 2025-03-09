@@ -1,6 +1,7 @@
 # Основные зависимости здесь
 fastapi==0.115.11
 uvicorn==0.34.0
+alembic==1.14.1
 sqlalchemy==2.0.38
 asyncpg==0.30.0
 pydantic-settings==2.7.0
@@ -12,4 +13,3 @@ phonenumbers==8.13.55
 httpx>=0.26.0,<0.29.0
 python-dotenv==1.0.1
 python-telegram-bot==20.8
-alembic==1.15.1
