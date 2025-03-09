@@ -101,7 +101,7 @@ class MediaDB(MediaBase):
         Поля:
             title: заголовок схемы.
             orm_mode: поле для возможности сериализации объекта
-                ORM-модели в схему MediaDB.
+                ORM-модели в Pydantic-схему MediaDB.
         """
 
         title = MEDIA_DB_SCHEMA_TITLE
