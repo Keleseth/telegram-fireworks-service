@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     postgres_user: str = os.getenv('POSTGRES_USER')
     postgres_password: str = os.getenv('POSTGRES_PASSWORD')
     postgres_db: str = os.getenv('POSTGRES_DB')
-    port_bd_postgres: str = os.getenv('PORT_BD_POSTGRES')
+    port_db_postgres: str = os.getenv('PORT_DB_POSTGRES')
     log_level: str = os.getenv('LOG_LEVEL')
 
     @property
@@ -21,7 +21,7 @@ class Settings(BaseSettings):
         return (
             f'{self.db_type}+{self.db_api}://'
             f'{self.postgres_user}:{self.postgres_password}@'
-            f'{self.db_host}:{self.port_bd_postgres}'
+            f'{self.db_host}:{self.port_db_postgres}'
             f'/{self.postgres_db}'
         )
 
