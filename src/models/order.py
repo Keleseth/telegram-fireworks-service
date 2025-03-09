@@ -1,9 +1,19 @@
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Enum, ForeignKey, Numeric
+from sqlalchemy import Enum, ForeignKey, Integer, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from src.database.annotations import int_pk
 from src.models.base import BaseJFModel
+
+if TYPE_CHECKING:
+    from src.models.address import UserAddress
+    from src.models.product import Firework
+    from src.models.user import User
+
+FIREWORK_PRICE_NUMBER_OF_DIGITS = 10
+FIREWORK_PRICE_FRACTIONAL_PART = 2
 
 
 class OrderStatus(Enum):
@@ -13,36 +23,48 @@ class OrderStatus(Enum):
 
 
 class Order(BaseJFModel):
-    """Модель для заказов."""
+    """Модель заказа."""
 
+    id: Mapped[int_pk]
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey('user.id'), nullable=False
     )
     status: Mapped[OrderStatus] = mapped_column(
-        Enum(OrderStatus, name='order_status'), nullable=False
+        Enum(OrderStatus), nullable=False
     )
-    user_address_id: Mapped[int] = mapped_column(
-        ForeignKey('useraddress.id'), nullable=False
+    user_address_id: Mapped[int | None] = mapped_column(
+        ForeignKey('useraddress.id', ondelete='SET NULL'), nullable=True
     )
 
-    user = relationship('User', back_populates='orders')
-    user_address = relationship('UserAddress', back_populates='orders')
-    fireworks = relationship('OrderFirework', back_populates='order')
+    user: Mapped['User'] = relationship('User', back_populates='orders')
+    user_address: Mapped['UserAddress' | None] = relationship(
+        'UserAddress', back_populates='orders'
+    )
+    fireworks: Mapped[list['Firework']] = relationship(
+        'Firework', secondary='orderfirework', back_populates='orders'
+    )
 
 
 class OrderFirework(BaseJFModel):
-    """Связывающая модель для заказов и товара."""
+    """Связь товаров и заказов."""
 
-    firework_id: Mapped[int] = mapped_column(
-        ForeignKey('firework.id'), nullable=False
-    )
     order_id: Mapped[int] = mapped_column(
-        ForeignKey('order.id'), nullable=False
+        ForeignKey('order.id', ondelete='CASCADE'), nullable=False
     )
+    firework_id: Mapped[int] = mapped_column(
+        ForeignKey('firework.id', ondelete='SET NULL'), nullable=True
+    )
+    amount: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     price_per_unit: Mapped[Numeric] = mapped_column(
-        Numeric(10, 2), nullable=False
+        Numeric(
+            FIREWORK_PRICE_NUMBER_OF_DIGITS, FIREWORK_PRICE_FRACTIONAL_PART
+        ),
+        nullable=False,
     )
-    amount: Mapped[int] = mapped_column(nullable=False, default=1)
 
-    firework = relationship('Firework', back_populates='orders')
-    order = relationship('Order', back_populates='fireworks')
+    order: Mapped['Order'] = relationship(
+        back_populates='fireworks', cascade='all, delete'
+    )
+    firework: Mapped['Firework'] = relationship(
+        'Firework', back_populates='order_fireworks'
+    )
