@@ -1,10 +1,18 @@
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.annotations import int_pk, str_not_null_and_unique
 from src.models.base import BaseJFModel
-from src.models.media import Media
-from src.models.order import OrderFirework
+
+if TYPE_CHECKING:
+    from src.database.alembic_models import (
+        FavoriteFirework,
+        FireworkDiscount,
+        Media,
+        OrderFirework,
+    )
 
 FIREWORK_PRICE_NUMBER_OF_DIGITS = 10
 FIREWORK_PRICE_FRACTIONAL_PART = 2
@@ -120,6 +128,12 @@ class Firework(BaseJFModel):
         lazy='joined',
     )
     order_fireworks: Mapped[list['OrderFirework']] = relationship(
+        back_populates='firework'
+    )
+    favorited_by_users: Mapped[list['FavoriteFirework']] = relationship(
+        back_populates='firework'
+    )
+    discounts: Mapped[list['FireworkDiscount']] = relationship(
         back_populates='firework'
     )
     image_url: Mapped[str | None]
