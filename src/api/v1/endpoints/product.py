@@ -9,7 +9,7 @@ router = APIRouter()
 @router.get(
     '/сategories',
     status_code=status.HTTP_200_OK,
-    response_model=dict[str, str],
+    response_model=dict[str, str],  # заменить на кастомную схему
 )
 async def get_сategories(
     session: AsyncSession = Depends(get_async_session),
@@ -25,7 +25,7 @@ async def get_сategories(
 @router.get(
     '/fireworks',
     status_code=status.HTTP_200_OK,
-    response_model=dict[str, str],
+    response_model=dict[str, str],  # заменить на кастомную схему
 )
 async def get_fireworks(
     session: AsyncSession = Depends(get_async_session),
@@ -35,7 +35,7 @@ async def get_fireworks(
     Доступен всем пользователям.
     """
     # TODO: Добавить фильтрацию по тегам, категориям,
-    # параметрам, избранным и ценам.
+    # параметрам, избранным, ценам. Поиск по имени, тегу, артикулу.
     # TODO: Пагинация.
     return {'message': 'Запрос выполнен успешно!'}
 
@@ -43,7 +43,7 @@ async def get_fireworks(
 @router.get(
     'fireworks/{firework_id}',
     status_code=status.HTTP_200_OK,
-    response_model=dict[str, str],
+    response_model=dict[str, str],  # заменить на кастомную схему
 )
 async def get_firework_by_id(
     firework_id: int,

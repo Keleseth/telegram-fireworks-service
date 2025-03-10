@@ -8,15 +8,15 @@ router = APIRouter()
 
 
 @router.post(
-    '/user/address',
+    '/addresses',
     status_code=status.HTTP_201_CREATED,
-    response_model=dict[str, str],
+    response_model=dict[str, str],  # заменить на кастомную схему
 )
 async def create_user_address(
     create_data: BaseModel,  # Создать свою схему.
     session: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
-    """Добавить продукт в корзину Доступен age_verified пользователям."""
+    """Создать адрес пользователя."""
     # TODO: Нужно в схему для энпоинта добавить поле telegram_id,
     # чтобы эндпоинт в теле запроса знал о пользователе.
     # НЕ добавлять telegram_id в path или query параметры.
@@ -24,29 +24,43 @@ async def create_user_address(
 
 
 @router.get(
-    '/user/address',
+    '/addresses',
     status_code=status.HTTP_200_OK,
-    response_model=dict[str, str],
+    response_model=dict[str, str],  # заменить на кастомную схему
 )
-async def get_user_address(
+async def get_user_addressess(
     session: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
-    """Добавить продукт в корзину Доступен age_verified пользователям."""
+    """Получить адреса пользователя."""
     # TODO: Необходимо получить telegram_id из тела запроса.
     # НЕ добавлять telegram_id в path или query параметры.
     return {'message': 'Запрос выполнен успешно!'}
 
 
-@router.patch(
-    '/user/address',
+@router.get(
+    '/addresses/{address_id}',
     status_code=status.HTTP_200_OK,
-    response_model=dict[str, str],
+    response_model=dict[str, str],  # заменить на кастомную схему
+)
+async def get_user_address(
+    address_id: str,
+    session: AsyncSession = Depends(get_async_session),
+) -> dict[str, str]:
+    """Получить конкретный адрес пользователя по id."""
+    return {'message': 'Запрос выполнен успешно!'}
+
+
+@router.patch(
+    '/addresses/{address_id}',
+    status_code=status.HTTP_200_OK,
+    response_model=dict[str, str],  # заменить на кастомную схему
 )
 async def update_user_address(
+    address_id: str,
     data_update: BaseModel,  # Создать свою схему.
     session: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
-    """Добавить продукт в корзину Доступен age_verified пользователям."""
+    """Изменить адрес пользователя."""
     # TODO: Нужно в схему для энпоинта добавить поле telegram_id,
     # чтобы эндпоинт в теле запроса знал о пользователе.
     # НЕ добавлять telegram_id в path или query параметры.
@@ -54,14 +68,15 @@ async def update_user_address(
 
 
 @router.delete(
-    '/user/address',
+    '/address/{address_id}',
     status_code=status.HTTP_204_NO_CONTENT,
-    response_model=dict[str, str],
+    response_model=dict[str, str],  # заменить на кастомную схему
 )
 async def delete_user_address(
+    address_id: str,
     session: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
-    """Добавить продукт в корзину Доступен age_verified пользователям."""
+    """Удалить адрес пользователя."""
     # TODO: Необходимо получить telegram_id из тела запроса.
     # НЕ добавлять telegram_id в path или query параметры.
     return {'message': 'Запрос выполнен успешно!'}
