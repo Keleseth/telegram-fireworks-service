@@ -1,3 +1,4 @@
+exclude = ["alembic", "src/alembic", "alembic/versions", "migrations"]
 indent-width = 4
 line-length = 79
 required-version = ">=0.9.4"
@@ -5,7 +6,6 @@ target-version = "py311"
 # Enable preview features.
 preview = true
 # Содержимое папки alembic-а в проверку не включаем
-exclude = ["src/alembic"]
 
 [format]
 # Enable reformatting of code snippets in docstrings.
