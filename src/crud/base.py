@@ -66,8 +66,7 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """Возвращает все объекты модели.
 
         Аргументы:
-            session (AsyncSession): объект сессии.
-            filters (dict): словарь с полями фильтрации.
+            1. session (AsyncSession): объект сессии.
 
         Возвращаемое значение:
             list[self.model]: список всех объектов модели.
@@ -80,8 +79,8 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """Получение объекта по id.
 
         Аргументы:
-            object_id (int): id объекта.
-            session (AsyncSession): объект сессии.
+            1. object_id (int): id объекта.
+            2. session (AsyncSession): объект сессии.
 
         Возвращаемое значение:
             self.model: объект модели.
@@ -103,9 +102,9 @@ class CRUDBase(CRUDBaseRead):
         """Создаёт новый объект в БД.
 
         Аргументы:
-            schema: Pydantic-схема.
-            session (AsyncSession): объект сессии.
-            commit_on (bool, optional): настройка фиксации изменений в БД.
+            1. schema: Pydantic-схема.
+            2. session (AsyncSession): объект сессии.
+            3. commit_on (bool, optional): настройка фиксации изменений в БД.
                 - по умолчанию True.
 
         Возвращаемое значение:
@@ -142,10 +141,10 @@ class CRUDBase(CRUDBaseRead):
         """Обновляет существующий объект (частичное обновление).
 
         Аргументы:
-            db_object: обновляемый объект.
-            schema: Pydantic-схема.
-            session (AsyncSession): объект сессии.
-            commit_on (bool, optional): настройка фиксации изменений в БД.
+            1. db_object: обновляемый объект.
+            2. schema: Pydantic-схема.
+            3. session (AsyncSession): объект сессии.
+            4. commit_on (bool, optional): настройка фиксации изменений в БД.
                 - по умолчанию True.
 
         Возвращаемое значение:
@@ -184,9 +183,9 @@ class CRUDBase(CRUDBaseRead):
         """Удаляет переданный объект.
 
         Аргументы:
-            db_object: удаляемый объект.
-            session (AsyncSession): объект сессии.
-            commit_on (bool, optional): настройка фиксации изменений в БД.
+            1. db_object: удаляемый объект.
+            2. session (AsyncSession): объект сессии.
+            3. commit_on (bool, optional): настройка фиксации изменений в БД.
                 - по умолчанию True.
 
         Возвращаемое значение:
