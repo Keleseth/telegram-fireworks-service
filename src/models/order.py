@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
 from sqlalchemy import ForeignKey, Integer, Numeric
@@ -16,6 +16,18 @@ FIREWORK_PRICE_NUMBER_OF_DIGITS = 10
 FIREWORK_PRICE_FRACTIONAL_PART = 2
 
 
+class OrderStatus(BaseJFModel):
+    """Таблица с текстом статусов для заказов.
+
+    Поля:
+    1. id: int - primary key.
+    2. status_ttext: Текст представляющий состояние в котором находится заказ.
+    """
+
+    id: Mapped[int_pk]
+    status_text: Mapped[str]
+
+
 class Order(BaseJFModel):
     """Модель заказов.
 
@@ -31,31 +43,21 @@ class Order(BaseJFModel):
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey('user.id'), nullable=False
     )
-    status_id: Mapped['OrderStatus']
+    status_id: Mapped['OrderStatus'] = mapped_column(
+        ForeignKey('orderstatus.id'), nullable=False
+    )
     user_address_id: Mapped[int | None] = mapped_column(
         ForeignKey('useraddress.id', ondelete='SET NULL'), nullable=True
     )
 
     user: Mapped['User'] = relationship(back_populates='orders')
-    user_address: Mapped['UserAddress' | None] = relationship(
+    user_address: Mapped[Optional['UserAddress']] = relationship(
         back_populates='orders'
     )
     order_fireworks: Mapped[list['OrderFirework']] = relationship(
         back_populates='order',
         cascade='all, delete-orphan',
     )
-
-
-class OrderStatus(BaseJFModel):
-    """Таблица с текстом статусов для заказов.
-
-    Поля:
-    1. id: int - primary key.
-    2. status_ttext: Текст представляющий состояние в котором находится заказ.
-    """
-
-    id: Mapped[int_pk]
-    status_text: Mapped[str]
 
 
 class OrderFirework(BaseJFModel):

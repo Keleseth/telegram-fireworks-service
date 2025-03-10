@@ -9,8 +9,8 @@ from sqlalchemy.orm import (
     relationship,
 )
 
+from src.database.alembic_models import BaseJFModel
 from src.database.annotations import int_pk
-from src.models import BaseJFModel
 
 if TYPE_CHECKING:
     from src.models.user import User
