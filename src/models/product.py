@@ -1,18 +1,13 @@
-from typing import TYPE_CHECKING
-
 from sqlalchemy import ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from . import BaseJFModel
 from src.database.annotations import int_pk, str_not_null_and_unique
+from src.models.base import BaseJFModel
+from src.models.media import Media
+from src.models.order import OrderFirework
 
 FIREWORK_PRICE_NUMBER_OF_DIGITS = 10
 FIREWORK_PRICE_FRACTIONAL_PART = 2
-
-
-if TYPE_CHECKING:
-    from src.models.media import Media
-    from src.models.order import OrderFirework
 
 
 class FireworkTag(BaseJFModel):
