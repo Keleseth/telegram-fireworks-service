@@ -1,14 +1,14 @@
-from typing import TYPE_CHECKING
-
 from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
+from src.database.alembic_models import BaseJFModel
 from src.database.annotations import int_pk
-from src.models import BaseJFModel
+from src.models.product import Firework
+from src.models.user import User
 
-if TYPE_CHECKING:
-    from src.models.product import Firework
-    from src.models.user import User
+# if TYPE_CHECKING:
+#     from src.models.product import Firework
+#     from src.models.user import User
 
 
 class Cart(BaseJFModel):

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from src.config import settings
-from src.models import BaseJFModel
+from src.database.alembic_models import BaseJFModel
 
 config = context.config
 config.set_main_option('sqlalchemy.url', settings.database_url)

@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from . import BaseJFModel
 from src.database.annotations import int_pk, str_not_null_and_unique
+from src.database.alembic_models import BaseJFModel
 
 if TYPE_CHECKING:
     from src.models.product import Firework
