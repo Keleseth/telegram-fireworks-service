@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, condecimal
+from pydantic import BaseModel, condecimal, Field
 
 
 MEDIA_TYPE_MIN_LENGTH = 1
