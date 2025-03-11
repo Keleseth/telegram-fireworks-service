@@ -1,5 +1,7 @@
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +18,11 @@ if TYPE_CHECKING:
 
 FIREWORK_PRICE_NUMBER_OF_DIGITS = 10
 FIREWORK_PRICE_FRACTIONAL_PART = 2
+
+
+class MeasurementUnit(StrEnum):
+    PIECES = 'шт'
+    PACK = 'п.'
 
 
 class FireworkTag(BaseJFModel):
@@ -89,20 +96,31 @@ class Firework(BaseJFModel):
 
     Поля:
         1. id: уникальный индетификатор.
-        2. name: уникальное название товара (обязательное поле).
-        3. description: описание товара (опционально).
-        4. price: цена за единицу товара (опционально).
-        5. category_id: id категории, к которой принадлежит товар
+        2. code: код товара.
+        3. name: уникальное название товара (обязательное поле).
+        4. measurement_unit: единица измерения.
+        5. description: описание товара (опционально).
+        6. price: цена за единицу товара (опционально).
+        7. category_id: id категории, к которой принадлежит товар
             (обязательное поле).
-        6. category: категория товара.
-        7. tags: теги, относящиеся к товару (опционально).
-        8. external_id: артикул (обязательное поле).
-        9. media: медиа-файлы, связанные с товаром.
-        10. article: артикул товара.
+        8. category: категория товара.
+        9. tags: теги, относящиеся к товару (опционально).
+        10. external_id: артикул (обязательное поле).
+        11. image_url: фото.
+        12. video_url: видео.
+        13. charges_count: количество зарядов.
+        14. effects_count: количество эффектов.
+        15. product_size: размер продукта.
+        16. packing_material: материал упаковки.
+        17. article: артикул товара.
     """
 
     id: Mapped[int_pk]
+    code: Mapped[str_not_null_and_unique]
     name: Mapped[str_not_null_and_unique]
+    measurement_unit: Mapped[MeasurementUnit] = mapped_column(
+        SQLAlchemyEnum(MeasurementUnit), nullable=False
+    )
     description: Mapped[str | None]
     price: Mapped[Numeric] = mapped_column(
         Numeric(
@@ -121,12 +139,22 @@ class Firework(BaseJFModel):
         back_populates='fireworks',
         lazy='joined',
     )
-    media: Mapped[list['Media']] = relationship(
+    image_url: Mapped[list['Media']] = relationship(
         'Media',
         secondary='firework_media',
         back_populates='fireworks',
         lazy='joined',
     )
+    video_url: Mapped[list['Media']] = relationship(
+        'Media',
+        secondary='firework_media',
+        back_populates='fireworks',
+        lazy='joined',
+    )
+    charges_count: Mapped[int | None]
+    effects_count: Mapped[int | None]
+    product_size: Mapped[str_not_null_and_unique]
+    packing_material: Mapped[str | None]
     order_fireworks: Mapped[list['OrderFirework']] = relationship(
         back_populates='firework'
     )
@@ -136,7 +164,5 @@ class Firework(BaseJFModel):
     discounts: Mapped[list['FireworkDiscount']] = relationship(
         back_populates='firework'
     )
-    image_url: Mapped[str | None]
-    video_url: Mapped[str | None]
     external_id: Mapped[str] = mapped_column(nullable=False)
     article: Mapped[str] = mapped_column(nullable=False)
