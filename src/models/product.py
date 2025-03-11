@@ -22,9 +22,9 @@ class FireworkTag(BaseJFModel):
     """Промежуточная модель many-to-many.
 
     Поля:
-        id: уникальный индетификатор.
-        tag_id: id тега.
-        firework_id: id товара.
+        1. id: уникальный индетификатор.
+        2. tag_id: id тега.
+        3. firework_id: id товара.
 
     Связывает между собой модели Tag и Firework.
     """
