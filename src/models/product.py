@@ -106,8 +106,7 @@ class Firework(BaseJFModel):
         8. category: категория товара.
         9. tags: теги, относящиеся к товару (опционально).
         10. external_id: артикул (обязательное поле).
-        11. image_url: фото.
-        12. video_url: видео.
+        11. media: media-файлы.
         13. charges_count: количество зарядов.
         14. effects_count: количество эффектов.
         15. product_size: размер продукта.
@@ -139,13 +138,7 @@ class Firework(BaseJFModel):
         back_populates='fireworks',
         lazy='joined',
     )
-    image_url: Mapped[list['Media']] = relationship(
-        'Media',
-        secondary='firework_media',
-        back_populates='fireworks',
-        lazy='joined',
-    )
-    video_url: Mapped[list['Media']] = relationship(
+    media: Mapped[list['Media']] = relationship(
         'Media',
         secondary='firework_media',
         back_populates='fireworks',
