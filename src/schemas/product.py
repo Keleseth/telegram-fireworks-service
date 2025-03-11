@@ -1,11 +1,12 @@
 from typing import Optional
 
-from pydantic import BaseModel, condecimal, Field
-
+from pydantic import BaseModel, Field, condecimal
 
 MEDIA_TYPE_MIN_LENGTH = 1
 MAX_LENGTH = 255
 MAX_LENGTH_URL = 512
+
+# Схему Read
 
 
 class FireworkBase(BaseModel):
