@@ -9,7 +9,7 @@ from src.models.user import PreferedLanguage
 class UserRead(schemas.BaseUser[uuid.UUID]):
     telegram_id: int | None
     email: EmailStr | None
-    age_verifid: bool
+    age_verified: bool
     name: str
     nickname: str | None
     phone_number: str | None
@@ -25,7 +25,7 @@ class UserCreate(schemas.BaseUserCreate):
     nickname: str | None = None
     phone_number: str | None = None
     prefered_language: PreferedLanguage = PreferedLanguage.RU
-    age_verifid: bool = False
+    age_verified: bool = False
     is_admin: bool = False
     is_superuser: bool = False
 
@@ -37,6 +37,6 @@ class UserUpdate(schemas.BaseUserUpdate):
     nickname: str | None = None
     phone_number: str | None = None
     prefered_language: PreferedLanguage | None = None
-    age_verifid: bool | None = None
+    age_verified: bool | None = None
     is_admin: bool | None = None
     is_superuser: bool | None = None
