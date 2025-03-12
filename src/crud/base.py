@@ -75,7 +75,7 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             )
         if filter_schema.categories:
             # Получаем продукты,
-            # которые есть в перечисленных категориях
+            # которые есть в перечисленных категориях.
             filters.append(
                 self.model.category.name.in_(filter_schema.categories)
             )
@@ -83,7 +83,7 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             filters.append(self.model.article == filter_schema.article)
         if filter_schema.tags:
             # Получаем продукты,
-            # у которых хотя бы 1 тег есть в перечисленных
+            # у которых хотя бы 1 тег есть в перечисленных.
             filters.append(
                 self.model.tags.any(Tag.name.in_(filter_schema.tags))
             )
