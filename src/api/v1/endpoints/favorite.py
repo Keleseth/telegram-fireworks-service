@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.db_dependencies import get_async_session
+from src.schemas.favourite import (FavoriteCreate,
+                                   FavoriteDB, FavoriteMulti)
+from src.crud.favourite import favourite_crud
+
 
 router = APIRouter()
 
@@ -10,43 +13,46 @@ router = APIRouter()
 @router.post(
     '/favorites',
     status_code=status.HTTP_201_CREATED,
-    response_model=dict[str, str],  # заменить на кастомную схему
+    response_model=FavoriteDB,
 )
 async def add_favorite_firework(
-    create_data: BaseModel,  # Добавить схему с telegram_id и firework_id
+    create_data: FavoriteCreate,
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
+):
     """Добавить фейерверк в избранное."""
-    # TODO: Нужно в схему для энпоинта добавить поле telegram_id,
-    # чтобы эндпоинт в теле запроса знал о пользователе.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Фейерверк добавлен в избранное'}
+    return await favourite_crud.create_favourite_by_telegram_id(
+        create_data,
+        session
+    )
 
 
-@router.get(
+@router.post(
     '/favorites/me',
     status_code=status.HTTP_200_OK,
-    response_model=dict[str, str],  # заменить на кастомную схему
+    response_model=list[FavoriteDB],
 )
 async def get_favorite_fireworks(
+    telegram_data: FavoriteMulti,
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
+):
     """Получить список избранных фейерверков пользователя."""
-    # TODO: Необходимо получить telegram_id из тела запроса.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Список избранных фейерверков получен'}
+    return await favourite_crud.get_multi_by_telegram_id(
+        telegram_data,
+        session
+    )
 
 
 @router.delete(
     '/favorites/{firework_id}',
     status_code=status.HTTP_204_NO_CONTENT,
-    response_model=dict[str, str],  # заменить на кастомную схему
+    response_model=FavoriteDB,
 )
 async def remove_favorite_firework(
     firework_id: int,
+    telegram_data: FavoriteMulti,
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
+):
     """Удалить фейерверк из избранного."""
-    # TODO: Необходимо получить telegram_id из тела запроса.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Фейерверк удален из избранного'}
+    return await favourite_crud.remove_by_telegram_id(
+        telegram_data, firework_id, session
+    )

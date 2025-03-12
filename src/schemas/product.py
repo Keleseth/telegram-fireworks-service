@@ -6,6 +6,8 @@ MEDIA_TYPE_MIN_LENGTH = 1
 MAX_LENGTH = 255
 MAX_LENGTH_URL = 512
 
+# Схему Read
+
 
 class FireworkBase(BaseModel):
     name: str = Field(..., max_length=MAX_LENGTH)
