@@ -58,6 +58,7 @@ class Order(BaseJFModel):
         back_populates='order',
         cascade='all, delete-orphan',
     )
+    status: Mapped['OrderStatus'] = relationship()
 
 
 class OrderFirework(BaseJFModel):
