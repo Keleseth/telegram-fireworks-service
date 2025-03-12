@@ -1,5 +1,5 @@
 from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.alembic_models import BaseJFModel
 from src.database.annotations import int_pk
@@ -30,6 +30,9 @@ class Cart(BaseJFModel):
         ForeignKey('user.id'), nullable=False
     )
     amount: Mapped[int] = mapped_column(nullable=False, default=1)
+
+    user: Mapped['User'] = relationship(back_populates='cart')
+    firework: Mapped['Firework'] = relationship(back_populates='carts')
 
     __table_args__ = (
         CheckConstraint('amount >= 1', name='min_cart_amount'),

@@ -1,11 +1,11 @@
 from fastapi import FastAPI
+from sqlalchemy.orm import configure_mappers
 
-from src.api.v1.router import main_router
 from src.config import settings
 
-app = FastAPI(title=settings.app_title, description=settings.description)
+configure_mappers()
 
-app.include_router(main_router)
+app = FastAPI(title=settings.app_title, description=settings.description)
 
 
 def main():
@@ -13,5 +13,5 @@ def main():
     pass
 
 
-if __name__ == 'main':
+if __name__ == '__main__':
     main()
