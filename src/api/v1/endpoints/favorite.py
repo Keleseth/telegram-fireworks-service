@@ -8,56 +8,45 @@ router = APIRouter()
 
 
 @router.post(
-    '/user/cart',
+    '/favorites',
     status_code=status.HTTP_201_CREATED,
     response_model=dict[str, str],  # заменить на кастомную схему
 )
-async def add_product_to_cart(
-    create_data: BaseModel,  # Создать свою схему.
+async def add_favorite_firework(
+    create_data: BaseModel,  # Добавить схему с telegram_id и firework_id
     session: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
-    """Добавить продукт в корзину.
-
-    Доступен age_verified пользователям.
-    """
+    """Добавить фейерверк в избранное."""
     # TODO: Нужно в схему для энпоинта добавить поле telegram_id,
     # чтобы эндпоинт в теле запроса знал о пользователе.
     # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
+    return {'message': 'Фейерверк добавлен в избранное'}
 
 
 @router.get(
-    '/user/cart',
+    '/favorites/me',
     status_code=status.HTTP_200_OK,
     response_model=dict[str, str],  # заменить на кастомную схему
 )
-async def get_user_cart(
+async def get_favorite_fireworks(
     session: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
-    """Получить содержимое корзины пользователя.
-
-    Доступен age_verified пользователям.
-    """
-    # TODO: Пагинация.
+    """Получить список избранных фейерверков пользователя."""
     # TODO: Необходимо получить telegram_id из тела запроса.
     # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
+    return {'message': 'Список избранных фейерверков получен'}
 
 
 @router.delete(
-    '/user/cart/{firework_id}',
+    '/favorites/{firework_id}',
     status_code=status.HTTP_204_NO_CONTENT,
     response_model=dict[str, str],  # заменить на кастомную схему
 )
-async def delete_product_from_cart(
+async def remove_favorite_firework(
     firework_id: int,
     session: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
-    """Удалить продукт из корзины пользователя.
-
-    Доступен age_verified пользователям.
-    """
+    """Удалить фейерверк из избранного."""
     # TODO: Необходимо получить telegram_id из тела запроса.
     # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
-
+    return {'message': 'Фейерверк удален из избранного'}

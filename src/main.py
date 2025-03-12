@@ -1,6 +1,17 @@
-# Это основной запускаемый файл.
-# Заменить содержимое своим кодом.
+from fastapi import FastAPI
 
-import sys
+from src.api.v1.router import main_router
+from src.config import settings
 
-print(sys.path)
+app = FastAPI(title=settings.app_title, description=settings.description)
+
+app.include_router(main_router)
+
+
+def main():
+    """Функция запустит управляющую функцию. Для доступа извне."""
+    pass
+
+
+if __name__ == 'main':
+    main()
