@@ -1,26 +1,29 @@
-import uuid
-from enum import Enum as PyEnum
+from typing import TYPE_CHECKING
 
-from sqlalchemy import UUID, BigInteger, Boolean, Enum, String
-from sqlalchemy.orm import Mapped, mapped_column
+from fastapi_users.db import SQLAlchemyBaseUserTableUUID
+from sqlalchemy import BigInteger, Boolean, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import BaseJFModel
+from src.database.alembic_models import BaseJFModel
 
-
-class PreferedLanguage(str, PyEnum):
-    EN = 'english'
-    RU = 'русский'
+if TYPE_CHECKING:
+    from src.database.alembic_models import FavoriteFirework
 
 
-class User(BaseJFModel):
+# class PreferedLanguage(str, PyEnum):  # TODO оставляем на реализацию
+#     EN = 'english'
+#     RU = 'русский'
+
+
+class User(BaseJFModel, SQLAlchemyBaseUserTableUUID):  # type: ignore[misc]
     """Основная модель пользователя.
 
     Поля:
-        id: обычный айди.
+        id: UUID айди.
         telegram_id: айди в телеграмме.
         email: почта пользователя.
-        age_verifid: являестя ли пользователь совершенно летним(18+).
-        name: имя в телеграмме пользователь.
+        age_verified: является ли пользователь совершеннолетним (18+).
+        name: имя в телеграмме пользователя.
         nickname: ник в телеграмме пользователя.
         phone_number: телефон пользователя.
         prefered_language: предпочитаемый язык.
@@ -28,16 +31,13 @@ class User(BaseJFModel):
         is_superuser: является ли пользователь суперадмином.
     """
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
     telegram_id: Mapped[int | None] = mapped_column(
         BigInteger, unique=True, nullable=True
     )
     email: Mapped[str | None] = mapped_column(
         String, unique=True, nullable=True
-    )
-    age_verifid: Mapped[bool] = mapped_column(Boolean, default=False)
+    )  # type: ignore
+    hashed_password: Mapped[str | None] = mapped_column(String, nullable=True)  # type: ignore
     name: Mapped[str] = mapped_column(String, nullable=False)
     nickname: Mapped[str | None] = mapped_column(
         String, unique=True, nullable=True
@@ -45,8 +45,18 @@ class User(BaseJFModel):
     phone_number: Mapped[str | None] = mapped_column(
         String, unique=True, nullable=True
     )
-    prefered_language: Mapped[PreferedLanguage] = mapped_column(
-        Enum(PreferedLanguage), default=PreferedLanguage.RU
+    age_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    # prefered_language: Mapped[PreferedLanguage] = mapped_column(
+    #     Enum(PreferedLanguage), default=PreferedLanguage.RU
+    # )  # TODO оставляем на реализацию
+    favorite_fireworks: Mapped[list['FavoriteFirework']] = relationship(
+        back_populates='user'
     )
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    __table_args__ = {'extend_existing': True}
+
+    def __repr__(self) -> str:
+        return (
+            f'{self.__class__.__name__}(id={self.id!r}, name={self.name!r}, '
+        )

@@ -11,7 +11,7 @@ from src.models.user import User
 
 load_dotenv()
 
-SECRET = os.getenv('SECRET')
+SECRET = os.getenv('SECRET', 'default-secret')
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
