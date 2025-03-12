@@ -26,7 +26,9 @@ class FireworkDiscount(BaseJFModel):
     )
 
     firework: Mapped['Firework'] = relationship(back_populates='discounts')
-    discount: Mapped['Discount'] = relationship(back_populates='fireworks')
+    firework_discounts: Mapped['Discount'] = relationship(
+        back_populates='fireworks'
+    )
 
 
 class Discount(BaseJFModel):
@@ -50,5 +52,5 @@ class Discount(BaseJFModel):
     description: Mapped[str]
 
     fireworks: Mapped[list['FireworkDiscount']] = relationship(
-        back_populates='discounts',
+        back_populates='firework_discounts',
     )

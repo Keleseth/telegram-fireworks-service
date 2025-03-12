@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -8,6 +8,7 @@ from src.models.base import BaseJFModel
 
 if TYPE_CHECKING:
     from src.database.alembic_models import (
+        Cart,
         FavoriteFirework,
         FireworkDiscount,
         Media,
@@ -52,7 +53,7 @@ class Tag(BaseJFModel):
         'Firework',
         secondary='firework_tag',
         back_populates='tags',
-        lazy='joined',
+        lazy='selectin',
     )
 
 
@@ -68,19 +69,21 @@ class Category(BaseJFModel):
         6. fireworks: все товары с текущей категорией.
     """
 
-    id: Mapped[int_pk]
+    id: Mapped[int] = mapped_column('id', primary_key=True)
     name: Mapped[str_not_null_and_unique]
-    parent_category_id: Mapped[int] = mapped_column(ForeignKey('category.id'))
+    parent_category_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('category.id'), nullable=True
+    )
     categories: Mapped[list['Category']] = relationship(
         'Category',
         back_populates='parent_category',
         cascade='all, delete-orphan',
     )
-    parent_category: Mapped['Category'] = relationship(
+    parent_category: Mapped[Optional['Category']] = relationship(
         'Category', back_populates='categories', remote_side=[id]
     )
     fireworks: Mapped[list['Firework']] = relationship(
-        'Firework', back_populates='category', lazy='joined'
+        'Firework', back_populates='category', lazy='selectin'
     )
 
 
@@ -135,6 +138,9 @@ class Firework(BaseJFModel):
     )
     discounts: Mapped[list['FireworkDiscount']] = relationship(
         back_populates='firework'
+    )
+    carts: Mapped[List['Cart']] = relationship(
+        back_populates='firework', cascade='all, delete-orphan'
     )
     image_url: Mapped[str | None]
     video_url: Mapped[str | None]

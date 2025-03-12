@@ -71,7 +71,8 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         Возвращаемое значение:
             list[self.model]: список всех объектов модели.
         """
-        return (await session.execute(select(self.model))).scalars().all()
+        fireworks = await session.execute(select(self.model))
+        return fireworks.scalars().all()
 
     async def get(
         self, object_id: int, session: AsyncSession
