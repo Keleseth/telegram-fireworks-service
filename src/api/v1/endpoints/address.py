@@ -80,3 +80,4 @@ async def delete_user_address(
     # TODO: Необходимо получить telegram_id из тела запроса.
     # НЕ добавлять telegram_id в path или query параметры.
     return {'message': 'Запрос выполнен успешно!'}
+

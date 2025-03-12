@@ -76,3 +76,4 @@ async def update_user_order(
     # чтобы эндпоинт в теле запроса знал о пользователе.
     # НЕ добавлять telegram_id в path или query параметры.
     return {'message': 'Запрос выполнен успешно!'}
+

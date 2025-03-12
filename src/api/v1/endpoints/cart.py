@@ -60,3 +60,4 @@ async def delete_product_from_cart(
     # TODO: Необходимо получить telegram_id из тела запроса.
     # НЕ добавлять telegram_id в path или query параметры.
     return {'message': 'Запрос выполнен успешно!'}
+

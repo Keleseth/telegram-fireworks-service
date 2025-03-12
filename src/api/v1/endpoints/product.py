@@ -54,3 +54,4 @@ async def get_firework_by_id(
     Доступен всем пользователям.
     """
     return {'message': 'Запрос выполнен успешно!'}
+
