@@ -1,8 +1,16 @@
+from typing import List
+
 from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.crud.address import address_crud
 from src.database.db_dependencies import get_async_session
+from src.schemas.address import (
+    BaseAddressSchema,
+    CreateAddressSchema,
+    ReadAddressSchema,
+    UpdateAddressSchema,
+)
 
 router = APIRouter()
 
@@ -10,74 +18,74 @@ router = APIRouter()
 @router.post(
     '/addresses',
     status_code=status.HTTP_201_CREATED,
-    response_model=dict[str, str],  # заменить на кастомную схему
+    response_model=BaseAddressSchema,
 )
 async def create_user_address(
-    create_data: BaseModel,  # Создать свою схему.
+    create_data: CreateAddressSchema,
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
+):
     """Создать адрес пользователя."""
-    # TODO: Нужно в схему для энпоинта добавить поле telegram_id,
-    # чтобы эндпоинт в теле запроса знал о пользователе.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
+    return await address_crud.create(session=session, schema=create_data)
 
 
 @router.get(
     '/addresses',
     status_code=status.HTTP_200_OK,
-    response_model=dict[str, str],  # заменить на кастомную схему
+    response_model=List[BaseAddressSchema],
 )
 async def get_user_addressess(
+    schema: ReadAddressSchema,  # схема с telegram_id
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
+):
     """Получить адреса пользователя."""
-    # TODO: Необходимо получить telegram_id из тела запроса.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
+    return await address_crud.get_adresses_by_tg_id(
+        session=session, telegram_id=schema.telegram_id
+    )
 
 
 @router.get(
     '/addresses/{address_id}',
     status_code=status.HTTP_200_OK,
-    response_model=dict[str, str],  # заменить на кастомную схему
+    response_model=BaseAddressSchema,
 )
 async def get_user_address(
     address_id: str,
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
+):
     """Получить конкретный адрес пользователя по id."""
-    return {'message': 'Запрос выполнен успешно!'}
+    return await address_crud.get(session=session, object_id=address_id)
 
 
 @router.patch(
     '/addresses/{address_id}',
     status_code=status.HTTP_200_OK,
-    response_model=dict[str, str],  # заменить на кастомную схему
+    response_model=BaseAddressSchema,
 )
 async def update_user_address(
     address_id: str,
-    data_update: BaseModel,  # Создать свою схему.
+    data_update: UpdateAddressSchema,
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
+):
     """Изменить адрес пользователя."""
-    # TODO: Нужно в схему для энпоинта добавить поле telegram_id,
-    # чтобы эндпоинт в теле запроса знал о пользователе.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
+    adress = await address_crud.get(session=session, object_id=address_id)
+    return await address_crud.update(
+        session=session, schema=data_update, db_object=adress
+    )
 
 
 @router.delete(
     '/address/{address_id}',
     status_code=status.HTTP_204_NO_CONTENT,
-    response_model=dict[str, str],  # заменить на кастомную схему
+    response_model=BaseAddressSchema,
 )
 async def delete_user_address(
     address_id: str,
+    schema: ReadAddressSchema,  # схема с telegram_id
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
+):
     """Удалить адрес пользователя."""
-    # TODO: Необходимо получить telegram_id из тела запроса.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
-
+    adress = await address_crud.get(session=session, object_id=address_id)
+    return await address_crud.remove(
+        session=session,
+        db_object=adress,
+    )

@@ -1,24 +1,33 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-# TODO: telegram_id будет в теле запроса
-# Схема на удаление, создание, изменение объекта должна содержать telegram_id.
+MAX_LENGTH = 255
 
 
 class BaseAddressSchema(BaseModel):
     """Базовая схема адресов."""
 
+    adress: str = Field(..., max_length=MAX_LENGTH)
+
 
 class ReadAddressSchema(BaseModel):
     """Докстринг."""
 
+    telegram_id: int
 
-class CreateAddressSchema(BaseModel):
+
+class CreateAddressSchema(BaseAddressSchema):
     """Докстринг."""
 
+    telegram_id: int
 
-class UpdateAddressSchema(BaseModel):
+
+class UpdateAddressSchema(BaseAddressSchema):
     """Докстринг."""
 
+    telegram_id: int
 
-class DeleteAddressSchema(BaseModel):
+
+class DeleteAddressSchema(BaseAddressSchema):
     """Докстринг."""
+
+    telegram_id: int
