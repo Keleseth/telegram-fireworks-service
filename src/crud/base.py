@@ -14,11 +14,14 @@ from typing import Generic, List, Optional, Type, TypeVar
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import and_, asc, desc, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.query import Query
 
 from src.models.base import BaseJFModel
+from src.models.product import Tag
+from src.schemas.filter_shema import FireworkFilterSchema
 
 ModelType = TypeVar('ModelType', bound=BaseJFModel)
 CreateSchemaType = TypeVar('CreateSchemaType', bound=BaseModel)
@@ -59,19 +62,69 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """
         self.model = model
 
+    def apply_filters(
+        self, query: Query, filter_schema: FireworkFilterSchema
+    ) -> Query:
+        """Добавляет фильтры к запросу."""
+        filters = []
+        if filter_schema.name:
+            filters.append(self.model.name == filter_schema.name)
+        if filter_schema.number_of_volleys:
+            filters.append(
+                self.number_of_volleys == filter_schema.number_of_volleys
+            )
+        if filter_schema.categories:
+            # Получаем продукты,
+            # которые есть в перечисленных категориях.
+            filters.append(
+                self.model.category.name.in_(filter_schema.categories)
+            )
+        if filter_schema.article:
+            filters.append(self.model.article == filter_schema.article)
+        if filter_schema.tags:
+            # Получаем продукты,
+            # у которых хотя бы 1 тег есть в перечисленных.
+            filters.append(
+                self.model.tags.any(Tag.name.in_(filter_schema.tags))
+            )
+        if filter_schema.min_price:
+            filters.append(self.model.price >= filter_schema.min_price)
+        if filter_schema.max_price:
+            filters.append(self.model.price <= filter_schema.max_price)
+        if filters:
+            query = query.where(and_(*filters))
+        return query
+
+    def apply_sort(self, query: Query, order_by_fields: list[str]) -> Query:
+        """Добавляет сортировку к запросу."""
+        ordering = []
+        for sorted_field in order_by_fields:
+            if sorted_field.startswith('-'):
+                ordering.append(desc(getattr(self.model, sorted_field[1:])))
+            else:
+                ordering.append(asc(getattr(self.model, sorted_field)))
+        return query.order_by(*ordering)
+
     async def get_multi(
         self,
         session: AsyncSession,
+        filter_schema: Optional[FireworkFilterSchema] = None,
     ) -> Optional[List[ModelType]]:
         """Возвращает все объекты модели.
 
         Аргументы:
             1. session (AsyncSession): объект сессии.
+            2. filter_schema (FireworkFilterSchema): схема для фильтрации.
 
         Возвращаемое значение:
             list[self.model]: список всех объектов модели.
         """
-        fireworks = await session.execute(select(self.model))
+        query = select(self.model)
+        if filter_schema:
+            query = self.apply_filters(query, filter_schema)
+        if filter_schema.order_by:
+            query = self.apply_sort(query, filter_schema.order_by)
+        fireworks = await session.execute(query)
         return fireworks.scalars().all()
 
     async def get(

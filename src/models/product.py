@@ -142,7 +142,5 @@ class Firework(BaseJFModel):
     carts: Mapped[List['Cart']] = relationship(
         back_populates='firework', cascade='all, delete-orphan'
     )
-    image_url: Mapped[str | None]
-    video_url: Mapped[str | None]
     external_id: Mapped[str] = mapped_column(nullable=False)
     article: Mapped[str] = mapped_column(nullable=False)

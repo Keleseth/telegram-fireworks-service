@@ -68,4 +68,3 @@ class TagUpdate(BaseModel):
         None,
         max_length=MAX_LENGTH,
     )
-
