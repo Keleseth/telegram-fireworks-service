@@ -4,11 +4,12 @@ from uuid import UUID
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.database.alembic_models import BaseJFModel
 from src.database.annotations import int_pk
+from src.models.base import BaseJFModel
 
 if TYPE_CHECKING:
-    from src.database.alembic_models import Firework, User
+    from src.models.product import Firework
+    from src.models.user import User
 
 
 class FavoriteFirework(BaseJFModel):
