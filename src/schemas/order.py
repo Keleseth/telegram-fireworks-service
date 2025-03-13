@@ -3,9 +3,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, condecimal, conint
 
-# TODO: telegram_id будет в теле запроса
-# Схема на удаление, создание, изменение объекта должна содержать telegram_id.
-
 
 class BaseOrderSchema(BaseModel):
     """Базовая схема заказов, включающая Telegram ID."""
@@ -34,19 +31,20 @@ class ReadOrderSchema(BaseModel):
 class CreateOrderSchema(BaseOrderSchema):
     """Схема для создания заказа."""
 
-    user_address_id: Optional[int]
+    user_address_id: Optional[int] = None
     order_fireworks: List[OrderFireworkSchema]
 
 
-class UpdateOrderSchema(BaseOrderSchema):
-    """Схема для обновления заказа.
+class UpdateOrderAddressSchema(BaseOrderSchema):
+    """Схема для обновления адреса заказа."""
 
-    (Разрешено только изменение товаров и адреса).
-    """
+    user_address_id: int
 
-    order_id: int
-    user_address_id: Optional[int]
-    order_fireworks: Optional[List[OrderFireworkSchema]]
+
+class UpdateOrderStatusSchema(BaseOrderSchema):
+    """Схема для изменения статуса заказа."""
+
+    status_id: int  # Передаём ID статуса из OrderStatus
 
 
 class DeleteOrderSchema(BaseOrderSchema):

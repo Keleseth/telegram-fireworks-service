@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+
 from src.api.auth.auth import auth_backend
 from src.api.auth.dependencies import fastapi_users
 from src.schemas.user import UserCreate, UserRead, UserUpdate
@@ -22,4 +23,3 @@ router.include_router(
     prefix='/users',
     tags=['users'],
 )
-
