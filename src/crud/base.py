@@ -14,7 +14,7 @@ from typing import Generic, List, Optional, Type, TypeVar
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import and_, asc, desc, select
+from sqlalchemy import and_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.query import Query
@@ -95,15 +95,15 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             query = query.where(and_(*filters))
         return query
 
-    def apply_sort(self, query: Query, order_by_fields: list[str]) -> Query:
-        """Добавляет сортировку к запросу."""
-        ordering = []
-        for sorted_field in order_by_fields:
-            if sorted_field.startswith('-'):
-                ordering.append(desc(getattr(self.model, sorted_field[1:])))
-            else:
-                ordering.append(asc(getattr(self.model, sorted_field)))
-        return query.order_by(*ordering)
+    # def apply_sort(self, query: Query, order_by_fields: list[str]) -> Query:
+    #     """Добавляет сортировку к запросу."""
+    #     ordering = []
+    #     for sorted_field in order_by_fields:
+    #         if sorted_field.startswith('-'):
+    #             ordering.append(desc(getattr(self.model, sorted_field[1:])))
+    #         else:
+    #             ordering.append(asc(getattr(self.model, sorted_field)))
+    #     return query.order_by(*ordering)
 
     async def get_multi(
         self,
@@ -122,10 +122,9 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         query = select(self.model)
         if filter_schema:
             query = self.apply_filters(query, filter_schema)
-        if filter_schema.order_by:
-            query = self.apply_sort(query, filter_schema.order_by)
-        fireworks = await session.execute(query)
-        return fireworks.scalars().all()
+        # if filter_schema.order_by:
+        #     query = self.apply_sort(query, filter_schema.order_by)
+        return (await session.execute(query)).unique().scalars().all()
 
     async def get(
         self, object_id: int, session: AsyncSession
