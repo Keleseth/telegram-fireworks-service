@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.crud.favourite import favorite_crud
+from src.crud.favourite import favorite_crud, user_crud
 from src.database.db_dependencies import get_async_session
 from src.schemas.favourite import FavoriteCreate, FavoriteDB, FavoriteMulti
 
@@ -14,12 +14,16 @@ router = APIRouter()
     response_model=FavoriteDB,
 )
 async def add_favorite_firework(
+    # telegram_id_data: TelegramIDSchema,
     create_data: FavoriteCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Добавить фейерверк в избранное."""
+    user_id = await user_crud.get_user_id_by_telegram_id(
+        create_data, session=session
+    )
     return await favorite_crud.create_favourite_by_telegram_id(
-        create_data, session
+        create_data, user_id, session
     )
 
 

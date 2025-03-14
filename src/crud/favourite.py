@@ -1,4 +1,5 @@
 from typing import Type, TypeVar
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,16 +26,15 @@ class CRUDFavourite:
     async def create_favourite_by_telegram_id(
         self,
         obj_in: FavoriteCreate,
+        user_id: UUID,
         session: AsyncSession,
     ):
         """Метод для добавления фейерверка в избранное по telegram_id."""
         obj_in_data = obj_in.dict()
-        user = await session.scalars(
-            select(User).where(User.telegram_id == obj_in_data['telegram_id'])
-        )
-        db_obj = self.model(
-            user_id=user.id, firework_id=obj_in_data['firework_id']
-        )
+        if user_id:
+            db_obj = self.model(
+                user_id=user_id, firework_id=obj_in_data['firework_id']
+            )
         session.add(db_obj)
         await session.commit()
         await session.refresh(db_obj)
