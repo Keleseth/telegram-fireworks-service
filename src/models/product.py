@@ -7,16 +7,16 @@ from src.database.annotations import int_pk, str_not_null_and_unique
 from src.models.base import BaseJFModel
 
 if TYPE_CHECKING:
-    from src.database.alembic_models import (
-        Cart,
-        FavoriteFirework,
-        FireworkDiscount,
-        Media,
-        OrderFirework,
-    )
+    from src.models.cart import Cart
+    from src.models.discounts import FireworkDiscount
+    from src.models.favorite import FavoriteFirework
+    from src.models.media import FireworkMedia
+    from src.models.order import OrderFirework
+
 
 FIREWORK_PRICE_NUMBER_OF_DIGITS = 10
 FIREWORK_PRICE_FRACTIONAL_PART = 2
+print('>>> Загрузка Firework')
 
 
 class FireworkTag(BaseJFModel):
@@ -124,11 +124,11 @@ class Firework(BaseJFModel):
         back_populates='fireworks',
         lazy='joined',
     )
-    media: Mapped[list['Media']] = relationship(
-        'Media',
-        secondary='firework_media',
+    media: Mapped[list['FireworkMedia']] = relationship(
+        'FireworkMedia',
         back_populates='fireworks',
         lazy='joined',
+        cascade='all, delete',
     )
     order_fireworks: Mapped[list['OrderFirework']] = relationship(
         back_populates='firework'
@@ -142,7 +142,8 @@ class Firework(BaseJFModel):
     carts: Mapped[List['Cart']] = relationship(
         back_populates='firework', cascade='all, delete-orphan'
     )
-    image_url: Mapped[str | None]
-    video_url: Mapped[str | None]
     external_id: Mapped[str] = mapped_column(nullable=False)
     article: Mapped[str] = mapped_column(nullable=False)
+
+
+print('продукты загрузились')

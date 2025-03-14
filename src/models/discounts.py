@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.database.alembic_models import BaseJFModel
 from src.database.annotations import int_pk
+from src.models.base import BaseJFModel
 
 if TYPE_CHECKING:
-    from src.database.alembic_models import Firework
+    from src.models.product import Firework
 
 
 class FireworkDiscount(BaseJFModel):
