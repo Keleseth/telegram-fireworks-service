@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.database.alembic_models import BaseJFModel
 from src.database.annotations import int_pk, str_not_null_and_unique
+from src.models.base import BaseJFModel
 
 if TYPE_CHECKING:
     from src.models.product import Firework
@@ -27,6 +27,11 @@ class FireworkMedia(BaseJFModel):
     firework_id: Mapped[int] = mapped_column(ForeignKey('firework.id'))
     image_id: Mapped[int] = mapped_column(ForeignKey('media.id'))
 
+    fireworks: Mapped['Firework'] = relationship(
+        'Firework', back_populates='media'
+    )
+    media: Mapped['Media'] = relationship(back_populates='fireworks')
+
 
 class Media(BaseJFModel):
     """Модель для хранения медиа-файлов.
@@ -41,9 +46,8 @@ class Media(BaseJFModel):
     id: Mapped[int_pk]
     media_url: Mapped[str_not_null_and_unique]
     media_type: Mapped[str] = mapped_column(nullable=False)
-    fireworks: Mapped[list['Firework']] = relationship(
-        'Firework',
-        secondary='firework_media',
+    fireworks: Mapped[list['FireworkMedia']] = relationship(
+        'FireworkMedia',
         back_populates='media',
         lazy='joined',
         cascade='all, delete',

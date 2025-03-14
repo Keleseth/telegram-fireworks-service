@@ -69,7 +69,7 @@ async def update_user_address(
 
 @router.delete(
     '/address/{address_id}',
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_200_OK,
     response_model=dict[str, str],  # заменить на кастомную схему
 )
 async def delete_user_address(
@@ -80,4 +80,3 @@ async def delete_user_address(
     # TODO: Необходимо получить telegram_id из тела запроса.
     # НЕ добавлять telegram_id в path или query параметры.
     return {'message': 'Запрос выполнен успешно!'}
-

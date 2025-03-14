@@ -46,7 +46,7 @@ async def get_user_cart(
 
 @router.delete(
     '/user/cart/{firework_id}',
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_200_OK,
     response_model=dict[str, str],  # заменить на кастомную схему
 )
 async def delete_product_from_cart(
@@ -60,4 +60,3 @@ async def delete_product_from_cart(
     # TODO: Необходимо получить telegram_id из тела запроса.
     # НЕ добавлять telegram_id в path или query параметры.
     return {'message': 'Запрос выполнен успешно!'}
-

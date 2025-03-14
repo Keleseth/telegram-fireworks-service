@@ -4,15 +4,13 @@ from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy import BigInteger, Boolean, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.database.alembic_models import BaseJFModel
+from src.models.base import BaseJFModel
 
 if TYPE_CHECKING:
-    from src.database.alembic_models import (
-        Cart,
-        FavoriteFirework,
-        Order,
-        UserAddress,
-    )
+    from src.models.address import UserAddress
+    from src.models.cart import Cart
+    from src.models.favorite import FavoriteFirework
+    from src.models.order import Order
 
 
 # class PreferedLanguage(str, PyEnum):  # TODO оставляем на реализацию
@@ -57,9 +55,7 @@ class User(BaseJFModel, SQLAlchemyBaseUserTableUUID):  # type: ignore[misc]
     favorite_fireworks: Mapped[List['FavoriteFirework']] = relationship(
         back_populates='user'
     )
-    cart: Mapped[List['Cart']] = relationship(
-        back_populates='user', cascade='all, delete-orphan'
-    )
+    cart: Mapped[List['Cart']] = relationship(cascade='all, delete-orphan')
     orders: Mapped[List['Order']] = relationship(
         back_populates='user', cascade='all, delete-orphan'
     )
