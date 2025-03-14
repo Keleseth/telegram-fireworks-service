@@ -28,7 +28,7 @@ async def add_product_to_cart(
 
     Доступен age_verified пользователям.
     """
-    await cart_crud.add_to_cart(create_data, create_data.telegram_id, session)
+    await cart_crud.add_to_cart(create_data.telegram_id, create_data, session)
     return MessageResponse(message='Товар успешно добален в корзину!')
 
 
@@ -55,7 +55,7 @@ async def get_user_cart(
 
 @router.delete(
     '/user/cart/{firework_id}',
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_200_OK,
     response_model=MessageResponse,
 )
 async def delete_product_from_cart(

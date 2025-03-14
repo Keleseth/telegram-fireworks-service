@@ -39,7 +39,7 @@ async def get_favorite_fireworks(
 
 @router.delete(
     '/favorites/{firework_id}',
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.status.HTTP_200_OK,
     response_model=dict[str, str],  # заменить на кастомную схему
 )
 async def remove_favorite_firework(
