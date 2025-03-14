@@ -75,7 +75,7 @@ async def update_user_address(
 
 @router.delete(
     '/address/{address_id}',
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_200_OK,
     response_model=BaseAddressSchema,
 )
 async def delete_user_address(
