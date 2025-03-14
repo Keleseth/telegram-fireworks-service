@@ -3,7 +3,7 @@ import uuid
 from fastapi_users import schemas
 from pydantic import EmailStr
 
-from src.models.user import PreferedLanguage
+# from src.models.user import PreferedLanguage
 
 
 class UserRead(schemas.BaseUser[uuid.UUID]):
@@ -13,7 +13,7 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
     name: str
     nickname: str | None
     phone_number: str | None
-    prefered_language: PreferedLanguage
+    # prefered_language: PreferedLanguage
     is_admin: bool
     is_superuser: bool
 
@@ -24,7 +24,7 @@ class UserCreate(schemas.BaseUserCreate):
     name: str
     nickname: str | None = None
     phone_number: str | None = None
-    prefered_language: PreferedLanguage = PreferedLanguage.RU
+    # prefered_language: PreferedLanguage = PreferedLanguage.RU
     age_verified: bool = False
     is_admin: bool = False
     is_superuser: bool = False
@@ -36,7 +36,7 @@ class UserUpdate(schemas.BaseUserUpdate):
     name: str | None = None
     nickname: str | None = None
     phone_number: str | None = None
-    prefered_language: PreferedLanguage | None = None
+    # prefered_language: PreferedLanguage | None = None
     age_verified: bool | None = None
     is_admin: bool | None = None
     is_superuser: bool | None = None

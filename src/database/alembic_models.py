@@ -10,6 +10,7 @@ from src.models.order import Order, OrderFirework, OrderStatus
 from src.models.product import Category, Firework, FireworkTag, Tag
 from src.models.user import User
 
+
 __all__ = [
     'BaseJFModel',
     'BotInfo',
