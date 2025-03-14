@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.database.alembic_models import BaseJFModel
 from src.database.annotations import int_pk
+from src.models.base import BaseJFModel
 
 if TYPE_CHECKING:
-    from src.database.alembic_models import Firework
+    from src.models.product import Firework
 
 
 class FireworkDiscount(BaseJFModel):
@@ -26,7 +26,9 @@ class FireworkDiscount(BaseJFModel):
     )
 
     firework: Mapped['Firework'] = relationship(back_populates='discounts')
-    discount: Mapped['Discount'] = relationship(back_populates='fireworks')
+    firework_discounts: Mapped['Discount'] = relationship(
+        back_populates='fireworks'
+    )
 
 
 class Discount(BaseJFModel):
@@ -50,5 +52,5 @@ class Discount(BaseJFModel):
     description: Mapped[str]
 
     fireworks: Mapped[list['FireworkDiscount']] = relationship(
-        back_populates='discounts',
+        back_populates='firework_discounts',
     )

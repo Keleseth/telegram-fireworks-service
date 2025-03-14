@@ -9,11 +9,11 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-from src.database.alembic_models import BaseJFModel
 from src.database.annotations import int_pk
+from src.models.base import BaseJFModel
 
 if TYPE_CHECKING:
-    from src.models.user import User
+    from src.models.user import Order, User
 
 
 class Address(BaseJFModel):
@@ -55,6 +55,7 @@ class UserAddress(BaseJFModel):
     )
     address: Mapped['Address'] = relationship(back_populates='user_addresses')
     user: Mapped['User'] = relationship(back_populates='addresses')
+    orders: Mapped['Order'] = relationship(back_populates='user_address')
 
     __table_args__ = (
         UniqueConstraint('user_id', 'address_id', name='unique_user_address'),

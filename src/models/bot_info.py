@@ -1,8 +1,8 @@
 from sqlalchemy import Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.database.alembic_models import BaseJFModel
 from src.database.annotations import int_pk
+from src.models.base import BaseJFModel
 
 
 class BotInfo(BaseJFModel):

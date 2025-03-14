@@ -83,7 +83,6 @@ async def delete_user_address(
     schema: ReadAddressSchema,  # схема с telegram_id
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Удалить адрес пользователя."""
     adress = await address_crud.get(session=session, object_id=address_id)
     return await address_crud.remove(
         session=session,
