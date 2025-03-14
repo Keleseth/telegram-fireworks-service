@@ -46,7 +46,7 @@ class Order(BaseJFModel):
     status_id: Mapped['OrderStatus'] = mapped_column(
         ForeignKey('orderstatus.id'), nullable=False
     )
-    user_address_id: Mapped[int | None] = mapped_column(
+    user_address_id: Mapped[UUID | None] = mapped_column(
         ForeignKey('useraddress.id', ondelete='SET NULL'), nullable=True
     )
 

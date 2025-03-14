@@ -143,7 +143,10 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         )
 
 
-class CRUDBase(CRUDBaseRead):
+class CRUDBase(
+    CRUDBaseRead[ModelType, CreateSchemaType, UpdateSchemaType],
+    Generic[ModelType, CreateSchemaType, UpdateSchemaType],
+):
     """Базовый CRUD-класс."""
 
     async def create(

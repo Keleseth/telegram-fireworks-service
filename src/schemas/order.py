@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, condecimal, conint
+from pydantic import BaseModel, ConfigDict, condecimal, conint
 
 
 class BaseOrderSchema(BaseModel):
@@ -16,6 +16,8 @@ class OrderFireworkSchema(BaseModel):
     firework_id: int
     amount: conint(gt=0)
     price_per_unit: condecimal(max_digits=10, decimal_places=2)
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReadOrderSchema(BaseModel):

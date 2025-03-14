@@ -6,8 +6,8 @@ from sqlalchemy.future import select
 
 from src.crud.order import crud_order
 from src.database.db_dependencies import get_async_session
+from src.models.cart import Cart
 from src.models.order import Order
-from src.models.user import Cart
 from src.schemas.order import (
     BaseOrderSchema,
     CreateOrderSchema,
