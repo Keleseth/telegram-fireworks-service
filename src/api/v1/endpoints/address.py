@@ -49,7 +49,7 @@ async def get_user_addressess(
     schema: ReadAddressSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Получить адреса пользователя."""
+    """Получить адреса юзера."""
     user_id = user_crud.get_user_id_by_telegram_id(
         session=session, schema_data=schema
     )
