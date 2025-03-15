@@ -14,7 +14,7 @@ from typing import Generic, List, Optional, Type, TypeVar
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.query import Query
@@ -22,6 +22,7 @@ from sqlalchemy.orm.query import Query
 from src.models.base import BaseJFModel
 from src.models.product import Tag
 from src.schemas.filter_shema import FireworkFilterSchema
+from src.schemas.pagination_schema import PaginationSchema
 
 ModelType = TypeVar('ModelType', bound=BaseJFModel)
 CreateSchemaType = TypeVar('CreateSchemaType', bound=BaseModel)
@@ -49,6 +50,9 @@ UPDATE_ERROR_500 = (
 DELETE_ERROR_500 = (
     'Ошибка сервера при удалении объекта. Текст ошибки: {error_message}'
 )
+
+PAGINATION_LIMIT = 10
+PAGINATION_OFFSET = 0
 
 
 class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
@@ -109,6 +113,7 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         self,
         session: AsyncSession,
         filter_schema: Optional[FireworkFilterSchema] = None,
+        pagination_schema: PaginationSchema = None,
     ) -> Optional[List[ModelType]]:
         """Возвращает все объекты модели.
 
@@ -124,6 +129,10 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             query = self.apply_filters(query, filter_schema)
         # if filter_schema.order_by:
         #     query = self.apply_sort(query, filter_schema.order_by)
+        if pagination_schema:
+            query = query.offset(pagination_schema.offset).limit(
+                pagination_schema.limit
+            )
         return (await session.execute(query)).unique().scalars().all()
 
     async def get(
@@ -141,6 +150,11 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return await session.execute(
             select(self.model).where(self.model.id == object_id)
         )
+
+    async def count(self, session: AsyncSession) -> int:
+        return (
+            await session.execute(select(func.count(self.model.id)))
+        ).scalar()
 
 
 class CRUDBase(

@@ -16,10 +16,14 @@ class TagSchema(BaseModel):
 class FireworkBase(BaseModel):
     name: str = Field(..., max_length=MAX_LENGTH)
     tags: list[TagSchema]
-    # description: Optional[str] = Field(None)
+    description: Optional[str] = Field(None)
     price: condecimal(ge=0) = Field(...)
     # category_id: Optional[int] = Field(None)
     external_id: str = Field(..., max_length=MAX_LENGTH)
+    article: str = Field(...)
+
+
+class FireworkDB(FireworkBase): ...
 
 
 class FireworkCreate(FireworkBase):
@@ -44,6 +48,13 @@ class CategoryBase(BaseModel):
     parent_category_id: Optional[int] = Field(
         None,
     )
+
+
+class CategoryDB(CategoryBase):
+    class Config:
+        """Конфигурация Pydantic для схемы CategoryDB."""
+
+        from_attributes = True
 
 
 class CategoryCreate(CategoryBase):
