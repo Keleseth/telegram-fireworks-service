@@ -137,14 +137,14 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         query = select(self.model)
         if filter_schema:
             query = self.apply_filters(query, filter_schema)
+            if filter_schema.order_by:
+                query = self.apply_sort(query, filter_schema.order_by)
         if pagination_schema:
             query = query.offset(pagination_schema.offset).limit(
                 pagination_schema.limit
             )
-        if filter_schema.order_by:
-            query = self.apply_sort(query, filter_schema.order_by)
         fireworks = await session.execute(query)
-        return fireworks.scalars().all()
+        return fireworks.unique().scalars().all()
 
     async def get(
         self, object_id: int, session: AsyncSession
@@ -158,11 +158,14 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         Возвращаемое значение:
             self.model: объект модели.
         """
-        return await session.execute(
-            select(self.model).where(self.model.id == object_id)
-        )
+        return (
+            await session.execute(
+                select(self.model).where(self.model.id == object_id)
+            )
+        ).scalar()
 
     async def count(self, session: AsyncSession) -> int:
+        """Определение количества записей в таблице."""
         return (
             await session.execute(select(func.count(self.model.id)))
         ).scalar()

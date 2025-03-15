@@ -11,44 +11,17 @@ class TagSchema(BaseModel):
     name: str
 
 
-class FireworkBase(BaseModel):
-    name: str = Field(..., max_length=MAX_LENGTH)
-    tags: list[TagSchema]
-    description: Optional[str] = Field(None)
-    price: condecimal(ge=0) = Field(...)
-    # category_id: Optional[int] = Field(None)
-    external_id: str = Field(..., max_length=MAX_LENGTH)
-    article: str = Field(...)
-
-
-class FireworkDB(FireworkBase): ...
-
-
-class FireworkCreate(FireworkBase):
-    pass
-
-
-class FireworkUpdate(BaseModel):
-    name: Optional[str] = Field(None, max_length=MAX_LENGTH)
-    description: Optional[str] = None
-    price: Optional[condecimal(ge=0)] = None
-    category_id: Optional[int] = None
-    image_url: Optional[str] = Field(None, max_length=MAX_LENGTH_URL)
-    video_url: Optional[str] = Field(None, max_length=MAX_LENGTH_URL)
-    external_id: Optional[str] = Field(None, max_length=MAX_LENGTH)
-
-
 class CategoryBase(BaseModel):
     name: str = Field(
         ...,
         max_length=MAX_LENGTH,
     )
-    parent_category_id: Optional[int] = Field(
-        None,
-    )
+    parent_category_id: Optional[int] = None
 
 
 class CategoryDB(CategoryBase):
+    id: int
+
     class Config:
         """Конфигурация Pydantic для схемы CategoryDB."""
 
@@ -61,7 +34,44 @@ class CategoryCreate(CategoryBase):
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=MAX_LENGTH)
-    parent_category_id: Optional[int] = None
+
+
+class FireworkBase(BaseModel):
+    id: int = Field(None)
+    code: str = Field(...)
+    name: str = Field(..., max_length=MAX_LENGTH)
+    measurement_unit: str = Field(...)
+    description: Optional[str] = Field(None)
+    price: condecimal(ge=0) = Field(...)
+    category_id: Optional[int] = Field(None)
+    tags: Optional[list[TagSchema]] = Field([])
+    charges_count: Optional[str] = Field(None)
+    effects_count: Optional[str] = Field(None)
+    product_size: str = Field(...)
+    packing_material: Optional[str] = Field(None)
+    external_id: str = Field(..., max_length=MAX_LENGTH)
+    article: str = Field(...)
+
+
+class FireworkDB(FireworkBase):
+    class Config:
+        """Конфигурация Pydantic для схемы FireworkDB."""
+
+        from_attributes = True
+
+
+class FireworkCreate(FireworkBase):
+    pass
+
+
+class FireworkUpdate(BaseModel):
+    code: Optional[str] = Field(None)
+    name: Optional[str] = Field(None, max_length=MAX_LENGTH)
+    measurement_unit: Optional[str] = Field(None)
+    price: condecimal(ge=0) = Field(None)
+    product_size: Optional[str] = Field(None)
+    external_id: Optional[str] = Field(None, max_length=MAX_LENGTH)
+    article: Optional[str] = Field(None)
 
 
 class TagBase(BaseModel):

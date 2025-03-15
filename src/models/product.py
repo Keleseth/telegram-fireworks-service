@@ -1,7 +1,5 @@
-from enum import StrEnum
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,11 +17,6 @@ if TYPE_CHECKING:
 FIREWORK_PRICE_NUMBER_OF_DIGITS = 10
 FIREWORK_PRICE_FRACTIONAL_PART = 2
 print('>>> Загрузка Firework')
-
-
-class MeasurementUnit(StrEnum):
-    PIECES = 'шт'
-    PACK = 'п.'
 
 
 class FireworkTag(BaseJFModel):
@@ -99,7 +92,7 @@ class Firework(BaseJFModel):
 
     Поля:
         1. id: уникальный индетификатор.
-        2. code: код товара.
+        2. code: код товара (обязательное поле).
         3. name: уникальное название товара (обязательное поле).
         4. measurement_unit: единица измерения.
         5. description: описание товара (опционально).
@@ -109,20 +102,18 @@ class Firework(BaseJFModel):
         8. category: категория товара.
         9. tags: теги, относящиеся к товару (опционально).
         10. external_id: артикул (обязательное поле).
-        11. media: media-файлы.
-        13. charges_count: количество зарядов.
-        14. effects_count: количество эффектов.
-        15. product_size: размер продукта.
-        16. packing_material: материал упаковки.
-        17. article: артикул товара.
+        11. media: media-файлы (опционально).
+        13. charges_count: количество зарядов (опционально).
+        14. effects_count: количество эффектов (опционально).
+        15. product_size: размер продукта (обязательное поле).
+        16. packing_material: материал упаковки (опционально).
+        17. article: артикул товара (обязательное поле).
     """
 
     id: Mapped[int_pk]
     code: Mapped[str_not_null_and_unique]
     name: Mapped[str_not_null_and_unique]
-    measurement_unit: Mapped[MeasurementUnit] = mapped_column(
-        SQLAlchemyEnum(MeasurementUnit), nullable=False
-    )
+    measurement_unit: Mapped[str] = mapped_column(nullable=False)
     description: Mapped[str | None]
     price: Mapped[Numeric] = mapped_column(
         Numeric(
@@ -149,7 +140,7 @@ class Firework(BaseJFModel):
     )
     charges_count: Mapped[int | None]
     effects_count: Mapped[int | None]
-    product_size: Mapped[str_not_null_and_unique]
+    product_size: Mapped[str] = mapped_column(nullable=False)
     packing_material: Mapped[str | None]
     order_fireworks: Mapped[list['OrderFirework']] = relationship(
         back_populates='firework'
