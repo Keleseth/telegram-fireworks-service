@@ -1,4 +1,4 @@
 from src.crud.base import CRUDBase
-from src.database.alembic_models import Category
+from src.models.product import Firework
 
-category_crud = CRUDBase(Category)
+product_crud = CRUDBase(Firework)
