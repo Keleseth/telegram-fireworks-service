@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Integer, Numeric
+from sqlalchemy import Float, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.annotations import int_pk
@@ -79,10 +79,8 @@ class OrderFirework(BaseJFModel):
         ForeignKey('firework.id', ondelete='SET NULL'), nullable=True
     )
     amount: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-    price_per_unit: Mapped[Numeric] = mapped_column(
-        Numeric(
-            FIREWORK_PRICE_NUMBER_OF_DIGITS, FIREWORK_PRICE_FRACTIONAL_PART
-        ),
+    price_per_unit: Mapped[float] = mapped_column(
+        Float,
         nullable=False,
     )
 
