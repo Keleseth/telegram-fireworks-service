@@ -14,7 +14,7 @@ from typing import Generic, List, Optional, Type, TypeVar
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, asc, desc, func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.query import Query
@@ -69,10 +69,15 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def apply_filters(
         self, query: Query, filter_schema: FireworkFilterSchema
     ) -> Query:
-        """Добавляет фильтры к запросу."""
+        """Добавляет фильтры к запросу.
+
+        Аргументы:
+            query: запрос, к которому применяются фильтры.
+            filter_schema: схема с фильтрами.
+        """
         filters = []
         if filter_schema.name:
-            filters.append(self.model.name == filter_schema.name)
+            filters.append(self.model.name.ilike(f'%{filter_schema.name}%'))
         if filter_schema.number_of_volleys:
             filters.append(
                 self.number_of_volleys == filter_schema.number_of_volleys
@@ -99,15 +104,20 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             query = query.where(and_(*filters))
         return query
 
-    # def apply_sort(self, query: Query, order_by_fields: list[str]) -> Query:
-    #     """Добавляет сортировку к запросу."""
-    #     ordering = []
-    #     for sorted_field in order_by_fields:
-    #         if sorted_field.startswith('-'):
-    #             ordering.append(desc(getattr(self.model, sorted_field[1:])))
-    #         else:
-    #             ordering.append(asc(getattr(self.model, sorted_field)))
-    #     return query.order_by(*ordering)
+    def apply_sort(self, query: Query, order_by_fields: list[str]) -> Query:
+        """Добавляет сортировку к запросу.
+
+        Аргументы:
+            query: запрос, к которому применяется сортировка.
+            order_by_fields: поля, по которым будет выполняться сортировка.
+        """
+        ordering = []
+        for sorted_field in order_by_fields:
+            if sorted_field.startswith('-'):
+                ordering.append(desc(getattr(self.model, sorted_field[1:])))
+            else:
+                ordering.append(asc(getattr(self.model, sorted_field)))
+        return query.order_by(*ordering)
 
     async def get_multi(
         self,
@@ -127,13 +137,14 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         query = select(self.model)
         if filter_schema:
             query = self.apply_filters(query, filter_schema)
-        # if filter_schema.order_by:
-        #     query = self.apply_sort(query, filter_schema.order_by)
         if pagination_schema:
             query = query.offset(pagination_schema.offset).limit(
                 pagination_schema.limit
             )
-        return (await session.execute(query)).unique().scalars().all()
+        if filter_schema.order_by:
+            query = self.apply_sort(query, filter_schema.order_by)
+        fireworks = await session.execute(query)
+        return fireworks.scalars().all()
 
     async def get(
         self, object_id: int, session: AsyncSession
