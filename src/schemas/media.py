@@ -105,7 +105,7 @@ class MediaDB(MediaBase):
         """
 
         title = MEDIA_DB_SCHEMA_TITLE
-        orm_mode = True
+        from_attributes = True
 
 
 class MediaCreate(MediaBase):
