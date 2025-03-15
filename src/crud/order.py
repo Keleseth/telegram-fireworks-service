@@ -4,9 +4,9 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import joinedload
 
 from src.crud.base import CRUDBase
+from src.models.cart import Cart
 from src.models.order import Order, OrderFirework
 from src.models.user import User
 from src.schemas.order import (
@@ -39,20 +39,74 @@ class CRUDOrder(CRUDBase[Order, CreateOrderSchema, UpdateOrderAddressSchema]):
     async def create_order(
         self, db: AsyncSession, order_data: CreateOrderSchema
     ) -> ReadOrderSchema:
-        """Создать новый заказ."""
+        """Создать новый заказ из корзины пользователя."""
         user_id = await self.get_user_id_by_telegram_id(
             db, order_data.telegram_id
         )
         new_order = Order(
+            user_id=user_id, status_id=1
+        )  # "Создан" по умолчанию
+        db.add(new_order)
+        await db.flush()
+
+        cart_items = (
+            (await db.execute(select(Cart).filter(Cart.user_id == user_id)))
+            .scalars()
+            .all()
+        )
+        if not cart_items:
+            raise HTTPException(status_code=400, detail='Корзина пуста')
+
+        order_fireworks = [
+            OrderFirework(
+                order_id=new_order.id,
+                firework_id=item.firework_id,
+                amount=item.amount,
+                price_per_unit=item.price_per_unit,
+            )
+            for item in cart_items
+        ]
+        db.add_all(order_fireworks)
+        await db.commit()
+        await db.refresh(
+            new_order, attribute_names=['order_fireworks', 'status']
+        )
+        return ReadOrderSchema(
+            id=new_order.id,
+            status=new_order.status.status_text,
+            user_address_id=new_order.user_address_id,
+            order_fireworks=[
+                OrderFireworkSchema.from_orm(fw)
+                for fw in new_order.order_fireworks
+            ],
+            user_id=new_order.user_id,
+        )
+
+    async def repeat_order(
+        self, db: AsyncSession, telegram_id: int, order_id: int
+    ) -> ReadOrderSchema:
+        """Повторить существующий заказ."""
+        user_id = await self.get_user_id_by_telegram_id(db, telegram_id)
+        old_order = await db.get(Order, order_id)  # Используем lazy='selectin'
+        if not old_order or old_order.user_id != user_id:
+            raise HTTPException(status_code=404, detail='Заказ не найден')
+
+        new_order = Order(
             user_id=user_id,
-            status_id=1,  # Статус "Создан" по умолчанию
-            user_address_id=order_data.user_address_id,
+            status_id=1,
+            user_address_id=old_order.user_address_id,
         )
         db.add(new_order)
         await db.flush()
+
         order_fireworks = [
-            OrderFirework(order_id=new_order.id, **item.dict())
-            for item in order_data.order_fireworks
+            OrderFirework(
+                order_id=new_order.id,
+                firework_id=item.firework_id,
+                amount=item.amount,
+                price_per_unit=item.price_per_unit,
+            )
+            for item in old_order.order_fireworks
         ]
         db.add_all(order_fireworks)
         await db.commit()
@@ -73,15 +127,8 @@ class CRUDOrder(CRUDBase[Order, CreateOrderSchema, UpdateOrderAddressSchema]):
     async def get_orders_by_user(
         self, db: AsyncSession, telegram_id: int
     ) -> List[ReadOrderSchema]:
-        """Получить все заказы пользователя."""
         user_id = await self.get_user_id_by_telegram_id(db, telegram_id)
-        query = (
-            select(Order)
-            .options(
-                joinedload(Order.order_fireworks), joinedload(Order.status)
-            )
-            .filter(Order.user_id == user_id)
-        )
+        query = select(Order).filter(Order.user_id == user_id)
         result = await db.execute(query)
         orders = result.unique().scalars().all()
         return [
@@ -104,7 +151,6 @@ class CRUDOrder(CRUDBase[Order, CreateOrderSchema, UpdateOrderAddressSchema]):
         order_data: UpdateOrderAddressSchema,
         order_id: int,
     ) -> ReadOrderSchema:
-        """Обновить адрес заказа."""
         user_id = await self.get_user_id_by_telegram_id(
             db, order_data.telegram_id
         )
@@ -134,7 +180,6 @@ class CRUDOrder(CRUDBase[Order, CreateOrderSchema, UpdateOrderAddressSchema]):
         order_data: UpdateOrderStatusSchema,
         order_id: int,
     ) -> ReadOrderSchema:
-        """Обновить статус заказа."""
         user_id = await self.get_user_id_by_telegram_id(
             db, order_data.telegram_id
         )
@@ -161,7 +206,6 @@ class CRUDOrder(CRUDBase[Order, CreateOrderSchema, UpdateOrderAddressSchema]):
     async def delete_order(
         self, db: AsyncSession, order_data: DeleteOrderSchema
     ) -> bool:
-        """Удалить заказ, если он ещё не обработан."""
         user_id = await self.get_user_id_by_telegram_id(
             db, order_data.telegram_id
         )

@@ -16,7 +16,6 @@ class OrderFireworkSchema(BaseModel):
     firework_id: int
     amount: conint(gt=0)
     price_per_unit: condecimal(max_digits=10, decimal_places=2)
-
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -25,28 +24,27 @@ class ReadOrderSchema(BaseModel):
 
     id: int
     status: str
-    user_address_id: Optional[int]
+    user_address_id: Optional[UUID]  # Исправлено на UUID
     order_fireworks: List[OrderFireworkSchema]
     user_id: UUID
 
 
 class CreateOrderSchema(BaseOrderSchema):
-    """Схема для создания заказа."""
+    """Схема для создания заказа из корзины."""
 
-    user_address_id: Optional[int] = None
-    order_fireworks: List[OrderFireworkSchema]
+    # Только telegram_id через BaseOrderSchema
 
 
 class UpdateOrderAddressSchema(BaseOrderSchema):
     """Схема для обновления адреса заказа."""
 
-    user_address_id: int
+    user_address_id: UUID  # Исправлено на UUID
 
 
 class UpdateOrderStatusSchema(BaseOrderSchema):
     """Схема для изменения статуса заказа."""
 
-    status_id: int  # Передаём ID статуса из OrderStatus
+    status_id: int
 
 
 class DeleteOrderSchema(BaseOrderSchema):

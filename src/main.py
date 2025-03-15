@@ -11,8 +11,6 @@ configure_mappers()
 app = FastAPI(title=settings.app_title, description=settings.description)
 app.router.include_router(main_router)
 
-app.router.include_router(main_router)
-
 
 def main():
     """Функция запустит управляющую функцию. Для доступа извне."""

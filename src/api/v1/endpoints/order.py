@@ -2,7 +2,6 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 
 from src.crud.order import crud_order
 from src.database.db_dependencies import get_async_session
@@ -25,12 +24,18 @@ async def create_new_order(
     order_data: CreateOrderSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Создать новый заказ.
-
-    Инициализация заказа без адреса или повторение существующего заказа
-    с адресом.
-    """
+    """Создать новый заказ из корзины пользователя."""
     return await crud_order.create_order(session, order_data)
+
+
+@router.post('/{order_id}/repeat', response_model=ReadOrderSchema)
+async def repeat_order(
+    order_id: int,
+    data: BaseOrderSchema,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Повторить существующий заказ."""
+    return await crud_order.repeat_order(session, data.telegram_id, order_id)
 
 
 @router.post('/me', response_model=List[ReadOrderSchema])
@@ -88,14 +93,8 @@ async def move_order_to_cart(
     user_id = await crud_order.get_user_id_by_telegram_id(
         session, data.telegram_id
     )
-    order = (
-        await session.execute(
-            select(Order).filter(
-                Order.id == order_id, Order.user_id == user_id
-            )
-        )
-    ).scalar_one_or_none()
-    if not order:
+    order = await session.get(Order, order_id)
+    if not order or order.user_id != user_id:
         raise HTTPException(status_code=404, detail='Заказ не найден')
     for item in order.order_fireworks:
         session.add(

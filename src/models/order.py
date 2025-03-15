@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 from uuid import UUID
 
 from sqlalchemy import Float, ForeignKey, Integer
@@ -54,9 +54,8 @@ class Order(BaseJFModel):
     user_address: Mapped[Optional['UserAddress']] = relationship(
         back_populates='orders'
     )
-    order_fireworks: Mapped[list['OrderFirework']] = relationship(
-        back_populates='order',
-        cascade='all, delete-orphan',
+    order_fireworks: Mapped[List['OrderFirework']] = relationship(
+        lazy='selectin'
     )
     status: Mapped['OrderStatus'] = relationship()
 
