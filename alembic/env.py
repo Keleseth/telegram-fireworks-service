@@ -1,3 +1,4 @@
+# ruff: noqa
 import asyncio
 from logging.config import fileConfig
 
@@ -9,6 +10,7 @@ from alembic import context
 
 from src.config import settings
 from src.database.alembic_models import BaseJFModel
+from scripts.auto_migration_naming import generate_migration_name  # noqa
 
 config = context.config
 config.set_main_option('sqlalchemy.url', settings.database_url)
@@ -44,7 +46,11 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        process_revision_directives=generate_migration_name
+    )
 
     with context.begin_transaction():
         context.run_migrations()
