@@ -1,14 +1,8 @@
 """base_migration
 
-<<<<<<<< HEAD:alembic/versions/2025_03_14_1726-00e8a52820d1_initial_migration.py
-Revision ID: 00e8a52820d1
-Revises:
-Create Date: 2025-03-14 17:26:01.708738
-========
 Revision ID: 01
 Revises:
-Create Date: 2025-03-15 11:09:32.701166
->>>>>>>> origin/develop:alembic/versions/2025_03_15_1109-01_base_migration.py
+Create Date: 2025-03-15 20:42:56.744618
 
 """
 from typing import Sequence, Union
@@ -165,6 +159,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('firework_id', sa.Integer(), nullable=False),
     sa.Column('user_id', fastapi_users_db_sqlalchemy.generics.GUID(), nullable=False),
+    sa.Column('price_per_unit', sa.Float(), nullable=False),
     sa.Column('amount', sa.Integer(), nullable=False),
     sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -236,7 +231,7 @@ def upgrade() -> None:
     sa.Column('order_id', sa.Integer(), nullable=False),
     sa.Column('firework_id', sa.Integer(), nullable=True),
     sa.Column('amount', sa.Integer(), nullable=False),
-    sa.Column('price_per_unit', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('price_per_unit', sa.Float(), nullable=False),
     sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['firework_id'], ['firework.id'], ondelete='SET NULL'),
