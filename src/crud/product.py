@@ -1,4 +1,5 @@
-from src.crud.base import CRUDBase
-from src.models.product import Firework
+from src.crud.base import CRUDBaseRead
+from src.models.product import Category, Firework
 
-product_crud = CRUDBase(Firework)
+product_crud = CRUDBaseRead(Firework)
+category_crud = CRUDBaseRead(Category)

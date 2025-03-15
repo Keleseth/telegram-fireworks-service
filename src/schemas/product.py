@@ -17,11 +17,9 @@ class FireworkBase(BaseModel):
     name: str = Field(..., max_length=MAX_LENGTH)
     tags: list[TagSchema]
     # description: Optional[str] = Field(None)
-    # price: condecimal(ge=0) = Field(...)
+    price: condecimal(ge=0) = Field(...)
     # category_id: Optional[int] = Field(None)
-    # image_url: Optional[str] = Field(None, max_length=MAX_LENGTH_URL)
-    # video_url: Optional[str] = Field(None, max_length=MAX_LENGTH_URL)
-    # external_id: str = Field(..., max_length=MAX_LENGTH)
+    external_id: str = Field(..., max_length=MAX_LENGTH)
 
 
 class FireworkCreate(FireworkBase):
