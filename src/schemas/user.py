@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi_users import schemas
-from pydantic import EmailStr
+from pydantic import BaseModel, EmailStr
 
 # from src.models.user import PreferedLanguage
 
@@ -40,3 +40,13 @@ class UserUpdate(schemas.BaseUserUpdate):
     age_verified: bool | None = None
     is_admin: bool | None = None
     is_superuser: bool | None = None
+
+
+class TelegramIDSchema(BaseModel):
+    """Схема для извлечения telegram_id из запроса."""
+
+    telegram_id: int
+
+
+class UserReadSchema(BaseModel):
+    id: uuid.UUID

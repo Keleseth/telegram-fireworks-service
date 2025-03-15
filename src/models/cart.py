@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
+from uuid import UUID
 
-from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint
+from sqlalchemy import CheckConstraint, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.annotations import int_pk
@@ -28,7 +29,13 @@ class Cart(BaseJFModel):
         ForeignKey('firework.id'),
         nullable=False,
     )
-    user_id: Mapped[int] = mapped_column(ForeignKey('user.id'), nullable=False)
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey('user.id'), nullable=False
+    )
+    price_per_unit: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+    )
     amount: Mapped[int] = mapped_column(nullable=False, default=1)
 
     user: Mapped['User'] = relationship('User', back_populates='cart')
