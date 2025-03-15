@@ -3,7 +3,8 @@ from typing import List
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.crud.address import address_crud
+from src.crud.address import address_crud, useraddress_crud
+from src.crud.user import user_crud
 from src.database.db_dependencies import get_async_session
 from src.schemas.address import (
     BaseAddressSchema,
@@ -25,7 +26,18 @@ async def create_user_address(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Создать адрес пользователя."""
-    return await address_crud.create(session=session, schema=create_data)
+    address = await address_crud.get_or_create_address(
+        session=session, address=create_data.address
+    )
+    user_id = await user_crud.get_user_id_by_telegram_id(
+        schema_data=create_data, session=session
+    )
+    await useraddress_crud.create(
+        session=session,
+        address=address,
+        user_id=user_id,
+    )
+    return address
 
 
 @router.get(
@@ -34,12 +46,15 @@ async def create_user_address(
     response_model=List[BaseAddressSchema],
 )
 async def get_user_addressess(
-    schema: ReadAddressSchema,  # схема с telegram_id
+    schema: ReadAddressSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Получить адреса пользователя."""
-    return await address_crud.get_adresses_by_tg_id(
-        session=session, telegram_id=schema.telegram_id
+    user_id = user_crud.get_user_id_by_telegram_id(
+        session=session, schema_data=schema
+    )
+    return await address_crud.get_addresses_by_user_id(
+        session=session, user_id=user_id
     )
 
 
@@ -50,10 +65,18 @@ async def get_user_addressess(
 )
 async def get_user_address(
     address_id: str,
+    schema: ReadAddressSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Получить конкретный адрес пользователя по id."""
-    return await address_crud.get(session=session, object_id=address_id)
+    user_id = user_crud.get_user_id_by_telegram_id(
+        session=session, schema_data=schema
+    )
+    return await address_crud.get_adress_by_id_for_current_user(
+        session=session,
+        user_id=user_id,
+        address_id=int(address_id),
+    )
 
 
 @router.patch(
@@ -67,9 +90,14 @@ async def update_user_address(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Изменить адрес пользователя."""
-    adress = await address_crud.get(session=session, object_id=address_id)
-    return await address_crud.update(
-        session=session, schema=data_update, db_object=adress
+    user_id = user_crud.get_user_id_by_telegram_id(
+        session=session, schema_data=data_update
+    )
+    return await address_crud.update_adress_by_id(
+        session=session,
+        update_data=data_update,
+        user_id=user_id,
+        address_id=int(address_id),
     )
 
 
@@ -80,10 +108,15 @@ async def update_user_address(
 )
 async def delete_user_address(
     address_id: str,
-    schema: ReadAddressSchema,  # схема с telegram_id
+    schema: ReadAddressSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
-    adress = await address_crud.get(session=session, object_id=address_id)
+    user_id = user_crud.get_user_id_by_telegram_id(
+        session=session, schema_data=schema
+    )
+    adress = await address_crud.get_adress_by_id_for_current_user(
+        session=session, user_id=user_id, address_id=int(address_id)
+    )
     return await address_crud.remove(
         session=session,
         db_object=adress,
