@@ -72,7 +72,7 @@ class Category(BaseJFModel):
         3. parent_category_id: id родительской категории (опционально).
         4. categories: все подкатегории текущей категории.
         5. parent_category: родительская категория.
-        6. fireworks: все товары с текущей категорией.
+        6. fireworks: все товары категории.
     """
 
     id: Mapped[int_pk]
