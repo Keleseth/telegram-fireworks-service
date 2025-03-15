@@ -7,14 +7,19 @@ MAX_LENGTH = 255
 MAX_LENGTH_URL = 512
 
 
+class TagSchema(BaseModel):
+    name: str
+
+
 class FireworkBase(BaseModel):
     name: str = Field(..., max_length=MAX_LENGTH)
-    description: Optional[str] = Field(None)
-    price: condecimal(ge=0) = Field(...)
-    category_id: Optional[int] = Field(None)
-    image_url: Optional[str] = Field(None, max_length=MAX_LENGTH_URL)
-    video_url: Optional[str] = Field(None, max_length=MAX_LENGTH_URL)
-    external_id: str = Field(..., max_length=MAX_LENGTH)
+    tags: list[TagSchema]
+    # description: Optional[str] = Field(None)
+    # price: condecimal(ge=0) = Field(...)
+    # category_id: Optional[int] = Field(None)
+    # image_url: Optional[str] = Field(None, max_length=MAX_LENGTH_URL)
+    # video_url: Optional[str] = Field(None, max_length=MAX_LENGTH_URL)
+    # external_id: str = Field(..., max_length=MAX_LENGTH)
 
 
 class FireworkCreate(FireworkBase):

@@ -1,13 +1,16 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy import BigInteger, Boolean, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.database.alembic_models import BaseJFModel
+from src.models.base import BaseJFModel
 
 if TYPE_CHECKING:
-    from src.database.alembic_models import FavoriteFirework
+    from src.models.address import UserAddress
+    from src.models.cart import Cart
+    from src.models.favorite import FavoriteFirework
+    from src.models.order import Order
 
 
 # class PreferedLanguage(str, PyEnum):  # TODO оставляем на реализацию
@@ -49,10 +52,18 @@ class User(BaseJFModel, SQLAlchemyBaseUserTableUUID):  # type: ignore[misc]
     # prefered_language: Mapped[PreferedLanguage] = mapped_column(
     #     Enum(PreferedLanguage), default=PreferedLanguage.RU
     # )  # TODO оставляем на реализацию
-    favorite_fireworks: Mapped[list['FavoriteFirework']] = relationship(
+    favorite_fireworks: Mapped[List['FavoriteFirework']] = relationship(
         back_populates='user'
     )
+    cart: Mapped[List['Cart']] = relationship(cascade='all, delete-orphan')
+    orders: Mapped[List['Order']] = relationship(
+        back_populates='user', cascade='all, delete-orphan'
+    )
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    addresses: Mapped[List['UserAddress']] = relationship(
+        back_populates='user', cascade='all, delete-orphan'
+    )
 
     __table_args__ = {'extend_existing': True}
 

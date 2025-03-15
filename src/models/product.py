@@ -1,5 +1,4 @@
-from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import ForeignKey, Numeric
@@ -9,15 +8,16 @@ from src.database.annotations import int_pk, str_not_null_and_unique
 from src.models.base import BaseJFModel
 
 if TYPE_CHECKING:
-    from src.database.alembic_models import (
-        FavoriteFirework,
-        FireworkDiscount,
-        Media,
-        OrderFirework,
-    )
+    from src.models.cart import Cart
+    from src.models.discounts import FireworkDiscount
+    from src.models.favorite import FavoriteFirework
+    from src.models.media import FireworkMedia
+    from src.models.order import OrderFirework
+
 
 FIREWORK_PRICE_NUMBER_OF_DIGITS = 10
 FIREWORK_PRICE_FRACTIONAL_PART = 2
+print('>>> Загрузка Firework')
 
 
 class MeasurementUnit(StrEnum):
@@ -59,7 +59,7 @@ class Tag(BaseJFModel):
         'Firework',
         secondary='firework_tag',
         back_populates='tags',
-        lazy='joined',
+        lazy='selectin',
     )
 
 
@@ -75,19 +75,21 @@ class Category(BaseJFModel):
         6. fireworks: все товары категории.
     """
 
-    id: Mapped[int_pk]
+    id: Mapped[int] = mapped_column('id', primary_key=True)
     name: Mapped[str_not_null_and_unique]
-    parent_category_id: Mapped[int] = mapped_column(ForeignKey('category.id'))
+    parent_category_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('category.id'), nullable=True
+    )
     categories: Mapped[list['Category']] = relationship(
         'Category',
         back_populates='parent_category',
         cascade='all, delete-orphan',
     )
-    parent_category: Mapped['Category'] = relationship(
+    parent_category: Mapped[Optional['Category']] = relationship(
         'Category', back_populates='categories', remote_side=[id]
     )
     fireworks: Mapped[list['Firework']] = relationship(
-        'Firework', back_populates='category', lazy='joined'
+        'Firework', back_populates='category', lazy='selectin'
     )
 
 
@@ -138,11 +140,11 @@ class Firework(BaseJFModel):
         back_populates='fireworks',
         lazy='joined',
     )
-    media: Mapped[list['Media']] = relationship(
-        'Media',
-        secondary='firework_media',
+    media: Mapped[list['FireworkMedia']] = relationship(
+        'FireworkMedia',
         back_populates='fireworks',
         lazy='joined',
+        cascade='all, delete',
     )
     charges_count: Mapped[int | None]
     effects_count: Mapped[int | None]
@@ -156,6 +158,9 @@ class Firework(BaseJFModel):
     )
     discounts: Mapped[list['FireworkDiscount']] = relationship(
         back_populates='firework'
+    )
+    carts: Mapped[List['Cart']] = relationship(
+        back_populates='firework', cascade='all, delete-orphan'
     )
     external_id: Mapped[str] = mapped_column(nullable=False)
     article: Mapped[str] = mapped_column(nullable=False)
