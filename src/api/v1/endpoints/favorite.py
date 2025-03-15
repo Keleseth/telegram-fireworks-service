@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.crud.favourite import favorite_crud, user_crud
 from src.database.db_dependencies import get_async_session
-from src.schemas.favourite import FavoriteCreate, FavoriteDB, FavoriteMulti
+from src.schemas.favourite import FavoriteCreate, FavoriteDB
+from src.schemas.user import TelegramIDSchema
 
 router = APIRouter()
 
@@ -14,7 +15,6 @@ router = APIRouter()
     response_model=FavoriteDB,
 )
 async def add_favorite_firework(
-    # telegram_id_data: TelegramIDSchema,
     create_data: FavoriteCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -33,11 +33,14 @@ async def add_favorite_firework(
     response_model=list[FavoriteDB],
 )
 async def get_favorite_fireworks(
-    telegram_data: FavoriteMulti,
+    telegram_id_data: TelegramIDSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Получить список избранных фейерверков пользователя."""
-    return await favorite_crud.get_multi_by_telegram_id(telegram_data, session)
+    user_id = await user_crud.get_user_id_by_telegram_id(
+        telegram_id_data, session=session
+    )
+    return await favorite_crud.get_multi_by_telegram_id(user_id, session)
 
 
 @router.delete(
@@ -47,10 +50,13 @@ async def get_favorite_fireworks(
 )
 async def remove_favorite_firework(
     firework_id: int,
-    telegram_data: FavoriteMulti,
+    telegram_id_data: TelegramIDSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Удалить фейерверк из избранного."""
+    user_id = await user_crud.get_user_id_by_telegram_id(
+        telegram_id_data, session=session
+    )
     return await favorite_crud.remove_by_telegram_id(
-        telegram_data, firework_id, session
+        user_id, firework_id, session
     )

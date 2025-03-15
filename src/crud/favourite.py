@@ -23,6 +23,22 @@ class CRUDFavourite:
         """
         self.model = model
 
+    async def get_user_id_by_telegram_id(
+        self,
+        obj_in: FavoriteCreate,
+        session: AsyncSession,
+    ):
+        """Метод для получения user_id по telegram_id."""
+        obj_in = obj_in.dict()
+        user_id = (
+            await session.execute(
+                select(User.id).where(
+                    User.telegram_id == obj_in['telegram_id']
+                )
+            )
+        ).scalar_one_or_none()
+        return user_id
+
     async def create_favourite_by_telegram_id(
         self,
         obj_in: FavoriteCreate,
@@ -42,18 +58,10 @@ class CRUDFavourite:
 
     async def get_multi_by_telegram_id(
         self,
-        obj_in: FavoriteCreate,
+        user_id: UUID,
         session: AsyncSession,
     ):
         """Метод для получения избранных по telegram_id."""
-        obj_in_data = obj_in.dict()
-        user_id = (
-            await session.execute(
-                select(User.id).where(
-                    User.telegram_id == obj_in_data['telegram_id']
-                )
-            )
-        ).scalar_one_or_none()
         query = select(self.model)
         query = query.order_by(self.model.create_date).where(
             self.model.user_id == user_id
@@ -63,18 +71,14 @@ class CRUDFavourite:
 
     async def remove_by_telegram_id(
         self,
-        obj_in: FavoriteCreate,
+        user_id: UUID,
         firework_id: int,
         session: AsyncSession,
     ):
         """Метод для удаления избранных по telegram_id."""
-        obj_in_data = obj_in.dict()
-        user = await session.scalars(
-            select(User).where(User.telegram_id == obj_in_data['telegram_id'])
-        )
         db_obj = await session.scalar(
             select(self.model).where(
-                self.model.user_id == user.id,
+                self.model.user_id == user_id,
                 self.model.firework_id == firework_id,
             )
         )
