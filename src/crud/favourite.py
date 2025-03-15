@@ -30,14 +30,13 @@ class CRUDFavourite:
     ):
         """Метод для получения user_id по telegram_id."""
         obj_in = obj_in.dict()
-        user_id = (
+        return (
             await session.execute(
                 select(User.id).where(
                     User.telegram_id == obj_in['telegram_id']
                 )
             )
         ).scalar_one_or_none()
-        return user_id
 
     async def create_favourite_by_telegram_id(
         self,
