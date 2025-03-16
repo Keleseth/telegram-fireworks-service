@@ -50,14 +50,16 @@ class Order(BaseJFModel):
         ForeignKey('useraddress.id', ondelete='SET NULL'), nullable=True
     )
 
-    user: Mapped['User'] = relationship(back_populates='orders')
+    user: Mapped['User'] = relationship(
+        back_populates='orders', lazy='selectin'
+    )
     user_address: Mapped[Optional['UserAddress']] = relationship(
-        back_populates='orders'
+        back_populates='orders', lazy='selectin'
     )
     order_fireworks: Mapped[List['OrderFirework']] = relationship(
         lazy='selectin'
     )
-    status: Mapped['OrderStatus'] = relationship()
+    status: Mapped['OrderStatus'] = relationship(lazy='selectin')
 
 
 class OrderFirework(BaseJFModel):

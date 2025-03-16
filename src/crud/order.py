@@ -9,14 +9,14 @@ from src.crud.base import CRUDBase
 from src.models.cart import Cart
 from src.models.order import Order, OrderFirework
 from src.schemas.order import (
-    CreateOrderSchema,
+    BaseOrderSchema,
     OrderFireworkSchema,
     ReadOrderSchema,
     UpdateOrderAddressSchema,
 )
 
 
-class CRUDOrder(CRUDBase[Order, CreateOrderSchema, UpdateOrderAddressSchema]):
+class CRUDOrder(CRUDBase[Order, BaseOrderSchema, UpdateOrderAddressSchema]):
     """CRUD операции с заказами."""
 
     async def create_order(

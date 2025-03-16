@@ -1,11 +1,11 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.v1.dependencies import get_user_id
 from src.crud.order import crud_order
-from src.crud.user import user_crud  # Для получения user_id
 from src.database.db_dependencies import get_async_session
 from src.models.cart import Cart
 from src.models.order import Order
@@ -15,29 +15,13 @@ from src.schemas.order import (
     UpdateOrderAddressSchema,
     UpdateOrderStatusSchema,
 )
-from src.schemas.user import TelegramIDSchema  # Для передачи telegram_id
 
 router = APIRouter(prefix='/orders', tags=['orders'])
 
 
-# Зависимость для получения user_id
-async def get_user_id(
-    telegram_id: int = Body(...),  # telegram_id из тела запроса
-    session: AsyncSession = Depends(get_async_session),
-) -> UUID:
-    schema_data = TelegramIDSchema(telegram_id=telegram_id)
-    user_id = await user_crud.get_user_id_by_telegram_id(schema_data, session)
-    if not user_id:
-        raise HTTPException(
-            status_code=404,
-            detail='Пользователь с таким telegram_id не найден',
-        )
-    return user_id
-
-
 @router.post('/', response_model=ReadOrderSchema)
 async def create_new_order(
-    user_id: UUID = Depends(get_user_id),  # user_id через зависимость
+    user_id: UUID = Depends(get_user_id),  # user_id получаем через Depends()
     session: AsyncSession = Depends(get_async_session),
 ):
     """Создать новый заказ из корзины пользователя."""
