@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import Enum as SQLAlchemyEnum

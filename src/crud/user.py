@@ -1,4 +1,5 @@
 from typing import Optional
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -22,7 +23,7 @@ class UserCRUD:
         self,
         schema_data: TelegramIDSchema,
         session: AsyncSession,
-    ) -> Optional[str]:
+    ) -> Optional[UUID]:
         result = await session.execute(
             select(self.model.id).filter(
                 self.model.telegram_id == schema_data.telegram_id

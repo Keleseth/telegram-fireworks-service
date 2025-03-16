@@ -14,7 +14,7 @@ from typing import Generic, List, Optional, Type, TypeVar
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import and_, select
+from sqlalchemy import and_, asc, desc, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.query import Query

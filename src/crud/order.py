@@ -8,44 +8,23 @@ from sqlalchemy.future import select
 from src.crud.base import CRUDBase
 from src.models.cart import Cart
 from src.models.order import Order, OrderFirework
-from src.models.user import User
 from src.schemas.order import (
     CreateOrderSchema,
-    DeleteOrderSchema,
     OrderFireworkSchema,
     ReadOrderSchema,
     UpdateOrderAddressSchema,
-    UpdateOrderStatusSchema,
 )
 
 
 class CRUDOrder(CRUDBase[Order, CreateOrderSchema, UpdateOrderAddressSchema]):
     """CRUD операции с заказами."""
 
-    async def get_user_id_by_telegram_id(
-        self, db: AsyncSession, telegram_id: int
-    ) -> UUID:
-        """Получить UUID пользователя по telegram_id."""
-        query = select(User).filter(User.telegram_id == telegram_id)
-        result = await db.execute(query)
-        user = result.scalar_one_or_none()
-        if not user:
-            raise HTTPException(
-                status_code=404,
-                detail='Пользователь с таким telegram_id не найден',
-            )
-        return user.id
-
     async def create_order(
-        self, db: AsyncSession, order_data: CreateOrderSchema
+        self, db: AsyncSession, user_id: UUID
     ) -> ReadOrderSchema:
         """Создать новый заказ из корзины пользователя."""
-        user_id = await self.get_user_id_by_telegram_id(
-            db, order_data.telegram_id
-        )
-        new_order = Order(
-            user_id=user_id, status_id=1
-        )  # "Создан" по умолчанию
+        new_order = Order(user_id=user_id, status_id=1)
+        # "Создан" по умолчанию
         db.add(new_order)
         await db.flush()
 
@@ -83,10 +62,9 @@ class CRUDOrder(CRUDBase[Order, CreateOrderSchema, UpdateOrderAddressSchema]):
         )
 
     async def repeat_order(
-        self, db: AsyncSession, telegram_id: int, order_id: int
+        self, db: AsyncSession, user_id: UUID, order_id: int
     ) -> ReadOrderSchema:
         """Повторить существующий заказ."""
-        user_id = await self.get_user_id_by_telegram_id(db, telegram_id)
         old_order = await db.get(Order, order_id)  # Используем lazy='selectin'
         if not old_order or old_order.user_id != user_id:
             raise HTTPException(status_code=404, detail='Заказ не найден')
@@ -125,12 +103,12 @@ class CRUDOrder(CRUDBase[Order, CreateOrderSchema, UpdateOrderAddressSchema]):
         )
 
     async def get_orders_by_user(
-        self, db: AsyncSession, telegram_id: int
+        self, db: AsyncSession, user_id: UUID
     ) -> List[ReadOrderSchema]:
-        user_id = await self.get_user_id_by_telegram_id(db, telegram_id)
+        """Получить список всех заказов пользователя."""
         query = select(Order).filter(Order.user_id == user_id)
         result = await db.execute(query)
-        orders = result.unique().scalars().all()
+        orders = result.scalars().all()  # Убрано unique(), так как нет JOIN-ов
         return [
             ReadOrderSchema(
                 id=order.id,
@@ -148,19 +126,18 @@ class CRUDOrder(CRUDBase[Order, CreateOrderSchema, UpdateOrderAddressSchema]):
     async def update_order_address(
         self,
         db: AsyncSession,
-        order_data: UpdateOrderAddressSchema,
+        user_id: UUID,
+        user_address_id: UUID,
         order_id: int,
     ) -> ReadOrderSchema:
-        user_id = await self.get_user_id_by_telegram_id(
-            db, order_data.telegram_id
-        )
+        """Обновить адрес заказа."""
         query = select(Order).filter(
             Order.id == order_id, Order.user_id == user_id
         )
         order = (await db.execute(query)).scalar_one_or_none()
         if not order:
             raise HTTPException(status_code=404, detail='Заказ не найден')
-        order.user_address_id = order_data.user_address_id
+        order.user_address_id = user_address_id
         await db.commit()
         await db.refresh(order, attribute_names=['order_fireworks', 'status'])
         return ReadOrderSchema(
@@ -175,21 +152,16 @@ class CRUDOrder(CRUDBase[Order, CreateOrderSchema, UpdateOrderAddressSchema]):
         )
 
     async def update_order_status(
-        self,
-        db: AsyncSession,
-        order_data: UpdateOrderStatusSchema,
-        order_id: int,
+        self, db: AsyncSession, user_id: UUID, status_id: int, order_id: int
     ) -> ReadOrderSchema:
-        user_id = await self.get_user_id_by_telegram_id(
-            db, order_data.telegram_id
-        )
+        """Обновить статус заказа."""
         query = select(Order).filter(
             Order.id == order_id, Order.user_id == user_id
         )
         order = (await db.execute(query)).scalar_one_or_none()
         if not order:
             raise HTTPException(status_code=404, detail='Заказ не найден')
-        order.status_id = order_data.status_id
+        order.status_id = status_id
         await db.commit()
         await db.refresh(order, attribute_names=['order_fireworks', 'status'])
         return ReadOrderSchema(
@@ -204,13 +176,11 @@ class CRUDOrder(CRUDBase[Order, CreateOrderSchema, UpdateOrderAddressSchema]):
         )
 
     async def delete_order(
-        self, db: AsyncSession, order_data: DeleteOrderSchema
+        self, db: AsyncSession, user_id: UUID, order_id: int
     ) -> bool:
-        user_id = await self.get_user_id_by_telegram_id(
-            db, order_data.telegram_id
-        )
+        """Удалить заказ."""
         query = select(Order).filter(
-            Order.id == order_data.order_id, Order.user_id == user_id
+            Order.id == order_id, Order.user_id == user_id
         )
         order = (await db.execute(query)).scalar_one_or_none()
         if not order or order.status_id != 1:
