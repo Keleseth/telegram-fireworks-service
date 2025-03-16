@@ -40,8 +40,8 @@ async def create_user_address(
     return address
 
 
-@router.get(
-    '/addresses',
+@router.post(
+    '/addresses/me',
     status_code=status.HTTP_200_OK,
     response_model=List[BaseAddressSchema],
 )
@@ -50,7 +50,7 @@ async def get_user_addressess(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Получить адреса юзера."""
-    user_id = user_crud.get_user_id_by_telegram_id(
+    user_id = await user_crud.get_user_id_by_telegram_id(
         session=session, schema_data=schema
     )
     return await address_crud.get_addresses_by_user_id(
@@ -58,7 +58,7 @@ async def get_user_addressess(
     )
 
 
-@router.get(
+@router.post(
     '/addresses/{address_id}',
     status_code=status.HTTP_200_OK,
     response_model=BaseAddressSchema,
@@ -69,7 +69,7 @@ async def get_user_address(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Получить конкретный адрес пользователя по id."""
-    user_id = user_crud.get_user_id_by_telegram_id(
+    user_id = await user_crud.get_user_id_by_telegram_id(
         session=session, schema_data=schema
     )
     return await address_crud.get_adress_by_id_for_current_user(
@@ -90,7 +90,7 @@ async def update_user_address(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Изменить адрес пользователя."""
-    user_id = user_crud.get_user_id_by_telegram_id(
+    user_id = await user_crud.get_user_id_by_telegram_id(
         session=session, schema_data=data_update
     )
     return await address_crud.update_adress_by_id(
@@ -111,7 +111,7 @@ async def delete_user_address(
     schema: ReadAddressSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
-    user_id = user_crud.get_user_id_by_telegram_id(
+    user_id = await user_crud.get_user_id_by_telegram_id(
         session=session, schema_data=schema
     )
     adress = await address_crud.get_adress_by_id_for_current_user(
