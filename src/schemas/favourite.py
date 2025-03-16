@@ -22,5 +22,6 @@ class FavoriteDB(BaseModel):
     firework_name: str = Field(alias="firework.name")
 
     class Config:
+        """Конфиг."""
         orm_mode = True
         allow_population_by_field_name = True
