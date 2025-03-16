@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import Enum as SQLAlchemyEnum
@@ -162,5 +163,4 @@ class Firework(BaseJFModel):
     carts: Mapped[List['Cart']] = relationship(
         back_populates='firework', cascade='all, delete-orphan'
     )
-    external_id: Mapped[str] = mapped_column(nullable=False)
     article: Mapped[str] = mapped_column(nullable=False)
