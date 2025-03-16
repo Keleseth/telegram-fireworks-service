@@ -14,13 +14,13 @@ from typing import Generic, List, Optional, Type, TypeVar
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import and_, asc, desc, func, select
+from sqlalchemy import and_, asc, desc, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.query import Query
 
 from src.models.base import BaseJFModel
-from src.models.product import Tag
+from src.models.product import Category, Tag
 from src.schemas.filter_shema import FireworkFilterSchema
 from src.schemas.pagination_schema import PaginationSchema
 
@@ -85,8 +85,8 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         if filter_schema.categories:
             # Получаем продукты,
             # которые есть в перечисленных категориях.
-            filters.append(
-                self.model.category.name.in_(filter_schema.categories)
+            query = query.join(self.model.category).filter(
+                Category.name.in_(filter_schema.categories)
             )
         if filter_schema.article:
             filters.append(self.model.article == filter_schema.article)
@@ -164,10 +164,11 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             )
         ).scalar()
 
-    async def count(self, session: AsyncSession) -> int:
-        """Определение количества записей в таблице."""
+    async def get_object_by_name(self, name: str, session: AsyncSession):
         return (
-            await session.execute(select(func.count(self.model.id)))
+            await session.execute(
+                select(self.model).where(self.model.name == name)
+            )
         ).scalar()
 
 

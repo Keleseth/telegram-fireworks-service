@@ -123,7 +123,7 @@ class Firework(BaseJFModel):
         ForeignKey('category.id'), nullable=True
     )
     category: Mapped['Category'] = relationship(
-        'Category', back_populates='fireworks'
+        'Category', back_populates='fireworks', lazy='joined'
     )
     tags: Mapped[list['Tag']] = relationship(
         'Tag',

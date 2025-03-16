@@ -1,10 +1,17 @@
+from math import ceil
 from typing import Union
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.v1.validators import (
+    check_category_exists_by_name,
+    check_firework_exists,
+)
 from src.crud.product import category_crud, firework_crud
 from src.database.db_dependencies import get_async_session
+from src.schemas.filter_shema import FireworkFilterSchema
 from src.schemas.pagination_schema import (
     MAX_PAGINATION_LIMIT,
     MIN_PAGINATION_LIMIT,
@@ -24,23 +31,41 @@ router = APIRouter()
 
 
 def build_next_and_prev_urls(
-    offset: int, limit: int, max_count: int, current_url: str
+    offset: int, limit: int, objects_count: int, current_url: str
 ) -> tuple[str]:
-    # с учетом того, что нет других query-параметров.
-    clear_url = current_url.split('?')[0]
+    """Обновляет Query-параметры url для пагинации.
+
+    Аргументы:
+        offset (int): сдвиг выборки.
+        limit (int): количество объектов на странице.
+        objects_count (int): полное количество объектов в БД.
+        current_url (str): текущий url-адрес.
+
+    Возвращаемое значение:
+        tuple[str, int]: кортеж с ссылками на предыдущую
+            и следующую страницы и с количеством страниц.
+    """
+    parsed_url = urlparse(current_url)
+    query_params = parse_qs(parsed_url.query)
+    query_params['offset'] = [str(offset + limit)]
+    query_params['limit'] = [str(limit)]
     next_page_url = (
-        f'{clear_url}?offset={offset + limit}&limit={limit}'
-        if offset + limit < max_count
+        urlunparse(
+            parsed_url._replace(query=urlencode(query_params, doseq=True))
+        )
+        if offset + limit < objects_count
         else None
     )
+    query_params['offset'] = [str(max(offset - limit, 0))]
+    query_params['limit'] = [str(limit)]
     previous_page_url = (
-        f'{clear_url}?offset={
-            max(offset - limit, MIN_PAGINATION_OFFSET)
-        }&limit={limit}'
+        urlunparse(
+            parsed_url._replace(query=urlencode(query_params, doseq=True))
+        )
         if offset > 0
         else None
     )
-    return previous_page_url, next_page_url
+    return previous_page_url, next_page_url, ceil(objects_count / limit)
 
 
 @router.get(
@@ -64,14 +89,15 @@ async def get_сategories(
     categories = await category_crud.get_multi(
         session, pagination_schema=pagination_schema
     )
-    categories_count = await category_crud.count(session)
-    previous_page_url, next_page_url = build_next_and_prev_urls(
+    categories_count = len(categories)
+    previous_page_url, next_page_url, pages_count = build_next_and_prev_urls(
         offset, limit, categories_count, str(request.url)
     )
     return dict(
         categories=categories,
         next_page_url=next_page_url,
         previous_page_url=previous_page_url,
+        pages_count=pages_count,
         categories_count=categories_count,
     )
 
@@ -92,7 +118,7 @@ async def create_category(
     return await category_crud.create(category_schema, session)
 
 
-@router.get(
+@router.post(
     '/fireworks',
     status_code=status.HTTP_200_OK,
     response_model=dict[str, Union[list[FireworkDB], str, int, None]],
@@ -100,6 +126,7 @@ async def create_category(
 async def get_fireworks(
     request: Request,
     session: AsyncSession = Depends(get_async_session),
+    filter_schema: FireworkFilterSchema = None,
     offset: int = Query(PAGINATION_OFFSET, ge=MIN_PAGINATION_OFFSET),
     limit: int = Query(
         PAGINATION_LIMIT, ge=MIN_PAGINATION_LIMIT, le=MAX_PAGINATION_LIMIT
@@ -109,27 +136,62 @@ async def get_fireworks(
 
     Доступен всем пользователям.
     """
-    # TODO: Добавить фильтрацию по тегам, категориям,
-    # параметрам, избранным, ценам. Поиск по имени, тегу, артикулу.
-    # TODO: Пагинация.
     pagination_schema = PaginationSchema(offset=offset, limit=limit)
     fireworks = await firework_crud.get_multi(
-        session, pagination_schema=pagination_schema
+        session,
+        pagination_schema=pagination_schema,
+        filter_schema=filter_schema,
     )
-    fireworks_count = await firework_crud.count(session)
-    previous_page_url, next_page_url = build_next_and_prev_urls(
+    fireworks_count = len(fireworks)
+    previous_page_url, next_page_url, pages_count = build_next_and_prev_urls(
         offset, limit, fireworks_count, str(request.url)
     )
     return dict(
         fireworks=fireworks,
         next_page_url=next_page_url,
         previous_page_url=previous_page_url,
+        pages_count=pages_count,
+        fireworks_count=fireworks_count,
+    )
+
+
+@router.get(
+    '/fireworks/by_category/{category_name}',
+    status_code=status.HTTP_200_OK,
+    response_model=dict[str, Union[list[FireworkDB], str, int, None]],
+)
+async def get_fireworks_by_category_name(
+    request: Request,
+    category_name: str,
+    session: AsyncSession = Depends(get_async_session),
+    offset: int = Query(PAGINATION_OFFSET, ge=MIN_PAGINATION_OFFSET),
+    limit: int = Query(
+        PAGINATION_LIMIT, ge=MIN_PAGINATION_LIMIT, le=MAX_PAGINATION_LIMIT
+    ),
+):
+    await check_category_exists_by_name(category_name, session)
+    pagination_schema = PaginationSchema(offset=offset, limit=limit)
+    filter_schema = FireworkFilterSchema(categories=[category_name])
+    fireworks = await firework_crud.get_multi(
+        session,
+        pagination_schema=pagination_schema,
+        filter_schema=filter_schema,
+    )
+    fireworks_count = len(fireworks)
+    previous_page_url, next_page_url, pages_count = build_next_and_prev_urls(
+        offset, limit, fireworks_count, str(request.url)
+    )
+    return dict(
+        fireworks=fireworks,
+        next_page_url=next_page_url,
+        previous_page_url=previous_page_url,
+        pages_count=pages_count,
         fireworks_count=fireworks_count,
     )
 
 
 @router.post(
-    '/fireworks',
+    '/create_fireworks',
     status_code=status.HTTP_201_CREATED,
     response_model=FireworkDB,
 )
@@ -157,4 +219,5 @@ async def get_firework_by_id(
 
     Доступен всем пользователям.
     """
+    await check_firework_exists(firework_id, session)
     return await firework_crud.get(firework_id, session)
