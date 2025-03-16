@@ -101,13 +101,12 @@ class Firework(BaseJFModel):
             (обязательное поле).
         8. category: категория товара.
         9. tags: теги, относящиеся к товару (опционально).
-        10. external_id: артикул (обязательное поле).
-        11. media: media-файлы (опционально).
-        13. charges_count: количество зарядов (опционально).
-        14. effects_count: количество эффектов (опционально).
-        15. product_size: размер продукта (обязательное поле).
-        16. packing_material: материал упаковки (опционально).
-        17. article: артикул товара (обязательное поле).
+        10. media: media-файлы (опционально).
+        11. charges_count: количество зарядов (опционально).
+        12. effects_count: количество эффектов (опционально).
+        13. product_size: размер продукта (обязательное поле).
+        14. packing_material: материал упаковки (опционально).
+        15. article: артикул товара (обязательное поле).
     """
 
     id: Mapped[int_pk]
@@ -154,5 +153,4 @@ class Firework(BaseJFModel):
     carts: Mapped[List['Cart']] = relationship(
         back_populates='firework', cascade='all, delete-orphan'
     )
-    external_id: Mapped[str] = mapped_column(nullable=False)
     article: Mapped[str] = mapped_column(nullable=False)
