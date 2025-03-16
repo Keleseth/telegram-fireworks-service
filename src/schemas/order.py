@@ -20,13 +20,13 @@ class OrderFireworkSchema(BaseModel):
 class ReadOrderSchema(BaseModel):
     id: int
     status: str
-    user_address_id: Optional[UUID]
+    user_address_id: Optional[int]
     order_fireworks: List[OrderFireworkSchema]
     user_id: UUID
 
 
 class UpdateOrderAddressSchema(BaseOrderSchema):
-    user_address_id: UUID
+    user_address_id: int
 
 
 class UpdateOrderStatusSchema(BaseOrderSchema):

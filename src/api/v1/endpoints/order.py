@@ -102,6 +102,7 @@ async def move_order_to_cart(
             Cart(
                 user_id=user_id,
                 firework_id=item.firework_id,
+                price_per_unit=item.price_per_unit,
                 amount=item.amount,
             )
         )
@@ -109,14 +110,16 @@ async def move_order_to_cart(
     return {'detail': 'Товары добавлены в корзину'}
 
 
-@router.post('/delete')
-async def delete_existing_order(
-    data: DeleteOrderSchema,  # Только order_id
-    user_id: UUID = Depends(get_user_id),  # user_id через зависимость
-    session: AsyncSession = Depends(get_async_session),
-):
-    """Удалить заказ."""
-    deleted = await crud_order.delete_order(session, user_id, data.order_id)
-    if not deleted:
-        raise HTTPException(status_code=400, detail='Невозможно удалить заказ')
-    return {'detail': 'Заказ успешно удалён'}
+# @router.post('/delete')
+# async def delete_existing_order(
+#     data: DeleteOrderSchema,  # Только order_id
+#     user_id: UUID = Depends(get_user_id),  # user_id через зависимость
+#     session: AsyncSession = Depends(get_async_session),
+# ):
+#     """Удалить заказ."""
+#     deleted = await crud_order.delete_order(session, user_id, data.order_id)
+#     if not deleted:
+#         raise HTTPException(
+#             status_code=400, detail='Невозможно удалить заказ'
+#         )
+#     return {'detail': 'Заказ успешно удалён'}
