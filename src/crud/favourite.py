@@ -62,7 +62,7 @@ class CRUDFavourite:
     ):
         """Метод для получения избранных по telegram_id."""
         query = select(self.model)
-        query = query.order_by(self.model.create_date).where(
+        query = query.order_by(self.model.created_at).where(
             self.model.user_id == user_id
         )
         db_objs = await session.execute(query)

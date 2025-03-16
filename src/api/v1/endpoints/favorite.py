@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.crud.favourite import favorite_crud, user_crud
+from src.crud.favourite import favorite_crud
+from src.crud.user import user_crud
 from src.database.db_dependencies import get_async_session
 from src.schemas.favourite import FavoriteCreate, FavoriteDB
 from src.schemas.user import TelegramIDSchema
