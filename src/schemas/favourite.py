@@ -23,5 +23,6 @@ class FavoriteDB(BaseModel):
 
     class Config:
         """Конфиг."""
+
         orm_mode = True
         allow_population_by_field_name = True
