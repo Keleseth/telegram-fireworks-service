@@ -14,7 +14,7 @@ from typing import Generic, List, Optional, Type, TypeVar
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import and_, asc, desc, select
+from sqlalchemy import and_, asc, desc, func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.query import Query
@@ -169,6 +169,12 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             await session.execute(
                 select(self.model).where(self.model.name == name)
             )
+        ).scalar()
+
+    async def get_count(self, session: AsyncSession) -> int:
+        """Определение количества записей в таблице."""
+        return (
+            await session.execute(select(func.count(self.model.id)))
         ).scalar()
 
 

@@ -1,10 +1,9 @@
-from math import ceil
 from typing import Union
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.v1.utils import build_next_and_prev_urls
 from src.api.v1.validators import (
     check_category_exists_by_name,
     check_firework_exists,
@@ -30,44 +29,6 @@ from src.schemas.product import (
 router = APIRouter()
 
 
-def build_next_and_prev_urls(
-    offset: int, limit: int, objects_count: int, current_url: str
-) -> tuple[str]:
-    """Обновляет Query-параметры url для пагинации.
-
-    Аргументы:
-        offset (int): сдвиг выборки.
-        limit (int): количество объектов на странице.
-        objects_count (int): полное количество объектов в БД.
-        current_url (str): текущий url-адрес.
-
-    Возвращаемое значение:
-        tuple[str, int]: кортеж с ссылками на предыдущую
-            и следующую страницы и с количеством страниц.
-    """
-    parsed_url = urlparse(current_url)
-    query_params = parse_qs(parsed_url.query)
-    query_params['offset'] = [str(offset + limit)]
-    query_params['limit'] = [str(limit)]
-    next_page_url = (
-        urlunparse(
-            parsed_url._replace(query=urlencode(query_params, doseq=True))
-        )
-        if offset + limit < objects_count
-        else None
-    )
-    query_params['offset'] = [str(max(offset - limit, 0))]
-    query_params['limit'] = [str(limit)]
-    previous_page_url = (
-        urlunparse(
-            parsed_url._replace(query=urlencode(query_params, doseq=True))
-        )
-        if offset > 0
-        else None
-    )
-    return previous_page_url, next_page_url, ceil(objects_count / limit)
-
-
 @router.get(
     '/сategories',
     status_code=status.HTTP_200_OK,
@@ -89,7 +50,7 @@ async def get_сategories(
     categories = await category_crud.get_multi(
         session, pagination_schema=pagination_schema
     )
-    categories_count = len(categories)
+    categories_count = await category_crud.get_count(session)
     previous_page_url, next_page_url, pages_count = build_next_and_prev_urls(
         offset, limit, categories_count, str(request.url)
     )
@@ -142,7 +103,7 @@ async def get_fireworks(
         pagination_schema=pagination_schema,
         filter_schema=filter_schema,
     )
-    fireworks_count = len(fireworks)
+    fireworks_count = await firework_crud.get_count(session)
     previous_page_url, next_page_url, pages_count = build_next_and_prev_urls(
         offset, limit, fireworks_count, str(request.url)
     )
