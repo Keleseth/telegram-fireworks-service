@@ -14,14 +14,15 @@ from typing import Generic, List, Optional, Type, TypeVar
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import and_, asc, desc, select
+from sqlalchemy import and_, asc, desc, func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.query import Query
 
 from src.models.base import BaseJFModel
-from src.models.product import Tag
+from src.models.product import Category, Tag
 from src.schemas.filter_shema import FireworkFilterSchema
+from src.schemas.pagination_schema import PaginationSchema
 
 ModelType = TypeVar('ModelType', bound=BaseJFModel)
 CreateSchemaType = TypeVar('CreateSchemaType', bound=BaseModel)
@@ -50,6 +51,9 @@ DELETE_ERROR_500 = (
     'Ошибка сервера при удалении объекта. Текст ошибки: {error_message}'
 )
 
+PAGINATION_LIMIT = 10
+PAGINATION_OFFSET = 0
+
 
 class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """Базовый CRUD-класс только с безопасными методами."""
@@ -74,15 +78,15 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         filters = []
         if filter_schema.name:
             filters.append(self.model.name.ilike(f'%{filter_schema.name}%'))
-        if filter_schema.number_of_volleys:
+        if filter_schema.charges_count:
             filters.append(
-                self.number_of_volleys == filter_schema.number_of_volleys
+                self.model.charges_count == filter_schema.charges_count
             )
         if filter_schema.categories:
             # Получаем продукты,
             # которые есть в перечисленных категориях.
-            filters.append(
-                self.model.category.name.in_(filter_schema.categories)
+            query = query.join(self.model.category).filter(
+                Category.name.in_(filter_schema.categories)
             )
         if filter_schema.article:
             filters.append(self.model.article == filter_schema.article)
@@ -119,6 +123,7 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         self,
         session: AsyncSession,
         filter_schema: Optional[FireworkFilterSchema] = None,
+        pagination_schema: PaginationSchema = None,
     ) -> Optional[List[ModelType]]:
         """Возвращает все объекты модели.
 
@@ -134,8 +139,12 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             query = self.apply_filters(query, filter_schema)
             if filter_schema.order_by:
                 query = self.apply_sort(query, filter_schema.order_by)
+        if pagination_schema:
+            query = query.offset(pagination_schema.offset).limit(
+                pagination_schema.limit
+            )
         fireworks = await session.execute(query)
-        return fireworks.scalars().all()
+        return fireworks.unique().scalars().all()
 
     async def get(
         self, object_id: int, session: AsyncSession
@@ -149,9 +158,24 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         Возвращаемое значение:
             self.model: объект модели.
         """
-        return await session.execute(
-            select(self.model).where(self.model.id == object_id)
-        )
+        return (
+            await session.execute(
+                select(self.model).where(self.model.id == object_id)
+            )
+        ).scalar()
+
+    async def get_object_by_name(self, name: str, session: AsyncSession):
+        return (
+            await session.execute(
+                select(self.model).where(self.model.name == name)
+            )
+        ).scalar()
+
+    async def get_count(self, session: AsyncSession) -> int:
+        """Определение количества записей в таблице."""
+        return (
+            await session.execute(select(func.count(self.model.id)))
+        ).scalar()
 
 
 class CRUDBase(
