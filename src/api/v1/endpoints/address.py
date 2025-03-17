@@ -93,12 +93,18 @@ async def update_user_address(
     user_id = await user_crud.get_user_id_by_telegram_id(
         session=session, schema_data=data_update
     )
-    return await address_crud.update_adress_by_id(
-        session=session,
-        update_data=data_update,
-        user_id=user_id,
-        address_id=int(address_id),
+    await useraddress_crud.remove(
+        session=session, user_id=user_id, address_id=int(address_id)
     )
+    address = await address_crud.get_or_create_address(
+        session=session, address=data_update.address
+    )
+    await useraddress_crud.create(
+        session=session,
+        address=address,
+        user_id=user_id,
+    )
+    return address
 
 
 @router.delete(
@@ -114,10 +120,9 @@ async def delete_user_address(
     user_id = await user_crud.get_user_id_by_telegram_id(
         session=session, schema_data=schema
     )
-    adress = await address_crud.get_adress_by_id_for_current_user(
+    await useraddress_crud.remove(
         session=session, user_id=user_id, address_id=int(address_id)
     )
-    return await address_crud.remove(
-        session=session,
-        db_object=adress,
+    return await address_crud.get_adress_by_id_for_current_user(
+        session=session, user_id=user_id, address_id=int(address_id)
     )

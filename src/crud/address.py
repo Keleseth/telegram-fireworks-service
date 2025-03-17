@@ -140,6 +140,17 @@ class CRUDUserAdress(CRUDBase):
             )
             await session.commit()
 
+    async def remove(
+        self, user_id: int, address_id: int, session: AsyncSession
+    ):
+        user_address_obj = await session.execute(
+            select(UserAddress).where(
+                (UserAddress.user_id == user_id)
+                & (UserAddress.address_id == address_id)
+            )
+        )
+        await super().remove(session=session, db_object=user_address_obj)
+
 
 useraddress_crud = CRUDUserAdress(UserAddress)
 address_crud = CRUDAdress(Address)
