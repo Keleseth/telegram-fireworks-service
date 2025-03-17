@@ -78,9 +78,9 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         filters = []
         if filter_schema.name:
             filters.append(self.model.name.ilike(f'%{filter_schema.name}%'))
-        if filter_schema.number_of_volleys:
+        if filter_schema.charges_count:
             filters.append(
-                self.number_of_volleys == filter_schema.number_of_volleys
+                self.model.charges_count == filter_schema.charges_count
             )
         if filter_schema.categories:
             # Получаем продукты,

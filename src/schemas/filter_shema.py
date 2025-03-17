@@ -11,7 +11,7 @@ class FireworkFilterSchema(BaseModel):
     name: Optional[str] = Field(
         default=None, title='Фильтр по совпадению с именем фейеверка.'
     )
-    number_of_volleys: Optional[int] = Field(
+    charges_count: Optional[int] = Field(
         default=None, title='Фильтр по количеству залпов.'
     )
     categories: Optional[List[str]] = Field(
