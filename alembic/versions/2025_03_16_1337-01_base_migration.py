@@ -2,7 +2,7 @@
 
 Revision ID: 01
 Revises:
-Create Date: 2025-03-15 20:42:56.744618
+Create Date: 2025-03-16 13:37:00.111312
 
 """
 from typing import Sequence, Union
@@ -121,18 +121,25 @@ def upgrade() -> None:
     )
     op.create_table('firework',
     sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('code', sa.String(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
+    sa.Column('measurement_unit', sa.Enum('PIECES', 'PACK', name='measurementunit'), nullable=False),
     sa.Column('description', sa.String(), nullable=True),
     sa.Column('price', sa.Numeric(precision=10, scale=2), nullable=False),
     sa.Column('category_id', sa.Integer(), nullable=True),
-    sa.Column('external_id', sa.String(), nullable=False),
+    sa.Column('charges_count', sa.Integer(), nullable=True),
+    sa.Column('effects_count', sa.Integer(), nullable=True),
+    sa.Column('product_size', sa.String(), nullable=False),
+    sa.Column('packing_material', sa.String(), nullable=True),
     sa.Column('article', sa.String(), nullable=False),
     sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['category_id'], ['category.id'], ),
     sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('code'),
     sa.UniqueConstraint('id'),
-    sa.UniqueConstraint('name')
+    sa.UniqueConstraint('name'),
+    sa.UniqueConstraint('product_size')
     )
     op.create_table('newslettermedia',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
