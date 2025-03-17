@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.utils import build_next_and_prev_urls
 from src.api.v1.validators import (
-    check_category_exists_by_name,
+    check_category_exists,
     check_firework_exists,
 )
 from src.crud.product import category_crud, firework_crud
@@ -117,22 +117,23 @@ async def get_fireworks(
 
 
 @router.get(
-    '/fireworks/by_category/{category_name}',
+    '/fireworks/by_category/{category_id}',
     status_code=status.HTTP_200_OK,
     response_model=dict[str, Union[list[FireworkDB], str, int, None]],
 )
 async def get_fireworks_by_category_name(
     request: Request,
-    category_name: str,
+    category_id: int,
     session: AsyncSession = Depends(get_async_session),
     offset: int = Query(PAGINATION_OFFSET, ge=MIN_PAGINATION_OFFSET),
     limit: int = Query(
         PAGINATION_LIMIT, ge=MIN_PAGINATION_LIMIT, le=MAX_PAGINATION_LIMIT
     ),
 ):
-    await check_category_exists_by_name(category_name, session)
+    await check_category_exists(category_id, session)
+    category = await category_crud.get(category_id, session)
     pagination_schema = PaginationSchema(offset=offset, limit=limit)
-    filter_schema = FireworkFilterSchema(categories=[category_name])
+    filter_schema = FireworkFilterSchema(categories=[category.name])
     fireworks = await firework_crud.get_multi(
         session,
         pagination_schema=pagination_schema,
