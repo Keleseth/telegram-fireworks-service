@@ -2,10 +2,11 @@ import os
 
 from dotenv import load_dotenv
 from fastapi_users import BaseUserManager, UUIDIDMixin
+from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi_users.password import PasswordHelper
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
-from src.database.db_dependencies import AsyncSessionLocal
 from src.models.user import User
 from src.schemas.user import AdminUserUpdate
 
@@ -17,6 +18,10 @@ SECRET = os.getenv('SECRET', 'default-secret')
 class UserManager(UUIDIDMixin, BaseUserManager):
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
+
+    def __init__(self, user_db: SQLAlchemyUserDatabase) -> None:
+        """Инициализация UserManager с user_db."""
+        super().__init__(user_db)
 
     async def update(
         self,
@@ -33,11 +38,17 @@ class UserManager(UUIDIDMixin, BaseUserManager):
                 update_data.pop('password')
             )
 
-        return await super().update(
-            AdminUserUpdate(**update_data), user, safe, request
-        )
+        for key, value in update_data.items():
+            setattr(user, key, value)
+
+        self.user_db.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
 
 
-async def get_user_manager():
-    async with AsyncSessionLocal() as session:
-        yield UserManager(User, session)
+async def get_user_manager(session: AsyncSession):
+    user_db = SQLAlchemyUserDatabase(
+        User, session
+    )  # Создаём user_db (User идёт первым!)
+    yield UserManager(user_db)  # Передаём user_db в менеджер

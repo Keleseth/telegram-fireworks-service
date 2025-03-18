@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.auth.dependencies import get_async_session
 from src.crud.user import user_crud
+from src.database.db_dependencies import get_async_session
 from src.models.user import User
 
 

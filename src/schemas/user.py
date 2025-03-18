@@ -1,4 +1,3 @@
-from fastapi_users.schemas import BaseUserUpdate
 from pydantic import BaseModel, ConfigDict, EmailStr
 
 
@@ -11,10 +10,11 @@ class UserCreate(BaseModel):
     age_verified: bool
 
 
-class UserRead(UserCreate):
+class UserRead(BaseModel):
     """Схема чтения пользователя (возвращаемые данные)."""
 
-    phone_number: str | None = None
+    name: str
+    nickname: str | None = None
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -30,10 +30,15 @@ class UserUpdate(UserCreate):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
-class AdminUserUpdate(BaseUserUpdate):
+class AdminUserUpdate(BaseModel):
     """Схема обновления профиля админа (только email и пароль)."""
 
+    telegram_id: int
     email: EmailStr | None = None
     password: str | None = None
 
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+class TelegramIDSchema(BaseModel):
+    """Схема для извлечения telegram_id из запроса."""
+
+    telegram_id: int
