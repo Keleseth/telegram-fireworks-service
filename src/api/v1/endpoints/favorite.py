@@ -4,7 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.crud.favourite import favorite_crud
 from src.crud.user import user_crud
 from src.database.db_dependencies import get_async_session
-from src.schemas.favourite import FavoriteCreate, FavoriteDB
+from src.schemas.favourite import (
+    FavoriteCreate,
+    FavoriteDBCreate,
+    FavoriteDBGet,
+)
 from src.schemas.user import TelegramIDSchema
 
 router = APIRouter()
@@ -13,7 +17,7 @@ router = APIRouter()
 @router.post(
     '/favorites',
     status_code=status.HTTP_201_CREATED,
-    response_model=FavoriteDB,
+    response_model=FavoriteDBCreate,
 )
 async def add_favorite_firework(
     create_data: FavoriteCreate,
@@ -23,6 +27,7 @@ async def add_favorite_firework(
     user_id = await user_crud.get_user_id_by_telegram_id(
         create_data, session=session
     )
+    print(user_id)
     return await favorite_crud.create_favourite_by_telegram_id(
         create_data, user_id, session
     )
@@ -31,7 +36,7 @@ async def add_favorite_firework(
 @router.post(
     '/favorites/me',
     status_code=status.HTTP_200_OK,
-    response_model=list[FavoriteDB],
+    response_model=list[FavoriteDBGet],
 )
 async def get_favorite_fireworks(
     telegram_id_data: TelegramIDSchema,
@@ -41,13 +46,14 @@ async def get_favorite_fireworks(
     user_id = await user_crud.get_user_id_by_telegram_id(
         telegram_id_data, session=session
     )
+    print(user_id)
     return await favorite_crud.get_multi_by_telegram_id(user_id, session)
 
 
 @router.delete(
     '/favorites/{firework_id}',
     status_code=status.HTTP_200_OK,
-    response_model=FavoriteDB,
+    response_model=FavoriteDBGet,
 )
 async def remove_favorite_firework(
     firework_id: int,

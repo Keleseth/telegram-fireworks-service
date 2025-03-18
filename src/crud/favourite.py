@@ -3,6 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from src.models.base import BaseJFModel
 from src.models.favorite import FavoriteFirework
@@ -30,13 +31,13 @@ class CRUDFavourite:
     ):
         """Метод для получения user_id по telegram_id."""
         obj_in = obj_in.dict()
-        return (
+        return UUID((
             await session.execute(
                 select(User.id).where(
                     User.telegram_id == obj_in['telegram_id']
                 )
             )
-        ).scalar_one_or_none()
+        ).scalar_one_or_none())
 
     async def create_favourite_by_telegram_id(
         self,
@@ -61,9 +62,15 @@ class CRUDFavourite:
         session: AsyncSession,
     ):
         """Метод для получения избранных по telegram_id."""
-        query = select(self.model)
-        query = query.order_by(self.model.created_at).where(
-            self.model.user_id == user_id
+        print(user_id)
+        user_id = UUID("fb310c59-ace1-46cc-a3e4-3b073f47ee45")
+        query = (
+            select(self.model)
+            .options(
+                joinedload(self.model.firework)
+            )
+            .where(self.model.user_id == user_id)
+            .order_by(self.model.created_at)
         )
         db_objs = await session.execute(query)
         return db_objs.scalars().all()
