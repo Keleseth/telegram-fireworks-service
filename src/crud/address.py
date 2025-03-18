@@ -59,7 +59,7 @@ class CRUDAdress(CRUDBase):
 
     async def get_adress_by_id_for_current_user(
         self, user_id: int, address_id: int, session: AsyncSession
-    ) -> Optional[ModelType]:
+    ) -> ModelType | None:
         """Получает адрес для конкретного пользователя.
 
         Аргументы:
@@ -69,14 +69,20 @@ class CRUDAdress(CRUDBase):
         Возвращаемое значение:
             Адрес.
         """
-        addresses = await session.execute(
+        address = await session.execute(
             select(Address)
             .join(Address.user_addresses)
             .where(
                 and_(Address.id == address_id, UserAddress.user_id == user_id)
             )
         )
-        return addresses.scalar_one_or_none()
+        address = address.scalar()
+        if not address:
+            raise HTTPException(
+                detail='Нет такого адреса',
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        return address
 
     async def update_adress_by_id(
         self,
@@ -130,14 +136,14 @@ class CRUDUserAdress(CRUDBase):
                 & (UserAddress.address_id == address.id)
             )
         )
-        user_address_obj = user_address_obj.scalar_one_or_none()
+        user_address_obj = user_address_obj.scalar()
 
         if not user_address_obj:
-            await session.execute(
-                user_address_obj.insert().values(
-                    user_id=user_id, address_id=address.id
-                )
+            new_user_address = UserAddress(
+                user_id=user_id, address_id=address.id
             )
+            session.add(new_user_address)
+            await session.commit()
             await session.commit()
 
     async def remove(
@@ -149,6 +155,13 @@ class CRUDUserAdress(CRUDBase):
                 & (UserAddress.address_id == address_id)
             )
         )
+        user_address_obj = user_address_obj.scalars().first()
+
+        if user_address_obj is None:
+            raise HTTPException(
+                status_code=404,
+                detail='Связь пользователя и адреса не найдена',
+            )
         await super().remove(session=session, db_object=user_address_obj)
 
 

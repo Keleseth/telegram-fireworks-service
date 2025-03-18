@@ -109,8 +109,7 @@ async def update_user_address(
 
 @router.delete(
     '/address/{address_id}',
-    status_code=status.HTTP_200_OK,
-    response_model=BaseAddressSchema,
+    status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_user_address(
     address_id: str,
@@ -121,8 +120,5 @@ async def delete_user_address(
         session=session, schema_data=schema
     )
     await useraddress_crud.remove(
-        session=session, user_id=user_id, address_id=int(address_id)
-    )
-    return await address_crud.get_adress_by_id_for_current_user(
         session=session, user_id=user_id, address_id=int(address_id)
     )
