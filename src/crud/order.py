@@ -24,6 +24,7 @@ class CRUDOrder(CRUDBase[Order, BaseOrderSchema, UpdateOrderAddressSchema]):
     ) -> ReadOrderSchema:
         """Создать новый заказ из корзины пользователя."""
         new_order = Order(user_id=user_id, status_id=1)
+        # TODO Вытаскивать объет статуса по названию
         # "Создан" по умолчанию
         db.add(new_order)
         await db.flush()
@@ -127,7 +128,7 @@ class CRUDOrder(CRUDBase[Order, BaseOrderSchema, UpdateOrderAddressSchema]):
         self,
         db: AsyncSession,
         user_id: UUID,
-        user_address_id: UUID,
+        user_address_id: int,
         order_id: int,
     ) -> ReadOrderSchema:
         """Обновить адрес заказа."""

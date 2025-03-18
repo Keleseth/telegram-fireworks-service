@@ -1,3 +1,4 @@
+from decimal import Decimal
 from enum import StrEnum
 from typing import TYPE_CHECKING, List, Optional
 
@@ -124,7 +125,7 @@ class Firework(BaseJFModel):
         SQLAlchemyEnum(MeasurementUnit), nullable=False
     )
     description: Mapped[str | None]
-    price: Mapped[Numeric] = mapped_column(
+    price: Mapped[Decimal] = mapped_column(
         Numeric(
             FIREWORK_PRICE_NUMBER_OF_DIGITS, FIREWORK_PRICE_FRACTIONAL_PART
         )
