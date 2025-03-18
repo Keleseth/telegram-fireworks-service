@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.crud.cart import cart_crud
+from src.crud.user import user_crud
 from src.database.db_dependencies import get_async_session
 from src.schemas.cart import (
     CreateCartSchema,
@@ -28,7 +29,10 @@ async def add_product_to_cart(
 
     Доступен age_verified пользователям.
     """
-    await cart_crud.add_to_cart(create_data.telegram_id, create_data, session)
+    user_id = await user_crud.get_user_id_by_telegram_id(create_data, session)
+    if not user_id:
+        raise HTTPException(status_code=404, detail='Пользователь не найден')
+    await cart_crud.add_to_cart(user_id, create_data, session)
     return MessageResponse(message='Товар успешно добален в корзину!')
 
 
@@ -47,9 +51,12 @@ async def get_user_cart(
 
     Доступен age_verified пользователям.
     """
-    cart_items = await cart_crud.get_by_user(
-        telegram_data.telegram_id, session
+    user_id = await user_crud.get_user_id_by_telegram_id(
+        telegram_data, session
     )
+    if not user_id:
+        raise HTTPException(status_code=404, detail='Пользователь не найден')
+    cart_items = await cart_crud.get_by_user(user_id, session)
     return cart_items[offset : offset + limit]
 
 
@@ -66,8 +73,11 @@ async def delete_product_from_cart(
 
     Доступен age_verified пользователям.
     """
+    user_id = await user_crud.get_user_id_by_telegram_id(delete_data, session)
+    if not user_id:
+        raise HTTPException(status_code=404, detail='Пользователь не найден')
     cart_item = await cart_crud.get_cart_item(
-        delete_data.telegram_id, delete_data.firework_id, session
+        user_id, delete_data.firework_id, session
     )
     if not cart_item:
         raise HTTPException(
