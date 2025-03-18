@@ -1,18 +1,46 @@
-from fastapi_users import FastAPIUsers
+from fastapi import Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.auth.auth import auth_backend
-from src.api.auth.manager import get_user_manager
+from src.api.auth.dependencies import get_async_session
+from src.crud.user import user_crud
+from src.models.user import User
 
-# from src.schemas.user import UserCreate, UserRead, UserUpdate
 
-fastapi_users = FastAPIUsers(
-    get_user_manager,
-    [auth_backend],
-    # User,
-    # UserCreate,
-    # UserUpdate,
-    # UserRead,
-)
+async def current_user(
+    telegram_id: int, session: AsyncSession = Depends(get_async_session)
+) -> User:
+    """Проверяет текущего пользовтаеля на существование и is_active=True."""
+    user = await user_crud.get_user_by_telegram_id(session, telegram_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='Пользователь не найден.',
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Аккаунт деактивирован.',
+        )
+    return user
 
-current_user = fastapi_users.current_user(active=True)
-current_superuser = fastapi_users.current_user(active=True, superuser=True)
+
+async def current_age_verified_user(
+    user: User = Depends(current_user),
+) -> User:
+    """Доступ только для совершеннолетних."""
+    if not user.age_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Доступ только для совершеннолетних.',
+        )
+    return user
+
+
+async def current_admin(user: User = Depends(current_user)) -> User:
+    """Доступ только для адина и суперюзера."""
+    if not (user.is_admin or user.is_superuser):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Доступ только для администраторов.',
+        )
+    return user

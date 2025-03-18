@@ -26,12 +26,24 @@ class UserCRUD(Generic[ModelType, SchemaType]):
         schema_data: SchemaType,
         session: AsyncSession,
     ) -> Optional[str]:
+        """Возвращает id пользователя по полю telegram_id."""
         result = await session.execute(
             select(self.model.id).filter(
                 self.model.telegram_id == schema_data.telegram_id
             )
         )
         return result.scalar_one_or_none()
+
+    async def get_user_by_telegram_id(
+        self,
+        session: AsyncSession,
+        telegram_id: int,
+    ) -> Optional[User]:
+        """Возвращает пользователя по полю telegram_id."""
+        result = await session.execute(
+            select(self.model).filter(self.model.telegram_id == telegram_id)
+        )
+        return result.scalars().first()
 
 
 user_crud: UserCRUD = UserCRUD(User)

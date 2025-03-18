@@ -1,52 +1,39 @@
-import uuid
-
-from fastapi_users import schemas
-from pydantic import BaseModel, EmailStr
-
-# from src.models.user import PreferedLanguage
+from fastapi_users.schemas import BaseUserUpdate
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
-class UserRead(schemas.BaseUser[uuid.UUID]):
-    telegram_id: int | None
-    email: EmailStr | None
-    age_verified: bool
-    name: str
-    nickname: str | None
-    phone_number: str | None
-    # prefered_language: PreferedLanguage
-    is_admin: bool
-    is_superuser: bool
+class UserCreate(BaseModel):
+    """Схема создания обычного пользователя через Telegram."""
 
-
-class UserCreate(schemas.BaseUserCreate):
-    email: EmailStr | None = None
-    telegram_id: int | None = None
+    telegram_id: int
     name: str
     nickname: str | None = None
+    age_verified: bool
+
+
+class UserRead(UserCreate):
+    """Схема чтения пользователя (возвращаемые данные)."""
+
     phone_number: str | None = None
-    # prefered_language: PreferedLanguage = PreferedLanguage.RU
-    age_verified: bool = False
-    is_admin: bool = False
-    is_superuser: bool = False
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
-class UserUpdate(schemas.BaseUserUpdate):
-    email: EmailStr | None = None
+class UserUpdate(UserCreate):
+    """Схема обновления пользователя."""
+
     telegram_id: int | None = None
     name: str | None = None
     nickname: str | None = None
-    phone_number: str | None = None
-    # prefered_language: PreferedLanguage | None = None
     age_verified: bool | None = None
-    is_admin: bool | None = None
-    is_superuser: bool | None = None
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
-class TelegramIDSchema(BaseModel):
-    """Схема для извлечения telegram_id из запроса."""
+class AdminUserUpdate(BaseUserUpdate):
+    """Схема обновления профиля админа (только email и пароль)."""
 
-    telegram_id: int
+    email: EmailStr | None = None
+    password: str | None = None
 
-
-class UserReadSchema(BaseModel):
-    id: uuid.UUID
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
