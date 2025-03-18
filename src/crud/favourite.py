@@ -62,7 +62,6 @@ class CRUDFavourite:
         session: AsyncSession,
     ):
         """Метод для получения избранных по telegram_id."""
-        print(user_id)
         user_id = UUID("fb310c59-ace1-46cc-a3e4-3b073f47ee45")
         query = (
             select(self.model)

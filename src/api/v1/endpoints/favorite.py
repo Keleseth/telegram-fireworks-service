@@ -46,7 +46,6 @@ async def get_favorite_fireworks(
     user_id = await user_crud.get_user_id_by_telegram_id(
         telegram_id_data, session=session
     )
-    print(user_id)
     return await favorite_crud.get_multi_by_telegram_id(user_id, session)
 
 
