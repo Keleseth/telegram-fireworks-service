@@ -67,6 +67,7 @@ async def get_user_cart(
 )
 async def delete_product_from_cart(
     delete_data: DeleteCartSchema,
+    firework_id: int,
     session: AsyncSession = Depends(get_async_session),
 ) -> MessageResponse:
     """Удалить продукт из корзины пользователя.
@@ -76,13 +77,11 @@ async def delete_product_from_cart(
     user_id = await user_crud.get_user_id_by_telegram_id(delete_data, session)
     if not user_id:
         raise HTTPException(status_code=404, detail='Пользователь не найден')
-    cart_item = await cart_crud.get_cart_item(
-        user_id, delete_data.firework_id, session
-    )
+    cart_item = await cart_crud.get_cart_item(user_id, firework_id, session)
     if not cart_item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail='Товар не найден в корзине',
         )
-    await cart_crud.remove(cart_item, session)
+    await cart_crud.remove(user_id, firework_id, session)
     return MessageResponse(message='Товар удалён из корзины!')
