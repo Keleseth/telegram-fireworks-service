@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, ConfigDict
 
 from src.schemas.user import TelegramIDSchema
 
@@ -8,10 +8,7 @@ class FavoriteCreate(TelegramIDSchema):
 
     firework_id: int
 
-    class Config:
-        """Конфиг."""
-
-        extra = Extra.forbid
+    model_config = ConfigDict(extra='forbid')
 
 
 class FireworkSimpleResponse(BaseModel):
@@ -20,10 +17,7 @@ class FireworkSimpleResponse(BaseModel):
     id: int
     name: str
 
-    class Config:
-        """Конфиг."""
-
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FavoriteDBGet(BaseModel):
@@ -33,11 +27,7 @@ class FavoriteDBGet(BaseModel):
     firework_id: int
     firework: FireworkSimpleResponse
 
-    class Config:
-        """Конфиг."""
-
-        orm_mode = True
-        allow_population_by_field_name = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class FavoriteDBCreate(BaseModel):
@@ -46,8 +36,4 @@ class FavoriteDBCreate(BaseModel):
     id: int
     firework_id: int
 
-    class Config:
-        """Конфиг."""
-
-        orm_mode = True
-        allow_population_by_field_name = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

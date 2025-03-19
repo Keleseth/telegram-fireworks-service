@@ -1,9 +1,10 @@
 from typing import Type, TypeVar
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from src.models.base import BaseJFModel
 from src.models.favorite import FavoriteFirework
@@ -31,13 +32,15 @@ class CRUDFavourite:
     ):
         """Метод для получения user_id по telegram_id."""
         obj_in = obj_in.dict()
-        return UUID((
-            await session.execute(
-                select(User.id).where(
-                    User.telegram_id == obj_in['telegram_id']
+        return UUID(
+            (
+                await session.execute(
+                    select(User.id).where(
+                        User.telegram_id == obj_in['telegram_id']
+                    )
                 )
-            )
-        ).scalar_one_or_none())
+            ).scalar_one_or_none()
+        )
 
     async def create_favourite_by_telegram_id(
         self,
@@ -62,17 +65,15 @@ class CRUDFavourite:
         session: AsyncSession,
     ):
         """Метод для получения избранных по telegram_id."""
-        user_id = UUID("fb310c59-ace1-46cc-a3e4-3b073f47ee45")
+        # user_id = UUID("fb310c59-ace1-46cc-a3e4-3b073f47ee45")
         query = (
             select(self.model)
-            .options(
-                joinedload(self.model.firework)
-            )
+            .options(joinedload(self.model.firework))
             .where(self.model.user_id == user_id)
             .order_by(self.model.created_at)
         )
         db_objs = await session.execute(query)
-        return db_objs.scalars().all()
+        return db_objs.unique().scalars().all()
 
     async def remove_by_telegram_id(
         self,
@@ -82,14 +83,21 @@ class CRUDFavourite:
     ):
         """Метод для удаления избранных по telegram_id."""
         db_obj = await session.scalar(
-            select(self.model).where(
+            select(self.model)
+            .options(selectinload(self.model.firework))  # Загружаем `firework`
+            .where(
                 self.model.user_id == user_id,
                 self.model.firework_id == firework_id,
             )
         )
+        if db_obj is None:
+            raise HTTPException(
+                status_code=404, detail='Избранное не найдено.'
+            )
+        firework_name = db_obj.firework.name
         await session.delete(db_obj)
         await session.commit()
-        return db_obj
+        return firework_name
 
 
 favorite_crud = CRUDFavourite(FavoriteFirework)

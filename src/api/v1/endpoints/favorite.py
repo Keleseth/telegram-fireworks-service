@@ -52,7 +52,6 @@ async def get_favorite_fireworks(
 @router.delete(
     '/favorites/{firework_id}',
     status_code=status.HTTP_200_OK,
-    response_model=FavoriteDBGet,
 )
 async def remove_favorite_firework(
     firework_id: int,
@@ -63,6 +62,9 @@ async def remove_favorite_firework(
     user_id = await user_crud.get_user_id_by_telegram_id(
         telegram_id_data, session=session
     )
-    return await favorite_crud.remove_by_telegram_id(
+    deleted_firework_name = await favorite_crud.remove_by_telegram_id(
         user_id, firework_id, session
     )
+    return {
+        'message': f'Фейерверк: {deleted_firework_name} удален из избранного.'
+    }
