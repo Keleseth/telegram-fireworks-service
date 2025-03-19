@@ -1,78 +1,143 @@
-from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel
+from typing import List
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
+from src.api.v1.dependencies import get_user_id
+from src.crud.order import crud_order
 from src.database.db_dependencies import get_async_session
-
-router = APIRouter()
-
-
-@router.post(
-    '/orders',
-    status_code=status.HTTP_201_CREATED,
-    response_model=dict[str, str],  # заменить на кастомную схему
+from src.models.cart import Cart
+from src.models.order import Order
+from src.schemas.order import (
+    DeleteOrderSchema,
+    ReadOrderSchema,
+    UpdateOrderAddressSchema,
+    UpdateOrderStatusSchema,
 )
-async def create_user_order(
-    create_data: BaseModel,  # Создать cхему для эндпоинта
+
+router = APIRouter(prefix='/orders', tags=['orders'])
+
+
+@router.post('/', response_model=ReadOrderSchema)
+async def create_new_order(
+    user_id: UUID = Depends(get_user_id),  # user_id получаем через Depends()
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
-    """Создать заказ для пользователя."""
-    # TODO: Нужно в схему для энпоинта добавить поле telegram_id,
-    # чтобы эндпоинт в теле запроса знал о пользователе.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
+):
+    """Создать новый заказ из корзины пользователя."""
+    return await crud_order.create_order(session, user_id)
 
 
-@router.get(
-    '/orders/me',
-    status_code=status.HTTP_201_CREATED,
-    response_model=dict[str, str],  # заменить на кастомную схему
-)
-async def get_user_orders(
-    create_data: BaseModel,  # Создать cхему для эндпоинта
-    session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
-    """Получить все заказы пользователя."""
-    # TODO: Выяснить, как нужно получать историю заказов, отдельно открытые,
-    # отдельно закрытые?
-    # TODO: Необходимо получить telegram_id из тела запроса.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
-
-
-@router.get(
-    '/orders/{order_id}',
-    status_code=status.HTTP_201_CREATED,
-    response_model=dict[str, str],  # заменить на кастомную схему
-)
-async def get_user_order(
+@router.post('/{order_id}/repeat', response_model=ReadOrderSchema)
+async def repeat_order(
     order_id: int,
-    create_data: BaseModel,  # Создать cхему для эндпоинта
+    user_id: UUID = Depends(get_user_id),  # user_id через зависимость
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
-    """Получить конкретный заказ пользователя."""
-    # TODO: Необходимо получить telegram_id из тела запроса.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
+):
+    """Повторить существующий заказ."""
+    return await crud_order.repeat_order(session, user_id, order_id)
 
 
-@router.patch(
-    '/orders/{order_id}',
-    status_code=status.HTTP_200_OK,
-    response_model=dict[str, str],  # заменить на кастомную схему
-)
-async def update_user_order(
+@router.post('/me', response_model=List[ReadOrderSchema])
+async def get_my_orders(
+    user_id: UUID = Depends(get_user_id),  # user_id через зависимость
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Получить список всех заказов пользователя."""
+    return await crud_order.get_orders_by_user(session, user_id)
+
+
+@router.post('/get', response_model=ReadOrderSchema)
+async def get_order(
+    data: DeleteOrderSchema,  # Только order_id
+    user_id: UUID = Depends(get_user_id),  # user_id через зависимость
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Получить заказ по его идентификатору."""
+    orders = await crud_order.get_orders_by_user(session, user_id)
+    order = next((o for o in orders if o.id == data.order_id), None)
+    if order is None:
+        raise HTTPException(status_code=404, detail='Заказ не найден')
+    return order
+
+
+@router.patch('/{order_id}/address', response_model=ReadOrderSchema)
+async def update_order_address(
     order_id: int,
-    create_data: BaseModel,  # Создать cхему для эндпоинта
+    data: UpdateOrderAddressSchema,  # Только user_address_id
+    user_id: UUID = Depends(get_user_id),  # user_id через зависимость
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
-    """Изменить доступные для изменения поля заказа.
+):
+    """Обновить адрес заказа."""
+    return await crud_order.update_order_address(
+        session, user_id, data.user_address_id, order_id
+    )
 
-    Доступные поля:
-        Адрес доставки заказа.
-        Статус заказа(в том числе для отмены).
-    """
-    # TODO: Нужно в схему для энпоинта добавить поле telegram_id,
-    # чтобы эндпоинт в теле запроса знал о пользователе.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
+
+@router.patch('/{order_id}/status', response_model=ReadOrderSchema)
+async def update_order_status(
+    order_id: int,
+    data: UpdateOrderStatusSchema,  # Только status_id
+    user_id: UUID = Depends(get_user_id),  # user_id через зависимость
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Обновить статус заказа."""
+    return await crud_order.update_order_status(
+        session, user_id, data.status_id, order_id
+    )
+
+
+@router.post('/{order_id}/to_cart')
+async def move_order_to_cart(
+    order_id: int,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Переместить товары из заказа в корзину."""
+    order = await session.get(Order, order_id)
+    if not order or order.user_id != user_id:
+        raise HTTPException(status_code=404, detail='Заказ не найден')
+
+    for item in order.order_fireworks:
+        # Проверяем, есть ли уже такой товар в корзине
+        existing_cart_item = (
+            await session.execute(
+                select(Cart).filter(
+                    Cart.user_id == user_id,
+                    Cart.firework_id == item.firework_id,
+                )
+            )
+        ).scalar_one_or_none()
+
+        if existing_cart_item:
+            # Если товар уже в корзине, увеличиваем количество
+            existing_cart_item.amount += item.amount
+        else:
+            # Если товара нет, добавляем новую запись
+            session.add(
+                Cart(
+                    user_id=user_id,
+                    firework_id=item.firework_id,
+                    price_per_unit=item.price_per_unit,
+                    amount=item.amount,
+                )
+            )
+
+    await session.commit()
+    return {'detail': 'Товары добавлены в корзину'}
+
+
+# @router.post('/delete')
+# async def delete_existing_order(
+#     data: DeleteOrderSchema,  # Только order_id
+#     user_id: UUID = Depends(get_user_id),  # user_id через зависимость
+#     session: AsyncSession = Depends(get_async_session),
+# ):
+#     """Удалить заказ."""
+#     deleted = await crud_order.delete_order(session, user_id, data.order_id)
+#     if not deleted:
+#         raise HTTPException(
+#             status_code=400, detail='Невозможно удалить заказ'
+#         )
+#     return {'detail': 'Заказ успешно удалён'}

@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import ForeignKey, Numeric
@@ -114,7 +115,7 @@ class Firework(BaseJFModel):
     name: Mapped[str_not_null_and_unique]
     measurement_unit: Mapped[str] = mapped_column(nullable=False)
     description: Mapped[str | None]
-    price: Mapped[Numeric] = mapped_column(
+    price: Mapped[Decimal] = mapped_column(
         Numeric(
             FIREWORK_PRICE_NUMBER_OF_DIGITS, FIREWORK_PRICE_FRACTIONAL_PART
         )

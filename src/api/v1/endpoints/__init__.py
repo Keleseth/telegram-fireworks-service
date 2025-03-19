@@ -1,9 +1,19 @@
-# # from src.api.v1.endpoints.activity import router as activity_router  # noqa
-from src.api.v1.endpoints.address import router as address_router  # noqa
+from .activity import router as activity_router
+from .address import router as address_router
+from .cart import router as cart_router
+from .favorite import router as favorite_router
+from .order import router as order_router
+from .payment import router as payment_router
+from .product import router as product_router
+from .user import router as user_router
 
-# from src.api.v1.endpoints.cart import router as cart_router  # noqa
-# from src.api.v1.endpoints.order import router as order_router  # noqa
-# from src.api.v1.endpoints.payment import router as payment_router  # noqa
-# from src.api.v1.endpoints.user import router as user_router  # noqa
-from src.api.v1.endpoints.product import router as product_router  # noqa
-from src.api.v1.endpoints.favorite import router as favorite_router  # noqa
+__all__ = [
+    activity_router,
+    address_router,
+    cart_router,
+    favorite_router,
+    order_router,
+    payment_router,
+    product_router,
+    user_router,
+]
