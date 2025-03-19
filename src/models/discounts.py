@@ -1,7 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import DECIMAL, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.annotations import int_pk
@@ -25,11 +26,6 @@ class FireworkDiscount(BaseJFModel):
         ForeignKey('discount.id', ondelete='CASCADE'), primary_key=True
     )
 
-    firework: Mapped['Firework'] = relationship(back_populates='discounts')
-    firework_discounts: Mapped['Discount'] = relationship(
-        back_populates='fireworks'
-    )
-
 
 class Discount(BaseJFModel):
     """Модель скидок фейерверков.
@@ -46,11 +42,14 @@ class Discount(BaseJFModel):
 
     id: Mapped[int_pk]
     type: Mapped[str]
-    value: Mapped[float]
+    value: Mapped[Decimal | None] = mapped_column(
+        DECIMAL(10, 2), nullable=True
+    )
     start_date: Mapped[datetime]
     end_date: Mapped[datetime]
     description: Mapped[str]
 
-    fireworks: Mapped[list['FireworkDiscount']] = relationship(
-        back_populates='firework_discounts',
+    fireworks: Mapped[list['Firework']] = relationship(
+        secondary='fireworkdiscount',
+        back_populates='discounts',
     )
