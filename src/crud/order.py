@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 
 from src.crud.base import CRUDBase
 from src.models.cart import Cart
@@ -24,8 +25,6 @@ class CRUDOrder(CRUDBase[Order, BaseOrderSchema, UpdateOrderAddressSchema]):
     ) -> ReadOrderSchema:
         """Создать новый заказ из корзины пользователя."""
         new_order = Order(user_id=user_id, status_id=1)
-        # TODO Вытаскивать объет статуса по названию
-        # "Создан" по умолчанию
         db.add(new_order)
         await db.flush()
 
@@ -48,15 +47,20 @@ class CRUDOrder(CRUDBase[Order, BaseOrderSchema, UpdateOrderAddressSchema]):
         ]
         db.add_all(order_fireworks)
         await db.commit()
+
         await db.refresh(
             new_order, attribute_names=['order_fireworks', 'status']
         )
+        await db.execute(
+            select(OrderFirework).options(selectinload(OrderFirework.firework))
+        )
+
         return ReadOrderSchema(
             id=new_order.id,
             status=new_order.status.status_text,
             user_address_id=new_order.user_address_id,
             order_fireworks=[
-                OrderFireworkSchema.from_orm(fw)
+                OrderFireworkSchema.model_validate(fw)
                 for fw in new_order.order_fireworks
             ],
             user_id=new_order.user_id,
