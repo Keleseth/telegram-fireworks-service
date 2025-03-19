@@ -39,14 +39,22 @@ class CRUDCart(CRUDBase[Cart, CreateCartSchema, UpdateCartSchema]):
         cart_item = await self.get_cart_item(
             user_id, schema.firework_id, session
         )
+        schema_data = schema.model_dump()
+        schema_data.pop('telegram_id', None)
+        schema_data['user_id'] = user_id
         if cart_item:
-            cart_item.amount += schema.amount
-            return await self.update(
-                cart_item, UpdateCartSchema(amount=cart_item.amount), session
-            )
-        return await self.create(
-            CreateCartSchema(**schema.model_dump(), user_id=user_id), session
+            cart_item.amount += schema_data['amount']
+            await session.commit()
+            await session.refresh(cart_item)
+            return cart_item
+
+        new_cart_item = Cart(
+            **schema_data,
         )
+        session.add(new_cart_item)
+        await session.commit()
+        await session.refresh(new_cart_item)
+        return new_cart_item
 
     async def update_cart_item(
         self,
