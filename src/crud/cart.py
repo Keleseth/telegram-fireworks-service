@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.crud.base import CRUDBase
 from src.models.cart import Cart
+from src.models.product import Firework
 from src.schemas.cart import CreateCartSchema, UpdateCartSchema
 
 
@@ -39,22 +40,29 @@ class CRUDCart(CRUDBase[Cart, CreateCartSchema, UpdateCartSchema]):
         cart_item = await self.get_cart_item(
             user_id, schema.firework_id, session
         )
-        schema_data = schema.model_dump()
-        schema_data.pop('telegram_id', None)
-        schema_data['user_id'] = user_id
-        if cart_item:
-            cart_item.amount += schema_data['amount']
-            await session.commit()
-            await session.refresh(cart_item)
-            return cart_item
 
-        new_cart_item = Cart(
-            **schema_data,
-        )
-        session.add(new_cart_item)
+        if cart_item:
+            price_per_unit = cart_item.price_per_unit
+        else:
+            firework = await session.get(Firework, schema.firework_id)
+            if firework is None:
+                raise HTTPException(
+                    status_code=404, detail='Фейерверк не найден'
+                )
+            price_per_unit = firework.price
+        if cart_item:
+            cart_item.amount += schema.amount
+        else:
+            cart_item = Cart(
+                user_id=user_id,
+                firework_id=schema.firework_id,
+                amount=schema.amount,
+                price_per_unit=price_per_unit,
+            )
+            session.add(cart_item)
         await session.commit()
-        await session.refresh(new_cart_item)
-        return new_cart_item
+        await session.refresh(cart_item)
+        return cart_item
 
     async def update_cart_item(
         self,
