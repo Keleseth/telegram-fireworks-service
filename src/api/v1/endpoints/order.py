@@ -3,6 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from src.api.v1.dependencies import get_user_id
 from src.crud.order import crud_order
@@ -90,22 +91,39 @@ async def update_order_status(
 @router.post('/{order_id}/to_cart')
 async def move_order_to_cart(
     order_id: int,
-    user_id: UUID = Depends(get_user_id),  # user_id через зависимость
+    user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ):
     """Переместить товары из заказа в корзину."""
     order = await session.get(Order, order_id)
     if not order or order.user_id != user_id:
         raise HTTPException(status_code=404, detail='Заказ не найден')
+
     for item in order.order_fireworks:
-        session.add(
-            Cart(
-                user_id=user_id,
-                firework_id=item.firework_id,
-                price_per_unit=item.price_per_unit,
-                amount=item.amount,
+        # Проверяем, есть ли уже такой товар в корзине
+        existing_cart_item = (
+            await session.execute(
+                select(Cart).filter(
+                    Cart.user_id == user_id,
+                    Cart.firework_id == item.firework_id,
+                )
             )
-        )
+        ).scalar_one_or_none()
+
+        if existing_cart_item:
+            # Если товар уже в корзине, увеличиваем количество
+            existing_cart_item.amount += item.amount
+        else:
+            # Если товара нет, добавляем новую запись
+            session.add(
+                Cart(
+                    user_id=user_id,
+                    firework_id=item.firework_id,
+                    price_per_unit=item.price_per_unit,
+                    amount=item.amount,
+                )
+            )
+
     await session.commit()
     return {'detail': 'Товары добавлены в корзину'}
 
