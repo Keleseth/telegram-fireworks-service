@@ -1,13 +1,16 @@
 from pydantic import BaseModel
 
-# TODO: telegram_id будет в теле запроса
-# Схема на удаление, создание, изменение объекта должна содержать telegram_id.
-
 
 class MessageResponse(BaseModel):
     """Базовая схема для ответов."""
 
     message: str
+
+
+class UserIdentificationSchema(BaseModel):
+    """Базовая схема для telegram_id."""
+
+    telegram_id: int
 
 
 class BaseCartSchema(BaseModel):
@@ -28,20 +31,13 @@ class ReadCartSchema(BaseCartSchema):
         from_attributes = True
 
 
-class CreateCartSchema(BaseCartSchema):
+class CreateCartSchema(BaseCartSchema, UserIdentificationSchema):
     """Схема для добавления товара в корзину."""
 
-    telegram_id: int
+    pass
 
 
-class UpdateCartSchema(BaseModel):
+class UpdateCartSchema(BaseModel, UserIdentificationSchema):
     """Схема для обновления количества товара в корзине."""
 
     amount: int
-    telegram_id: int
-
-
-class DeleteCartSchema(BaseModel):
-    """Схема для удаления товара из корзину."""
-
-    telegram_id: int

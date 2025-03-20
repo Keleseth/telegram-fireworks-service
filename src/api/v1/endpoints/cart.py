@@ -1,14 +1,17 @@
 from typing import List
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.crud.cart import cart_crud
-from src.crud.user import user_crud
-from src.database.db_dependencies import get_async_session
+from src.database.db_dependencies import (
+    get_async_session,
+    get_user_id,
+    pagination_params,
+)
 from src.schemas.cart import (
     CreateCartSchema,
-    DeleteCartSchema,
     MessageResponse,
     ReadCartSchema,
 )
@@ -23,17 +26,15 @@ router = APIRouter()
 )
 async def add_product_to_cart(
     create_data: CreateCartSchema,
+    user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ) -> MessageResponse:
     """Добавить продукт в корзину.
 
     Доступен age_verified пользователям.
     """
-    user_id = await user_crud.get_user_id_by_telegram_id(create_data, session)
-    if not user_id:
-        raise HTTPException(status_code=404, detail='Пользователь не найден')
     await cart_crud.add_to_cart(user_id, create_data, session)
-    return MessageResponse(message='Товар успешно добален в корзину!')
+    return MessageResponse(message='Товар успешно добавлен в корзину!')
 
 
 @router.get(
@@ -42,20 +43,15 @@ async def add_product_to_cart(
     response_model=List[ReadCartSchema],
 )
 async def get_user_cart(
-    telegram_data: CreateCartSchema,
-    limit: int = 10,
-    offset: int = 0,
+    user_id: UUID = Depends(get_user_id),
+    pagination: tuple[int, int] = Depends(pagination_params),
     session: AsyncSession = Depends(get_async_session),
 ) -> List[ReadCartSchema]:
     """Получить содержимое корзины пользователя.
 
     Доступен age_verified пользователям.
     """
-    user_id = await user_crud.get_user_id_by_telegram_id(
-        telegram_data, session
-    )
-    if not user_id:
-        raise HTTPException(status_code=404, detail='Пользователь не найден')
+    limit, offset = pagination
     cart_items = await cart_crud.get_by_user(user_id, session)
     return cart_items[offset : offset + limit]
 
@@ -66,16 +62,30 @@ async def get_user_cart(
     response_model=MessageResponse,
 )
 async def delete_product_from_cart(
-    delete_data: DeleteCartSchema,
     firework_id: int,
+    user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ) -> MessageResponse:
     """Удалить продукт из корзины пользователя.
 
     Доступен age_verified пользователям.
     """
-    user_id = await user_crud.get_user_id_by_telegram_id(delete_data, session)
-    if not user_id:
-        raise HTTPException(status_code=404, detail='Пользователь не найден')
     await cart_crud.remove(user_id, firework_id, session)
     return MessageResponse(message='Товар удалён из корзины!')
+
+
+@router.delete(
+    '/user/cart/',
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+)
+async def clear_user_cart(
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+) -> MessageResponse:
+    """Очистить корзину пользователя полностью.
+
+    Доступен age_verified пользователям.
+    """
+    await cart_crud.clear_cart(user_id, session)
+    return MessageResponse(message='Корзина успешно очищена!')

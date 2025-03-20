@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.crud.base import CRUDBase
 from src.models.cart import Cart
+from src.models.product import Firework
 from src.schemas.cart import CreateCartSchema, UpdateCartSchema
 
 
@@ -42,12 +43,22 @@ class CRUDCart(CRUDBase[Cart, CreateCartSchema, UpdateCartSchema]):
         )
         if cart_item:
             cart_item.amount += schema.amount
-            return await self.update(
-                cart_item, UpdateCartSchema(amount=cart_item.amount), session
+        else:
+            firework = await session.get(Firework, schema.firework_id)
+            if firework is None:
+                raise HTTPException(
+                    status_code=404, detail='Фейерверк не найден'
+                )
+            cart_item = Cart(
+                user_id=user_id,
+                firework_id=schema.firework_id,
+                amount=schema.amount,
+                price_per_unit=firework.price,
             )
-        return await self.create(
-            CreateCartSchema(**schema.model_dump(), user_id=user_id), session
-        )
+            session.add(cart_item)
+        await session.commit()
+        await session.refresh(cart_item)
+        return cart_item
 
     async def update_cart_item(
         self,
@@ -55,7 +66,7 @@ class CRUDCart(CRUDBase[Cart, CreateCartSchema, UpdateCartSchema]):
         firework_id: int,
         schema: UpdateCartSchema,
         session: AsyncSession,
-    ) -> List[Cart]:
+    ) -> Cart:
         """Обновляет количество конкретного товара в корзине."""
         cart_item = await self.get_cart_item(user_id, firework_id, session)
         if not cart_item:
@@ -67,7 +78,7 @@ class CRUDCart(CRUDBase[Cart, CreateCartSchema, UpdateCartSchema]):
 
     async def remove(
         self, user_id: UUID, firework_id: int, session: AsyncSession
-    ) -> Cart:
+    ) -> None:
         """Удаляет конкретный товар в корзине."""
         cart_item = await self.get_cart_item(user_id, firework_id, session)
         if not cart_item:
@@ -75,7 +86,23 @@ class CRUDCart(CRUDBase[Cart, CreateCartSchema, UpdateCartSchema]):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail='Товар не найден в корзине',
             )
-        return await super().remove(cart_item, session)
+        await session.delete(cart_item)
+        await session.commit()
+
+    async def clear_cart(self, user_id: UUID, session: AsyncSession) -> None:
+        result = await session.execute(
+            select(self.model).where(self.model.user_id == user_id)
+        )
+        cart_items = result.scalars().all()
+        if not cart_items:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Корзина уже пуста.',
+            )
+        await session.execute(
+            self.model.__table__.delete().where(self.model.user_id == user_id)
+        )
+        await session.commit()
 
 
 cart_crud = CRUDCart(Cart)
