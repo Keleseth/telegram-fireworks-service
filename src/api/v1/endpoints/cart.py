@@ -37,8 +37,8 @@ async def add_product_to_cart(
     return MessageResponse(message='Товар успешно добавлен в корзину!')
 
 
-@router.get(
-    '/user/cart',
+@router.post(
+    '/user/cart/me',
     status_code=status.HTTP_200_OK,
     response_model=List[ReadCartSchema],
 )
