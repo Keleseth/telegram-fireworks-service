@@ -1,4 +1,5 @@
 from typing import List
+from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -13,7 +14,7 @@ class CRUDCart(CRUDBase[Cart, CreateCartSchema, UpdateCartSchema]):
     """CRUD-операции для работы с корзиной."""
 
     async def get_by_user(
-        self, user_id: int, session: AsyncSession
+        self, user_id: UUID, session: AsyncSession
     ) -> List[Cart]:
         """Получает все товары в корзине конкретного пользователя."""
         result = await session.execute(
@@ -22,7 +23,7 @@ class CRUDCart(CRUDBase[Cart, CreateCartSchema, UpdateCartSchema]):
         return result.scalars().all()
 
     async def get_cart_item(
-        self, user_id: int, firework_id: int, session: AsyncSession
+        self, user_id: UUID, firework_id: int, session: AsyncSession
     ) -> Cart | None:
         """Получает конкретный товар в корзине пользователя."""
         result = await session.execute(
@@ -33,7 +34,7 @@ class CRUDCart(CRUDBase[Cart, CreateCartSchema, UpdateCartSchema]):
         return result.scalars().first()
 
     async def add_to_cart(
-        self, user_id: int, schema: CreateCartSchema, session: AsyncSession
+        self, user_id: UUID, schema: CreateCartSchema, session: AsyncSession
     ) -> Cart:
         """Добавляет товар в корзину пользователя."""
         cart_item = await self.get_cart_item(
@@ -50,7 +51,7 @@ class CRUDCart(CRUDBase[Cart, CreateCartSchema, UpdateCartSchema]):
 
     async def update_cart_item(
         self,
-        user_id: int,
+        user_id: UUID,
         firework_id: int,
         schema: UpdateCartSchema,
         session: AsyncSession,
@@ -65,16 +66,16 @@ class CRUDCart(CRUDBase[Cart, CreateCartSchema, UpdateCartSchema]):
         return await self.update(cart_item, schema, session)
 
     async def remove(
-        self, user_id: int, firework_id: int, session: AsyncSession
+        self, user_id: UUID, firework_id: int, session: AsyncSession
     ) -> Cart:
-        """Удаляет конкретнsq товар в корзине."""
+        """Удаляет конкретный товар в корзине."""
         cart_item = await self.get_cart_item(user_id, firework_id, session)
         if not cart_item:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail='Товар не найден в корзине',
             )
-        return await self.remove(cart_item, session)
+        return await super().remove(cart_item, session)
 
 
 cart_crud = CRUDCart(Cart)
