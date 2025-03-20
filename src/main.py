@@ -9,7 +9,6 @@ from src.config import settings
 configure_mappers()
 
 app = FastAPI(title=settings.app_title, description=settings.description)
-
 app.router.include_router(main_router)
 
 
