@@ -1,8 +1,20 @@
+from typing import List
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.db_dependencies import get_async_session
+from src.crud.cart import cart_crud
+from src.database.db_dependencies import (
+    get_async_session,
+    get_user_id,
+    pagination_params,
+)
+from src.schemas.cart import (
+    CreateCartSchema,
+    MessageResponse,
+    ReadCartSchema,
+)
 
 router = APIRouter()
 
@@ -10,53 +22,70 @@ router = APIRouter()
 @router.post(
     '/user/cart',
     status_code=status.HTTP_201_CREATED,
-    response_model=dict[str, str],  # заменить на кастомную схему
+    response_model=MessageResponse,
 )
 async def add_product_to_cart(
-    create_data: BaseModel,  # Создать свою схему.
+    create_data: CreateCartSchema,
+    user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
+) -> MessageResponse:
     """Добавить продукт в корзину.
 
     Доступен age_verified пользователям.
     """
-    # TODO: Нужно в схему для энпоинта добавить поле telegram_id,
-    # чтобы эндпоинт в теле запроса знал о пользователе.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
+    await cart_crud.add_to_cart(user_id, create_data, session)
+    return MessageResponse(message='Товар успешно добавлен в корзину!')
 
 
-@router.get(
-    '/user/cart',
+@router.post(
+    '/user/cart/me',
     status_code=status.HTTP_200_OK,
-    response_model=dict[str, str],  # заменить на кастомную схему
+    response_model=List[ReadCartSchema],
 )
 async def get_user_cart(
+    user_id: UUID = Depends(get_user_id),
+    pagination: tuple[int, int] = Depends(pagination_params),
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
+) -> List[ReadCartSchema]:
     """Получить содержимое корзины пользователя.
 
     Доступен age_verified пользователям.
     """
-    # TODO: Пагинация.
-    # TODO: Необходимо получить telegram_id из тела запроса.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
+    limit, offset = pagination
+    cart_items = await cart_crud.get_by_user(user_id, session)
+    return cart_items[offset : offset + limit]
 
 
 @router.delete(
     '/user/cart/{firework_id}',
     status_code=status.HTTP_200_OK,
-    response_model=dict[str, str],  # заменить на кастомную схему
+    response_model=MessageResponse,
 )
 async def delete_product_from_cart(
     firework_id: int,
+    user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
-) -> dict[str, str]:
+) -> MessageResponse:
     """Удалить продукт из корзины пользователя.
 
     Доступен age_verified пользователям.
     """
-    # TODO: Необходимо получить telegram_id из тела запроса.
-    # НЕ добавлять telegram_id в path или query параметры.
-    return {'message': 'Запрос выполнен успешно!'}
+    await cart_crud.remove(user_id, firework_id, session)
+    return MessageResponse(message='Товар удалён из корзины!')
+
+
+@router.delete(
+    '/user/cart/',
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+)
+async def clear_user_cart(
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+) -> MessageResponse:
+    """Очистить корзину пользователя полностью.
+
+    Доступен age_verified пользователям.
+    """
+    await cart_crud.clear_cart(user_id, session)
+    return MessageResponse(message='Корзина успешно очищена!')
