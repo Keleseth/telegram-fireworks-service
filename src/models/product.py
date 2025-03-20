@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import ForeignKey, Numeric
@@ -8,7 +9,7 @@ from src.models.base import BaseJFModel
 
 if TYPE_CHECKING:
     from src.models.cart import Cart
-    from src.models.discounts import FireworkDiscount
+    from src.models.discounts import Discount
     from src.models.favorite import FavoriteFirework
     from src.models.media import FireworkMedia
     from src.models.order import OrderFirework
@@ -66,7 +67,7 @@ class Category(BaseJFModel):
         3. parent_category_id: id родительской категории (опционально).
         4. categories: все подкатегории текущей категории.
         5. parent_category: родительская категория.
-        6. fireworks: все товары с текущей категорией.
+        6. fireworks: все товары категории.
     """
 
     id: Mapped[int] = mapped_column('id', primary_key=True)
@@ -92,22 +93,29 @@ class Firework(BaseJFModel):
 
     Поля:
         1. id: уникальный индетификатор.
-        2. name: уникальное название товара (обязательное поле).
-        3. description: описание товара (опционально).
-        4. price: цена за единицу товара (опционально).
-        5. category_id: id категории, к которой принадлежит товар
+        2. code: код товара (обязательное поле).
+        3. name: уникальное название товара (обязательное поле).
+        4. measurement_unit: единица измерения.
+        5. description: описание товара (опционально).
+        6. price: цена за единицу товара (опционально).
+        7. category_id: id категории, к которой принадлежит товар
             (обязательное поле).
-        6. category: категория товара.
-        7. tags: теги, относящиеся к товару (опционально).
-        8. external_id: артикул (обязательное поле).
-        9. media: медиа-файлы, связанные с товаром.
-        10. article: артикул товара.
+        8. category: категория товара.
+        9. tags: теги, относящиеся к товару (опционально).
+        10. media: media-файлы (опционально).
+        11. charges_count: количество зарядов (опционально).
+        12. effects_count: количество эффектов (опционально).
+        13. product_size: размер продукта (обязательное поле).
+        14. packing_material: материал упаковки (опционально).
+        15. article: артикул товара (обязательное поле).
     """
 
     id: Mapped[int_pk]
+    code: Mapped[str_not_null_and_unique]
     name: Mapped[str_not_null_and_unique]
+    measurement_unit: Mapped[str] = mapped_column(nullable=False)
     description: Mapped[str | None]
-    price: Mapped[Numeric] = mapped_column(
+    price: Mapped[Decimal] = mapped_column(
         Numeric(
             FIREWORK_PRICE_NUMBER_OF_DIGITS, FIREWORK_PRICE_FRACTIONAL_PART
         )
@@ -116,7 +124,7 @@ class Firework(BaseJFModel):
         ForeignKey('category.id'), nullable=True
     )
     category: Mapped['Category'] = relationship(
-        'Category', back_populates='fireworks'
+        'Category', back_populates='fireworks', lazy='joined'
     )
     tags: Mapped[list['Tag']] = relationship(
         'Tag',
@@ -130,20 +138,22 @@ class Firework(BaseJFModel):
         lazy='joined',
         cascade='all, delete',
     )
+    charges_count: Mapped[int | None]
+    effects_count: Mapped[int | None]
+    product_size: Mapped[str] = mapped_column(nullable=False)
+    packing_material: Mapped[str | None]
     order_fireworks: Mapped[list['OrderFirework']] = relationship(
         back_populates='firework'
     )
     favorited_by_users: Mapped[list['FavoriteFirework']] = relationship(
         back_populates='firework'
     )
-    discounts: Mapped[list['FireworkDiscount']] = relationship(
-        back_populates='firework'
+    discounts: Mapped[list['Discount']] = relationship(
+        secondary='fireworkdiscount',
+        lazy='joined',
+        back_populates='fireworks',
     )
     carts: Mapped[List['Cart']] = relationship(
         back_populates='firework', cascade='all, delete-orphan'
     )
-    external_id: Mapped[str] = mapped_column(nullable=False)
     article: Mapped[str] = mapped_column(nullable=False)
-
-
-print('продукты загрузились')
