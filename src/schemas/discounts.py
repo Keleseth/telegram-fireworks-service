@@ -1,11 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
-
-if TYPE_CHECKING:
-    from src.models.product import Firework
 
 
 class BaseDiscountsSchema(BaseModel):
@@ -13,11 +9,10 @@ class BaseDiscountsSchema(BaseModel):
 
     id: int
     type: str
-    value: Decimal
+    value: Decimal | None = None
     start_date: datetime
     end_date: datetime
     description: str
-    fireworks: list['Firework']
 
 
 class ReadDiscountsSchema(BaseDiscountsSchema):

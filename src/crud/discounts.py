@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import select
@@ -15,18 +16,24 @@ class CRUDDiscounts(CRUDBase):
     async def get_all_discounts(
         self, session: AsyncSession
     ) -> Optional[ModelType]:
-        """Получает все акции.
+        """Получает все активные акции.
 
         Аргументы:
             1. session (AsyncSession): объект сессии.
 
         Возвращаемое значение:
-            Акции.
+            Активные акции.
         """
-        result = await session.execute(
-            select(Discount).options(selectinload(Discount.fireworks))
+        moscow_time = datetime.utcnow()
+        active_discounts = await session.execute(
+            select(Discount)
+            .options(selectinload(Discount.fireworks))
+            .where(
+                Discount.start_date <= moscow_time,
+                Discount.end_date >= moscow_time,
+            )
         )
-        return result.scalars().all()
+        return active_discounts.scalars().all()
 
     async def get_fireworks_by_discount_id(
         self, session: AsyncSession, discount_id: int
@@ -40,10 +47,12 @@ class CRUDDiscounts(CRUDBase):
         Возвращаемое значение:
             Фейерверки.
         """
-        result = await session.execute(
-            select(Firework).where(Discount.id == discount_id)
+        fireworks = await session.execute(
+            select(Firework).where(
+                Firework.discounts.any(Discount.id == discount_id)
+            )
         )
-        return result.scalars().all()
+        return fireworks.unique().scalars().all()
 
 
 discounts_crud = CRUDDiscounts(Discount)
