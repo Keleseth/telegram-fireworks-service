@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class BaseDiscountsSchema(BaseModel):
@@ -18,7 +18,7 @@ class BaseDiscountsSchema(BaseModel):
 class ReadDiscountsSchema(BaseDiscountsSchema):
     """Схема для чтения акций."""
 
-    pass
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TelegramIdDiscountsSchema(BaseModel):

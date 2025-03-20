@@ -1,8 +1,15 @@
 from fastapi import APIRouter
 
-from src.api.v1.endpoints import order_router, product_router
+from src.api.v1.endpoints import (
+    address_router,
+    discount_router,
+    order_router,
+    product_router,
+)
 
 main_router = APIRouter()
 
-main_router.include_router(product_router)
-main_router.include_router(order_router)
+main_router.include_router(product_router, tags=['Продукция'])
+main_router.include_router(order_router, tags=['Заказы'])
+main_router.include_router(discount_router, tags=['Акции'])
+main_router.include_router(address_router, tags=['Адреса'])

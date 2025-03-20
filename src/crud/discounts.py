@@ -3,7 +3,6 @@ from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from src.crud.base import CRUDBase, ModelType
 from src.models.discounts import Discount
@@ -26,9 +25,7 @@ class CRUDDiscounts(CRUDBase):
         """
         moscow_time = datetime.utcnow()
         active_discounts = await session.execute(
-            select(Discount)
-            .options(selectinload(Discount.fireworks))
-            .where(
+            select(Discount).where(
                 Discount.start_date <= moscow_time,
                 Discount.end_date >= moscow_time,
             )
