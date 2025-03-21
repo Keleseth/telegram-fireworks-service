@@ -57,6 +57,10 @@ class Tag(BaseJFModel):
         lazy='selectin',
     )
 
+    def __repr__(self) -> str:
+        """Метод представляющий объект."""
+        return self.name
+
 
 class Category(BaseJFModel):
     """Модель категорий.
@@ -86,6 +90,10 @@ class Category(BaseJFModel):
     fireworks: Mapped[list['Firework']] = relationship(
         'Firework', back_populates='category', lazy='selectin'
     )
+
+    def __repr__(self) -> str:
+        """Метод представляющий объект."""
+        return self.name
 
 
 class Firework(BaseJFModel):
