@@ -108,6 +108,7 @@ class Firework(BaseJFModel):
         13. product_size: размер продукта (обязательное поле).
         14. packing_material: материал упаковки (опционально).
         15. article: артикул товара (обязательное поле).
+        16. caliber: калибр фейерверка (опционально).
     """
 
     id: Mapped[int_pk]
@@ -157,3 +158,4 @@ class Firework(BaseJFModel):
         back_populates='firework', cascade='all, delete-orphan'
     )
     article: Mapped[str] = mapped_column(nullable=False)
+    caliber: Mapped[str | None] = mapped_column(nullable=True)
