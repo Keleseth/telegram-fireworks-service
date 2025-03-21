@@ -9,7 +9,7 @@ from src.models.base import BaseJFModel
 
 if TYPE_CHECKING:
     from src.models.cart import Cart
-    from src.models.discounts import FireworkDiscount
+    from src.models.discounts import Discount
     from src.models.favorite import FavoriteFirework
     from src.models.media import FireworkMedia
     from src.models.order import OrderFirework
@@ -148,8 +148,10 @@ class Firework(BaseJFModel):
     favorited_by_users: Mapped[list['FavoriteFirework']] = relationship(
         back_populates='firework'
     )
-    discounts: Mapped[list['FireworkDiscount']] = relationship(
-        back_populates='firework'
+    discounts: Mapped[list['Discount']] = relationship(
+        secondary='fireworkdiscount',
+        lazy='joined',
+        back_populates='fireworks',
     )
     carts: Mapped[List['Cart']] = relationship(
         back_populates='firework', cascade='all, delete-orphan'
