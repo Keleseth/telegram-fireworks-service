@@ -1,19 +1,21 @@
 import asyncio
 import logging
-import pandas as pd
-from decimal import Decimal
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from datetime import datetime
+from decimal import Decimal
+
+import pandas as pd
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import Settings
-from src.models.product import Firework, Category
-from src.models.media import Media, FireworkMedia
+from src.models.media import FireworkMedia, Media
+from src.models.product import Category, Firework
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 settings = Settings()
+
 
 async def load_data(session: AsyncSession):
     try:
@@ -59,7 +61,7 @@ def convert_number(value: str) -> int | None:
 
 
 async def process_categories(session: AsyncSession, df: pd.DataFrame) -> dict:
-    """Обработка иерархии категорий"""
+    """Обработка иерархии категорий."""
     categories = {}
     default_category_name = "товары без категории"
     default_category_id = 1  # ID дефолтной категории
@@ -74,13 +76,20 @@ async def process_categories(session: AsyncSession, df: pd.DataFrame) -> dict:
             .on_conflict_do_nothing()
         )
         await session.execute(stmt)
-        logger.info(f"Создана дефолтная категория: {default_category_name} (id={default_category_id})")
+        logger.info(
+            f"Создана дефолтная категория: {default_category_name} "
+            f"(id={default_category_id})"
+        )
 
     # Добавляем дефолтную категорию в словарь
     categories[default_category_name] = None
 
     # Собираем уникальные категории
-    for _, row in df[["Товарная группа", "Товарная подгруппа"]].drop_duplicates().iterrows():
+    for _, row in (
+            df[["Товарная группа", "Товарная подгруппа"]]
+                    .drop_duplicates()
+                    .iterrows()
+    ):
         parent_name = row["Товарная группа"]
         child_name = row["Товарная подгруппа"] or parent_name
 
@@ -94,7 +103,9 @@ async def process_categories(session: AsyncSession, df: pd.DataFrame) -> dict:
     for name, parent_name in categories.items():
         # Вставляем родительскую категорию, если нужно
         if parent_name and parent_name not in category_map:
-            parent_stmt = pg_insert(Category).values(name=parent_name).on_conflict_do_nothing()
+            parent_stmt = pg_insert(Category).values(
+                name=parent_name
+            ).on_conflict_do_nothing()
             await session.execute(parent_stmt)
 
         # Получаем ID родителя
@@ -119,8 +130,10 @@ async def process_categories(session: AsyncSession, df: pd.DataFrame) -> dict:
     return category_map
 
 
-async def process_fireworks(session: AsyncSession, df: pd.DataFrame, category_map: dict) -> dict:
-    """Обработка фейерверков"""
+async def process_fireworks(
+        session: AsyncSession, df: pd.DataFrame, category_map: dict
+) -> dict:
+    """Обработка фейерверков."""
     firework_map = {}
     default_category_id = 1  # ID дефолтной категории
 
@@ -138,14 +151,11 @@ async def process_fireworks(session: AsyncSession, df: pd.DataFrame, category_ma
         # Конвертация цены
         try:
             price = Decimal(str(row["За единицу, ₽"]).replace(",", "."))
-        except:
+        except (ValueError, TypeError):  # Указываем конкретные исключения
             price = Decimal("0.0")
 
-        charges_count = convert_number(str(row["Кол-во зарядов"]).replace(",", ""))
-        effects_count = convert_number(str(row["Кол-во эффектов"]).replace(",", ""))
-
         # Обработка калибра
-        caliber = row.get('Калибр, "', '').strip()  # Получаем значение калибра и убираем лишние пробелы
+        caliber = row.get('Калибр, "', '').strip()
 
         fireworks_data.append({
             "code": row["Код"],
@@ -188,8 +198,10 @@ async def process_fireworks(session: AsyncSession, df: pd.DataFrame, category_ma
     return firework_map
 
 
-async def process_media(session: AsyncSession, df: pd.DataFrame, firework_map: dict):
-    """Обработка медиа-файлов и связей с фейерверками"""
+async def process_media(
+        session: AsyncSession, df: pd.DataFrame, firework_map: dict
+):
+    """Обработка медиа-файлов и связей с фейерверками."""
     media_map = {}  # Кэш URL медиа -> ID
     firework_media_records = []
 
@@ -202,7 +214,9 @@ async def process_media(session: AsyncSession, df: pd.DataFrame, firework_map: d
             continue
 
         # Обрабатываем фото и видео
-        for url, media_type in [(row["Фото"], "image"), (row["Видео"], "video")]:
+        for url, media_type in [(row["Фото"], "image"), (
+                row["Видео"], "video"
+        )]:
             if not url:
                 continue
 
@@ -248,18 +262,21 @@ async def process_media(session: AsyncSession, df: pd.DataFrame, firework_map: d
         )
 
     await session.flush()
-    logger.info(f"Загружено {len(media_map)} медиа и {len(firework_media_records)} связей")
+    logger.info(
+        f"Загружено {len(media_map)} медиа и {len(
+            firework_media_records)} связей"
+    )
+
 
 if __name__ == "__main__":
-    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
     from sqlalchemy.orm import sessionmaker
 
-
     async def async_main():
-        DB_URL = settings.database_url
+        db_url = settings.database_url
 
         # Создаем движок и сессию
-        engine = create_async_engine(DB_URL)
+        engine = create_async_engine(db_url)
         async_session = sessionmaker(
             engine, class_=AsyncSession, expire_on_commit=False
         )
@@ -270,7 +287,6 @@ if __name__ == "__main__":
 
         await engine.dispose()
         print("Загрузка завершена!")
-
 
     # Запуск асинхронного event loop
     asyncio.run(async_main())

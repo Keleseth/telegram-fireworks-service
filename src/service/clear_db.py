@@ -1,5 +1,6 @@
 import asyncio
 import logging
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 async def clear_tables(session: AsyncSession) -> None:
-    """Полная очистка всех связанных таблиц в правильном порядке"""
+    """Полная очистка всех связанных таблиц в правильном порядке."""
     try:
         # Порядок важен из-за foreign key constraints
         tables = [
@@ -50,13 +51,12 @@ async def clear_tables(session: AsyncSession) -> None:
 
 
 async def async_main():
-    DB_URL = settings.database_url
-    engine = create_async_engine(DB_URL)
+    db_url = settings.database_url
+    engine = create_async_engine(db_url)
     async_session = sessionmaker(engine, class_=AsyncSession)
 
     async with async_session() as session:
         await clear_tables(session)
-
 
 
 if __name__ == "__main__":
