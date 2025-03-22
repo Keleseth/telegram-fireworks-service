@@ -221,9 +221,11 @@ async def process_fireworks(
             if (column not in excluded_fields
                     and pd.notna(row[column])
                     and row[column] != ""):
-                additional_properties.append(f"{column}: {row[column]}")
+                # Проверяем наличие точки с запятой и заменяем её на запятую
+                value = str(row[column]).replace(";", ",")
+                additional_properties.append(f"{column}: {value}")
 
-        # объединяем дополнительные свойства через точку с запятой
+        # Объединяем дополнительные свойства через точку с запятой
         if additional_properties:
             properties_str = "; ".join(additional_properties)
             # Вставляем объединенные свойства в таблицу firework_property
