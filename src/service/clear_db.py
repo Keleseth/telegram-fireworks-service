@@ -27,6 +27,7 @@ async def clear_tables(session: AsyncSession) -> None:
             "favoritefirework",
             "firework_tag",
             "fireworkdiscount",
+            "firework_property",  # Добавляем новую таблицу
             "firework",
             "category",
             "tag"
