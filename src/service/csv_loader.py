@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import Settings
 from src.models.media import FireworkMedia, Media
 from src.models.product import Category, Firework
+from src.models.property import FireworkProperty
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -137,6 +138,26 @@ async def process_fireworks(
     firework_map = {}
     default_category_id = 1  # ID дефолтной категории
 
+    # Список полей, которые уже обрабатываются
+    # и не должны попадать в firework_property
+    excluded_fields = {
+        "Код",  # code
+        "Артикул",  # article
+        "Наименование",  # name
+        "Единица измерения",  # measurement_unit
+        "Кол-во зарядов",  # charges_count
+        "Кол-во эффектов",  # effects_count
+        "Описание — как на Рутуб",  # description
+        "Размер изделия, мм",  # product_size
+        "Материал упаковки",  # packing_material
+        "За единицу, ₽",  # price
+        "Калибр, \"",  # caliber
+        "Фото",  # photo (обрабатывается отдельно)
+        "Видео",  # video (обрабатывается отдельно)
+        "Товарная группа",  # category (обрабатывается через category_map)
+        "Товарная подгруппа", # subcategory (обрабатывается через category_map)
+    }
+
     # Преобразование данных
     fireworks_data = []
     for _, row in df.iterrows():
@@ -157,7 +178,8 @@ async def process_fireworks(
         # Обработка калибра
         caliber = row.get('Калибр, "', '').strip()
 
-        fireworks_data.append({
+        # Собираем данные для вставки в таблицу Firework
+        firework_data = {
             "code": row["Код"],
             "article": row["Артикул"],
             "name": row["Наименование"],
@@ -170,28 +192,50 @@ async def process_fireworks(
             "price": price,
             "category_id": category_id,
             "caliber": caliber,
-        })
+        }
 
-    # Пакетная вставка
-    for data in fireworks_data:
+        # Вставляем фейерверк и получаем его ID
         stmt = (
             pg_insert(Firework)
-            .values(**data)
+            .values(**firework_data)
             .on_conflict_do_update(
                 index_elements=["code"],
                 set_=dict(
-                    article=data["article"],
-                    name=data["name"],
-                    price=data["price"],
-                    category_id=data["category_id"],
-                    caliber=data["caliber"],
+                    article=firework_data["article"],
+                    name=firework_data["name"],
+                    price=firework_data["price"],
+                    category_id=firework_data["category_id"],
+                    caliber=firework_data["caliber"],
                 )
             )
             .returning(Firework.id, Firework.code)
         )
         result = await session.execute(stmt)
         fw = result.first()
-        firework_map[data["code"]] = fw.id
+        firework_id = fw.id
+        firework_map[firework_data["code"]] = firework_id
+
+        # Собираем все дополнительные свойства в одну строку
+        additional_properties = []
+        for column in df.columns:
+            if (column not in excluded_fields
+                    and pd.notna(row[column])
+                    and row[column] != ""):
+                additional_properties.append(f"{column}: {row[column]}")
+
+        # объединяем дополнительные свойства через точку с запятой
+        if additional_properties:
+            properties_str = "; ".join(additional_properties)
+            # Вставляем объединенные свойства в таблицу firework_property
+            stmt = (
+                pg_insert(FireworkProperty)
+                .values(
+                    firework_id=firework_id,
+                    property_description=properties_str,
+                )
+                .on_conflict_do_nothing()
+            )
+            await session.execute(stmt)
 
     await session.flush()
     logger.info(f"Загружено {len(fireworks_data)} фейерверков")
