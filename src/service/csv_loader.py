@@ -222,7 +222,7 @@ async def process_fireworks(
                     and pd.notna(row[column])
                     and row[column] != ""):
                 # Проверяем наличие точки с запятой и заменяем её на запятую
-                value = str(row[column]).replace(";", ",")
+                value = str(row[column]).replace(";", ", ")
                 additional_properties.append(f"{column}: {value}")
 
         # Объединяем дополнительные свойства через точку с запятой
