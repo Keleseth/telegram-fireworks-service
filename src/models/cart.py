@@ -52,3 +52,9 @@ class Cart(BaseJFModel):
         UniqueConstraint('user_id', 'firework_id', name='unique_cart_item'),
         {'extend_existing': True},
     )
+
+    def __str__(self) -> str:
+        return (
+            f'Объект корзины с юзером:{self.user_id}'
+            f' и фейрверком: {self.firework_id}'
+        )
