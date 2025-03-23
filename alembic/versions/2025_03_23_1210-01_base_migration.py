@@ -2,7 +2,7 @@
 
 Revision ID: 01
 Revises:
-Create Date: 2025-03-19 11:07:31.689517
+Create Date: 2025-03-23 12:10:40.238640
 
 """
 from typing import Sequence, Union
@@ -56,7 +56,7 @@ def upgrade() -> None:
     sa.Column('value', sa.DECIMAL(precision=10, scale=2), nullable=True),
     sa.Column('start_date', sa.DateTime(), nullable=False),
     sa.Column('end_date', sa.DateTime(), nullable=False),
-    sa.Column('description', sa.String(), nullable=False),
+    sa.Column('description', sa.String(), nullable=True),
     sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id'),
@@ -165,7 +165,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('firework_id', sa.Integer(), nullable=False),
     sa.Column('user_id', fastapi_users_db_sqlalchemy.generics.GUID(), nullable=False),
-    sa.Column('price_per_unit', sa.Float(), nullable=False),
+    sa.Column('price_per_unit', sa.Numeric(precision=10, scale=2), nullable=False),
     sa.Column('amount', sa.Integer(), nullable=False),
     sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -237,7 +237,7 @@ def upgrade() -> None:
     sa.Column('order_id', sa.Integer(), nullable=False),
     sa.Column('firework_id', sa.Integer(), nullable=True),
     sa.Column('amount', sa.Integer(), nullable=False),
-    sa.Column('price_per_unit', sa.Float(), nullable=False),
+    sa.Column('price_per_unit', sa.Numeric(precision=10, scale=2), nullable=False),
     sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['firework_id'], ['firework.id'], ondelete='SET NULL'),

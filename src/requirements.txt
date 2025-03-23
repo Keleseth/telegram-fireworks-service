@@ -65,3 +65,5 @@ uvicorn==0.34.0
 virtualenv==20.29.3
 win32_setctime==1.2.0
 yarl==1.18.3
+sqladmin==0.20.1
+

@@ -45,10 +45,16 @@ class Cart(BaseJFModel):
     amount: Mapped[int] = mapped_column(nullable=False, default=1)
 
     user: Mapped['User'] = relationship('User', back_populates='cart')
-    firework: Mapped['Firework'] = relationship('Firework')
+    firework: Mapped['Firework'] = relationship('Firework', lazy='selectin')
 
     __table_args__ = (
         CheckConstraint('amount >= 1', name='min_cart_amount'),
         UniqueConstraint('user_id', 'firework_id', name='unique_cart_item'),
         {'extend_existing': True},
     )
+
+    def __str__(self) -> str:
+        return (
+            f'Объект корзины с юзером:{self.user_id}'
+            f' и фейрверком: {self.firework_id}'
+        )
