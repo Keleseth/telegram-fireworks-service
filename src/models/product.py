@@ -169,6 +169,11 @@ class Firework(BaseJFModel):
     )
     article: Mapped[str] = mapped_column(nullable=False)
 
+    def __repr__(self) -> str:
+        return self.name
+
+    # --- админская часть ---
+
     @hybrid_property
     def favorited_count(self):
         # это питоновская часть, которая вызывается у конкретного объекта
@@ -185,12 +190,12 @@ class Firework(BaseJFModel):
         )
 
     @hybrid_property
-    def ordered_count(self):
-        user_ids = {
+    def ordered_count(self) -> int:
+        user_ids = [
             ofw.order.user_id
             for ofw in self.order_fireworks
             if ofw.order is not None
-        }
+        ]
         return len(user_ids)
 
     @ordered_count.expression
@@ -204,6 +209,3 @@ class Firework(BaseJFModel):
             .where(OrderFirework.firework_id == self.id)
             .scalar_subquery()
         )
-
-    def __repr__(self) -> str:
-        return self.name

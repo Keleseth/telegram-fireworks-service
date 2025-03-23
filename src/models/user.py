@@ -1,10 +1,12 @@
 from typing import TYPE_CHECKING, List
 
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import BigInteger, Boolean, String
+from sqlalchemy import BigInteger, Boolean, String, func, select
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import BaseJFModel
+from src.models.order import Order
 
 if TYPE_CHECKING:
     from src.models.address import UserAddress
@@ -70,4 +72,19 @@ class User(BaseJFModel, SQLAlchemyBaseUserTableUUID):  # type: ignore[misc]
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(id={self.id!r}, name={self.name!r}, '
+        )
+
+    # --- админская часть ---
+
+    @hybrid_property
+    def has_orders(self) -> int:
+        return len(self.orders)
+
+    @has_orders.expression
+    def has_orders(self):
+        return (
+            select(func.count(Order.id) > 0)
+            .where(Order.user_id == self.id)
+            .correlate(self)
+            .scalar_subquery()
         )

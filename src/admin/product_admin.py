@@ -2,6 +2,7 @@ from markupsafe import Markup
 from sqladmin import ModelView
 
 # from sqladmin.filters import FilterEqual, FilterLike, FilterIn
+from src.admin.constants import PAGE_SIZE
 from src.models.product import Firework
 
 
@@ -16,12 +17,12 @@ class FireworkAdmin(ModelView, model=Firework):
         Firework.name,
         'favorited_count',
         'ordered_count',
-        # Firework.price,
-        # Firework.category,
-        # Firework.tags,
-        # Firework.article,
-        # Firework.code,
-        # Firework.discounts,
+        Firework.price,
+        Firework.category,
+        Firework.tags,
+        Firework.article,
+        Firework.code,
+        Firework.discounts,
         Firework.media,
     ]
     form_excluded_columns = [
@@ -73,6 +74,6 @@ class FireworkAdmin(ModelView, model=Firework):
     }
     column_filters_enabled = True
 
-    page_size = 10
+    page_size = PAGE_SIZE
 
     form_widget_args = {'tags': {'data-role': 'tagsinput'}}

@@ -31,3 +31,6 @@ class FavoriteFirework(BaseJFModel):
     __table_args__ = (
         UniqueConstraint('user_id', 'firework_id', name='unique_favorite'),
     )
+
+    def __repr__(self) -> str:
+        return f'FavoriteFirework(firework_id={self.firework_id})'
