@@ -1,16 +1,19 @@
+from decimal import Decimal
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import ForeignKey, Numeric
+from sqlalchemy import ForeignKey, Numeric, func, select
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.annotations import int_pk, str_not_null_and_unique
 from src.models.base import BaseJFModel
+from src.models.favorite import FavoriteFirework
 
 if TYPE_CHECKING:
     from src.models.cart import Cart
-    from src.models.discounts import FireworkDiscount
+    from src.models.discounts import Discount
     from src.models.favorite import FavoriteFirework
-    from src.models.media import FireworkMedia
+    from src.models.media import Media
     from src.models.order import OrderFirework
 
 
@@ -56,6 +59,10 @@ class Tag(BaseJFModel):
         lazy='selectin',
     )
 
+    def __repr__(self) -> str:
+        """Метод представляющий объект."""
+        return self.name
+
 
 class Category(BaseJFModel):
     """Модель категорий.
@@ -86,6 +93,10 @@ class Category(BaseJFModel):
         'Firework', back_populates='category', lazy='selectin'
     )
 
+    def __repr__(self) -> str:
+        """Метод представляющий объект."""
+        return self.name
+
 
 class Firework(BaseJFModel):
     """Модель товара.
@@ -114,7 +125,7 @@ class Firework(BaseJFModel):
     name: Mapped[str_not_null_and_unique]
     measurement_unit: Mapped[str] = mapped_column(nullable=False)
     description: Mapped[str | None]
-    price: Mapped[Numeric] = mapped_column(
+    price: Mapped[Decimal] = mapped_column(
         Numeric(
             FIREWORK_PRICE_NUMBER_OF_DIGITS, FIREWORK_PRICE_FRACTIONAL_PART
         )
@@ -131,10 +142,11 @@ class Firework(BaseJFModel):
         back_populates='fireworks',
         lazy='joined',
     )
-    media: Mapped[list['FireworkMedia']] = relationship(
-        'FireworkMedia',
+    media: Mapped[list['Media']] = relationship(
+        'Media',
         back_populates='fireworks',
-        lazy='joined',
+        lazy='selectin',
+        secondary='firework_media',
         cascade='all, delete',
     )
     charges_count: Mapped[int | None]
@@ -147,10 +159,51 @@ class Firework(BaseJFModel):
     favorited_by_users: Mapped[list['FavoriteFirework']] = relationship(
         back_populates='firework'
     )
-    discounts: Mapped[list['FireworkDiscount']] = relationship(
-        back_populates='firework'
+    discounts: Mapped[list['Discount']] = relationship(
+        secondary='fireworkdiscount',
+        lazy='joined',
+        back_populates='fireworks',
     )
     carts: Mapped[List['Cart']] = relationship(
         back_populates='firework', cascade='all, delete-orphan'
     )
     article: Mapped[str] = mapped_column(nullable=False)
+
+    @hybrid_property
+    def favorited_count(self):
+        # это питоновская часть, которая вызывается у конкретного объекта
+        # когда мы делаем firework.favorited_count
+        return len(self.favorited_by_users)
+
+    @favorited_count.expression
+    def favorited_count(self):
+        return (
+            select(func.count(FavoriteFirework.id))
+            .where(FavoriteFirework.firework_id == self.id)
+            .correlate(self)
+            .scalar_subquery()
+        )
+
+    @hybrid_property
+    def ordered_count(self):
+        user_ids = {
+            ofw.order.user_id
+            for ofw in self.order_fireworks
+            if ofw.order is not None
+        }
+        return len(user_ids)
+
+    @ordered_count.expression
+    def ordered_count(self):
+        from src.models.order import Order, OrderFirework
+
+        return (
+            select(func.count(func.distinct(Order.user_id)))
+            .select_from(OrderFirework)
+            .join(Order, Order.id == OrderFirework.order_id)
+            .where(OrderFirework.firework_id == self.id)
+            .scalar_subquery()
+        )
+
+    def __repr__(self) -> str:
+        return self.name

@@ -1,4 +1,5 @@
 from typing import Generic, Optional, TypeVar
+from uuid import UUID
 
 from fastapi_users.password import PasswordHelper
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,8 +30,7 @@ class UserCRUD(Generic[ModelType, SchemaType]):
         self,
         schema_data: SchemaType,
         session: AsyncSession,
-    ) -> Optional[str]:
-        """Возвращает id пользователя по полю telegram_id."""
+    ) -> Optional[UUID]:
         result = await session.execute(
             select(self.model.id).filter(
                 self.model.telegram_id == schema_data.telegram_id

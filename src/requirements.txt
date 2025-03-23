@@ -14,3 +14,5 @@ httpx>=0.26.0,<0.29.0
 python-dotenv==1.0.1
 python-telegram-bot==20.8
 redis==5.2.1
+sqladmin==0.20.1
+
