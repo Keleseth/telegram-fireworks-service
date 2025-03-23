@@ -145,7 +145,7 @@ class Firework(BaseJFModel):
     media: Mapped[list['Media']] = relationship(
         'Media',
         back_populates='fireworks',
-        lazy='joined',
+        lazy='selectin',
         secondary='firework_media',
         cascade='all, delete',
     )
