@@ -47,9 +47,13 @@ class Discount(BaseJFModel):
     )
     start_date: Mapped[datetime]
     end_date: Mapped[datetime]
-    description: Mapped[str]
+    description: Mapped[str] = mapped_column(nullable=True)
 
     fireworks: Mapped[list['Firework']] = relationship(
         secondary='fireworkdiscount',
         back_populates='discounts',
     )
+
+    def __repr__(self) -> str:
+        value = f': {self.value}' if self.value else ''
+        return f'{self.type}{value}'
