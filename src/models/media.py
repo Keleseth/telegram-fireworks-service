@@ -48,7 +48,7 @@ class Media(BaseJFModel):
         'Firework',
         back_populates='media',
         secondary='firework_media',
-        lazy='joined',
+        lazy='selectin',
         cascade='all, delete',
     )
 
