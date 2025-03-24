@@ -1,6 +1,7 @@
+import asyncio
 import logging
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardMarkup, Update
 from telegram.ext import (
     ApplicationBuilder,
     CallbackContext,
@@ -10,14 +11,18 @@ from telegram.ext import (
 )
 
 from src.bot import config
+from src.bot.handlers.catalog import catalog_menu, catalog_register
+from src.bot.keyboards import keyboard_main
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
 )
 
+logger = logging.getLogger(__name__)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=(
@@ -27,33 +32,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-keyboard_main = [
-    [InlineKeyboardButton('Каталог продуктов', callback_data='catalog')],
-    [InlineKeyboardButton('Акции и скидки', callback_data='promotions')],
-    [
-        InlineKeyboardButton(
-            'Подобрать товар по параметрам', callback_data='product_filter'
-        )
-    ],
-    [InlineKeyboardButton('Поиск товаров', callback_data='search')],
-    [InlineKeyboardButton('Избранные товары', callback_data='favorites')],
-    [InlineKeyboardButton('Посмотреть корзину', callback_data='cart')],
-    [InlineKeyboardButton('Оформить заказ', callback_data='checkout')],
-    [InlineKeyboardButton('История заказов', callback_data='orders')],
-    [InlineKeyboardButton('Информация о боте', callback_data='bot_info')],
-]
-
-keyboard_back = [[InlineKeyboardButton('Назад', callback_data='back')]]
-
-
-async def menu(update: Update, contex: CallbackContext):
+async def menu(update: Update, contex: CallbackContext) -> None:
     reply_markup = InlineKeyboardMarkup(keyboard_main)
     await update.message.reply_text(
         'Выберите пункт меню:', reply_markup=reply_markup
     )
 
 
-async def button(update: Update, contex: CallbackContext):
+async def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     await query.answer()
     option = query.data
@@ -63,14 +49,11 @@ async def button(update: Update, contex: CallbackContext):
         await query.edit_message_text(
             text='Выберите пункт меню:', reply_markup=reply_markup
         )
-    else:
-        reply_markup = InlineKeyboardMarkup(keyboard_back)
-        await query.edit_message_text(
-            text=f'Выбран пункт: {option}', reply_markup=reply_markup
-        )
+    elif option == 'catalog':
+        await catalog_menu(update, context)
 
 
-if __name__ == '__main__':
+def main() -> None:
     application = ApplicationBuilder().token(config.TOKEN).build()
 
     start_handler = CommandHandler('start', start)
@@ -79,7 +62,13 @@ if __name__ == '__main__':
     menu_handler = CommandHandler('menu', menu)
     application.add_handler(menu_handler)
 
+    catalog_register(application)
+
     button_handler = CallbackQueryHandler(button)
     application.add_handler(button_handler)
 
     application.run_polling()
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
