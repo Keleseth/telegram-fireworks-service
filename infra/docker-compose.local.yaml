@@ -11,6 +11,16 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+  redis:
+    container_name: redis_local
+    image: redis:7.0-alpine  # Используем последнюю стабильную версию Redis
+    restart: always
+    volumes:
+      - redis_data:/data  # Том для сохранения данных Redis
+    ports:
+      - "6379:6379"  # Открываем порт Redis
+    command: redis-server --appendonly yes  # Включаем режим сохранения данных (AOF)
 
 volumes:
   postgres_data:
+  redis_data:
