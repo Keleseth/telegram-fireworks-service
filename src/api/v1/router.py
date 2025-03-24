@@ -17,4 +17,3 @@ main_router.include_router(discount_router, tags=['Акции'])
 main_router.include_router(address_router, tags=['Адреса'])
 main_router.include_router(cart_router, tags=['Корзина'])
 main_router.include_router(user_router, tags=['Пользователи'])
-

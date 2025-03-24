@@ -13,7 +13,7 @@ from src.bot import config
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.INFO,
 )
 
 
@@ -21,18 +21,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=(
-            "Добро пожаловать в телеграм бот Joker Fireworks! "
-            "Для входа в меню введите /menu"
-        )
+            'Добро пожаловать в телеграм бот Joker Fireworks! '
+            'Для входа в меню введите /menu'
+        ),
     )
 
 
 keyboard_main = [
     [InlineKeyboardButton('Каталог продуктов', callback_data='catalog')],
     [InlineKeyboardButton('Акции и скидки', callback_data='promotions')],
-    [InlineKeyboardButton(
-        'Подобрать товар по параметрам',
-            callback_data='product_filter')],
+    [
+        InlineKeyboardButton(
+            'Подобрать товар по параметрам', callback_data='product_filter'
+        )
+    ],
     [InlineKeyboardButton('Поиск товаров', callback_data='search')],
     [InlineKeyboardButton('Избранные товары', callback_data='favorites')],
     [InlineKeyboardButton('Посмотреть корзину', callback_data='cart')],
@@ -41,19 +43,17 @@ keyboard_main = [
     [InlineKeyboardButton('Информация о боте', callback_data='bot_info')],
 ]
 
-keyboard_back = [
-    [InlineKeyboardButton('Назад', callback_data='back')]
-]
+keyboard_back = [[InlineKeyboardButton('Назад', callback_data='back')]]
 
 
-async def menu(update: Update, contex:CallbackContext):
+async def menu(update: Update, contex: CallbackContext):
     reply_markup = InlineKeyboardMarkup(keyboard_main)
     await update.message.reply_text(
         'Выберите пункт меню:', reply_markup=reply_markup
     )
 
 
-async def button(update: Update, contex:CallbackContext):
+async def button(update: Update, contex: CallbackContext):
     query = update.callback_query
     await query.answer()
     option = query.data
