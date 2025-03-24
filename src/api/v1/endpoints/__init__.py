@@ -19,4 +19,3 @@ __all__ = [
     product_router,
     user_router,
 ]
-
