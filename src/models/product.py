@@ -26,18 +26,21 @@ class FireworkTag(BaseJFModel):
     """Промежуточная модель many-to-many.
 
     Поля:
-        1. id: уникальный индетификатор.
-        2. tag_id: id тега.
-        3. firework_id: id товара.
+        1. tag_id: id тега.
+        2. firework_id: id товара.
 
     Связывает между собой модели Tag и Firework.
     """
 
     __tablename__ = 'firework_tag'
 
-    id: Mapped[int_pk]
-    tag_id: Mapped[int] = mapped_column(ForeignKey('tag.id'))
-    firework_id: Mapped[int] = mapped_column(ForeignKey('firework.id'))
+    tag_id: Mapped[int] = mapped_column(ForeignKey('tag.id'), primary_key=True)
+    firework_id: Mapped[int] = mapped_column(
+        ForeignKey('firework.id'), primary_key=True
+    )
+
+    def __repr__(self) -> str:
+        return f'{self.tag_id}:{self.firework_id}'
 
 
 class Tag(BaseJFModel):
@@ -146,7 +149,7 @@ class Firework(BaseJFModel):
         'Media',
         back_populates='fireworks',
         lazy='selectin',
-        secondary='firework_media',
+        secondary='fireworkmedia',
         cascade='all, delete',
     )
     charges_count: Mapped[int | None]
