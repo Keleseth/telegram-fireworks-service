@@ -14,7 +14,7 @@ from aiohttp import ClientSession
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext
 
-API_URL = 'http://your-api-url.com'
+API_URL = 'http://localhost'
 ITEMS_PER_PAGE = 5
 
 
@@ -93,7 +93,7 @@ async def show_promotions_list(
         # Навигация
         buttons.append([
             InlineKeyboardButton('🔙 Назад', callback_data='back'),
-            InlineKeyboardButton('🏠 Главная', callback_data='main'),
+            InlineKeyboardButton('🏠 Главная', callback_data='back'),
         ])
 
         text = '🎁 Акции и скидки:\n\n' + '\n'.join(
@@ -119,7 +119,7 @@ async def show_promo_details(
                 json={'telegram_id': update.effective_user.id},
             )
             fireworks = await response.json()
-
+        # кнопки возвращают id фейерверка
         buttons = [
             [
                 InlineKeyboardButton(
@@ -134,7 +134,7 @@ async def show_promo_details(
             InlineKeyboardButton(
                 '🔙 К списку акций', callback_data='promotions'
             ),
-            InlineKeyboardButton('🏠 Главная', callback_data='main'),
+            InlineKeyboardButton('🏠 Главная', callback_data='back'),
         ])
 
         await update.callback_query.edit_message_text(
