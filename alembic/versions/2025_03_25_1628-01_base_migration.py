@@ -2,7 +2,7 @@
 
 Revision ID: 01
 Revises:
-Create Date: 2025-03-23 12:10:40.238640
+Create Date: 2025-03-25 16:28:55.271102
 
 """
 from typing import Sequence, Union
@@ -104,6 +104,7 @@ def upgrade() -> None:
     sa.Column('hashed_password', sa.String(), nullable=True),
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('nickname', sa.String(), nullable=True),
+    sa.Column('birth_date', sa.Date(), nullable=True),
     sa.Column('phone_number', sa.String(), nullable=True),
     sa.Column('age_verified', sa.Boolean(), nullable=False),
     sa.Column('is_admin', sa.Boolean(), nullable=False),
