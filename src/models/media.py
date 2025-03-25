@@ -20,6 +20,8 @@ class FireworkMedia(BaseJFModel):
     Связывает между собой модели Media и Firework.
     """
 
+    __tablename__ = 'firework_media'
+
     firework_id: Mapped[int] = mapped_column(
         ForeignKey('firework.id'), primary_key=True
     )
@@ -47,7 +49,7 @@ class Media(BaseJFModel):
     fireworks: Mapped[list['Firework']] = relationship(
         'Firework',
         back_populates='media',
-        secondary='fireworkmedia',
+        secondary='firework_media',
         lazy='selectin',
         cascade='all, delete',
     )
