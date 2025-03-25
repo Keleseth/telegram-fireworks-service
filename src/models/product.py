@@ -134,13 +134,13 @@ class Firework(BaseJFModel):
         ForeignKey('category.id'), nullable=True
     )
     category: Mapped['Category'] = relationship(
-        'Category', back_populates='fireworks', lazy='joined'
+        'Category', back_populates='fireworks', lazy='selectin'
     )
     tags: Mapped[list['Tag']] = relationship(
         'Tag',
         secondary='firework_tag',
         back_populates='fireworks',
-        lazy='joined',
+        lazy='selectin',
     )
     media: Mapped[list['Media']] = relationship(
         'Media',
@@ -161,7 +161,7 @@ class Firework(BaseJFModel):
     )
     discounts: Mapped[list['Discount']] = relationship(
         secondary='fireworkdiscount',
-        lazy='joined',
+        lazy='selectin',
         back_populates='fireworks',
     )
     carts: Mapped[List['Cart']] = relationship(

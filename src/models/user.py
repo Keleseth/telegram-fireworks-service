@@ -1,3 +1,4 @@
+from collections import Counter
 from typing import TYPE_CHECKING, List
 
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
@@ -37,7 +38,7 @@ class User(BaseJFModel, SQLAlchemyBaseUserTableUUID):  # type: ignore[misc]
     """
 
     telegram_id: Mapped[int | None] = mapped_column(
-        BigInteger, unique=True, nullable=True
+        BigInteger, unique=True, nullable=False
     )
     email: Mapped[str | None] = mapped_column(
         String, unique=True, nullable=True
@@ -66,6 +67,9 @@ class User(BaseJFModel, SQLAlchemyBaseUserTableUUID):  # type: ignore[misc]
     addresses: Mapped[List['UserAddress']] = relationship(
         back_populates='user', cascade='all, delete-orphan'
     )
+    is_verified: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )  # type: ignore
 
     __table_args__ = {'extend_existing': True}
 
@@ -82,9 +86,25 @@ class User(BaseJFModel, SQLAlchemyBaseUserTableUUID):  # type: ignore[misc]
 
     @has_orders.expression
     def has_orders(self):
+        """Возвращает кол-во заказов пользователя со статусом `paid`."""
         return (
             select(func.count(Order.id) > 0)
             .where(Order.user_id == self.id)
+            .where(Order.status.has(status_text='paid'))
             .correlate(self)
             .scalar_subquery()
         )
+
+    @property
+    def top_2_categories(self):
+        """Возвращает 2 любимы категории пользователя(судя по заказам)."""
+        category_names = []
+        for order in self.orders:
+            for item in order.order_fireworks:  # или order.order_items
+                if item.firework and item.firework.category:
+                    category_names.append(item.firework.category.name)
+
+        # Считаем в Counter и берем топ-2
+        counter = Counter(category_names)
+        top_two = [name for name, _ in counter.most_common(2)]
+        return top_two if top_two else None
