@@ -149,7 +149,7 @@ class Firework(BaseJFModel):
         'Media',
         back_populates='fireworks',
         lazy='selectin',
-        secondary='fireworkmedia',
+        secondary='firework_media',
         cascade='all, delete',
     )
     charges_count: Mapped[int | None]
