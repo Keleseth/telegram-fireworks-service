@@ -29,10 +29,13 @@ class UserView(ModelView, model=User):
         'age_verified',
         'created_at',
         'is_verified',
+        'phone_number',
     ]
     column_details_exclude_list = [
         'hashed_password',
         'favorite_fireworks',
+        'cart',
+        'is_verified',
     ]
     column_labels = {
         'telegram_id': 'telegram_id',
@@ -53,6 +56,7 @@ class UserView(ModelView, model=User):
         'is_superuser': 'суперпользователь',
         'id': 'ID',
         'updated_at': 'дата изменения',
+        'addresses': 'адреса',
     }
     column_sortable_list = ['name', 'is_admin', 'has_orders', 'created_at']
     column_default_sort = 'name'

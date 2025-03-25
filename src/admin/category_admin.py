@@ -13,8 +13,9 @@ class CategoryView(ModelView, model=Category):
     column_details_list = [
         'id',
         'name',
-        'created_at',
         'parent_category',
+        'categories',
+        'created_at',
     ]
     form_excluded_columns = [
         'updated_at',
@@ -23,9 +24,11 @@ class CategoryView(ModelView, model=Category):
     column_labels = {
         'id': 'ID',
         'name': 'название',
-        'parent_category': 'Родительская категория',
+        'parent_category': 'родительская категория',
         'created_at': 'дата создания',
         'updated_at': 'дата обновления',
+        'categories': 'подкатегории',
+        'fireworks': 'связанные фейерверки',
     }
     column_sortable_list = ['name', 'id']
     column_default_sort = 'name'
