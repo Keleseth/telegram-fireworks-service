@@ -1,10 +1,10 @@
-import re
-from typing import Optional, Union
+from typing import Optional
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, UUIDIDMixin
 from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi_users.password import PasswordHelper
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
@@ -27,21 +27,6 @@ class UserManager(UUIDIDMixin, BaseUserManager):
         self, user: User, request: Optional[Request] = None
     ):
         print(f'Пользователь {user.id} зарегистрирован.')
-
-    async def validate_password(
-        self, password: str, user: Union[UserCreate, User]
-    ) -> None:
-        """Валидатор для пароля."""
-        if len(password) < 8:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail='Пароль должен иметь больше 8 символов',
-            )
-        if not re.search(r'[A-Z]', password) or not re.search(r'\d', password):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail='Пароль должен содержать заглавную букву и цифру.',
-            )
 
     async def create(
         self,
@@ -69,6 +54,7 @@ class UserManager(UUIDIDMixin, BaseUserManager):
         """Обновление пользователя в базе данных через менеджер."""
         update_data = user_update.model_dump(exclude_unset=True)
         if 'password' in update_data and update_data['password']:
+            await self.validate_password(update_data['password'], user)
             update_data['hashed_password'] = PasswordHelper().hash(
                 update_data.pop('password')
             )
@@ -77,6 +63,27 @@ class UserManager(UUIDIDMixin, BaseUserManager):
         if user.is_superuser or user.is_admin:
             update_data['age_verified'] = True
         return await self.user_db.update(user, update_data)
+
+    async def get_by_email(
+        self,
+        email: str,
+        session: AsyncSession,  # Убираем Depends
+    ) -> Optional[User]:
+        try:
+            email = email.lower().strip()
+            print(email)
+            print('код дошел до поиска юзера')
+            stmt = select(User).where(User.email == email)
+            print('запрос сформирован')
+            result = await session.execute(stmt)
+            print('blabla')
+            user = result.scalars().first()
+            if user is None:
+                print(f'Пользователь с email {email} не найден.')
+            return user
+        except Exception as e:
+            print(f'Ошибка при выполнении запроса: {e}')
+            return None
 
 
 async def get_user_db(session: AsyncSession = Depends(get_async_session)):
