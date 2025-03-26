@@ -14,6 +14,7 @@ from decimal import Decimal
 from aiohttp import ClientSession
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext
+from telegram.helpers import escape_markdown
 
 # Данные для тестов
 MOCK_DISCOUNTS = [
@@ -152,10 +153,9 @@ def build_promo_firework_card(fields: dict) -> str:
     for field in defaults:
         if not fields.get(field):
             fields[field] = defaults[field]
-
     return FIREWORK_PROMO_CARD.format(
-        name=fields['name'],
-        price=fields['price'],
+        name=fields['type'],
+        price=fields['value'],
         description=fields['description'],
         charges_count=fields['charges_count'],
         effects_count=fields['effects_count'],
@@ -190,9 +190,14 @@ async def show_promo_details(
 
         message_ids = []
         for firework in current_fireworks:
-            # Формируем сообщение
+            # Экранируем все текстовые поля
+            escaped_firework = {
+                key: escape_markdown(str(value), version=2)
+                for key, value in firework.items()
+            }
+
             msg = await update.callback_query.message.reply_text(
-                text=build_promo_firework_card(firework),
+                text=build_promo_firework_card(escaped_firework),
                 parse_mode='MarkdownV2',
                 reply_markup=InlineKeyboardMarkup([
                     [
