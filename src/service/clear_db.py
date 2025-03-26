@@ -23,14 +23,11 @@ async def clear_tables(session: AsyncSession) -> None:
         tables = [
             "firework_media",
             "media",
-            "cart",
             "favoritefirework",
-            "firework_tag",
-            "fireworkdiscount",
             "firework_property",
             "firework",
             "category",
-            "tag"
+            "property_field"
         ]
 
         # Формируем SQL команду с использованием text()

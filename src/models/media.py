@@ -14,23 +14,23 @@ class FireworkMedia(BaseJFModel):
     """Промежуточная модель many-to-many.
 
     Поля:
-        1. id: уникальный индетификатор.
-        2. firework_id: id товара.
-        3. image_id: id медиа.
+        1. firework_id: id товара.
+        2. image_id: id медиа.
 
     Связывает между собой модели Media и Firework.
     """
 
     __tablename__ = 'firework_media'
 
-    id: Mapped[int_pk]
-    firework_id: Mapped[int] = mapped_column(ForeignKey('firework.id'))
-    image_id: Mapped[int] = mapped_column(ForeignKey('media.id'))
-
-    fireworks: Mapped['Firework'] = relationship(
-        'Firework', back_populates='media'
+    firework_id: Mapped[int] = mapped_column(
+        ForeignKey('firework.id'), primary_key=True
     )
-    media: Mapped['Media'] = relationship(back_populates='fireworks')
+    image_id: Mapped[int] = mapped_column(
+        ForeignKey('media.id'), primary_key=True
+    )
+
+    def __repr__(self) -> str:
+        return f'{self.firework_id}:{self.image_id}'
 
 
 class Media(BaseJFModel):
@@ -46,9 +46,13 @@ class Media(BaseJFModel):
     id: Mapped[int_pk]
     media_url: Mapped[str_not_null_and_unique]
     media_type: Mapped[str] = mapped_column(nullable=False)
-    fireworks: Mapped[list['FireworkMedia']] = relationship(
-        'FireworkMedia',
+    fireworks: Mapped[list['Firework']] = relationship(
+        'Firework',
         back_populates='media',
-        lazy='joined',
+        secondary='firework_media',
+        lazy='selectin',
         cascade='all, delete',
     )
+
+    def __repr__(self) -> str:
+        return self.media_url

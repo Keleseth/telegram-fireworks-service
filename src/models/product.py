@@ -1,18 +1,21 @@
 from decimal import Decimal
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import ForeignKey, Numeric
+from sqlalchemy import ForeignKey, Numeric, func, select
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.annotations import int_pk, str_not_null_and_unique
 from src.models.base import BaseJFModel
 from src.models.property import FireworkProperty
+from src.models.favorite import FavoriteFirework
+
 
 if TYPE_CHECKING:
     from src.models.cart import Cart
     from src.models.discounts import Discount
     from src.models.favorite import FavoriteFirework
-    from src.models.media import FireworkMedia
+    from src.models.media import Media
     from src.models.order import OrderFirework
 
 
@@ -25,18 +28,21 @@ class FireworkTag(BaseJFModel):
     """Промежуточная модель many-to-many.
 
     Поля:
-        1. id: уникальный индетификатор.
-        2. tag_id: id тега.
-        3. firework_id: id товара.
+        1. tag_id: id тега.
+        2. firework_id: id товара.
 
     Связывает между собой модели Tag и Firework.
     """
 
     __tablename__ = 'firework_tag'
 
-    id: Mapped[int_pk]
-    tag_id: Mapped[int] = mapped_column(ForeignKey('tag.id'))
-    firework_id: Mapped[int] = mapped_column(ForeignKey('firework.id'))
+    tag_id: Mapped[int] = mapped_column(ForeignKey('tag.id'), primary_key=True)
+    firework_id: Mapped[int] = mapped_column(
+        ForeignKey('firework.id'), primary_key=True
+    )
+
+    def __repr__(self) -> str:
+        return f'{self.tag_id}:{self.firework_id}'
 
 
 class Tag(BaseJFModel):
@@ -57,6 +63,10 @@ class Tag(BaseJFModel):
         back_populates='tags',
         lazy='selectin',
     )
+
+    def __repr__(self) -> str:
+        """Метод представляющий объект."""
+        return self.name
 
 
 class Category(BaseJFModel):
@@ -87,6 +97,10 @@ class Category(BaseJFModel):
     fireworks: Mapped[list['Firework']] = relationship(
         'Firework', back_populates='category', lazy='selectin'
     )
+
+    def __repr__(self) -> str:
+        """Метод представляющий объект."""
+        return self.name
 
 
 class Firework(BaseJFModel):
@@ -126,18 +140,19 @@ class Firework(BaseJFModel):
         ForeignKey('category.id'), nullable=True
     )
     category: Mapped['Category'] = relationship(
-        'Category', back_populates='fireworks', lazy='joined'
+        'Category', back_populates='fireworks', lazy='selectin'
     )
     tags: Mapped[list['Tag']] = relationship(
         'Tag',
         secondary='firework_tag',
         back_populates='fireworks',
-        lazy='joined',
+        lazy='selectin',
     )
-    media: Mapped[list['FireworkMedia']] = relationship(
-        'FireworkMedia',
+    media: Mapped[list['Media']] = relationship(
+        'Media',
         back_populates='fireworks',
-        lazy='joined',
+        lazy='selectin',
+        secondary='firework_media',
         cascade='all, delete',
     )
     charges_count: Mapped[int | None]
@@ -152,13 +167,14 @@ class Firework(BaseJFModel):
     )
     discounts: Mapped[list['Discount']] = relationship(
         secondary='fireworkdiscount',
-        lazy='joined',
+        lazy='selectin',
         back_populates='fireworks',
     )
     carts: Mapped[List['Cart']] = relationship(
         back_populates='firework', cascade='all, delete-orphan'
     )
     article: Mapped[str] = mapped_column(nullable=False)
+
     caliber: Mapped[str | None] = mapped_column(nullable=True)
     properties: Mapped[list['FireworkProperty']] = relationship(
         'FireworkProperty',
@@ -166,3 +182,56 @@ class Firework(BaseJFModel):
         lazy='joined',
         cascade='all, delete-orphan',
     )
+
+    def __repr__(self) -> str:
+        return self.name
+
+    # --- админская часть ---
+
+    @hybrid_property
+    def favorited_count(self):
+        # это питоновская часть, которая вызывается у конкретного объекта
+        # когда мы делаем firework.favorited_count
+        return len(self.favorited_by_users)
+
+    @favorited_count.expression
+    def favorited_count(self):
+        return (
+            select(func.count(FavoriteFirework.id))
+            .where(FavoriteFirework.firework_id == self.id)
+            .correlate(self)
+            .scalar_subquery()
+        )
+
+    @hybrid_property
+    def ordered_count(self) -> int:
+        user_ids = [
+            ofw.order.user_id
+            for ofw in self.order_fireworks
+            if ofw.order is not None
+        ]
+        return len(user_ids)
+
+    @ordered_count.expression
+    def ordered_count(self):
+        from src.models.order import Order, OrderFirework
+
+        return (
+            select(func.count(func.distinct(Order.user_id)))
+            .select_from(OrderFirework)
+            .join(Order, Order.id == OrderFirework.order_id)
+            .where(OrderFirework.firework_id == self.id)
+            .scalar_subquery()
+        )
+
+    @hybrid_property
+    def properties_dict(self) -> dict:
+        """Возвращает свойства в виде словаря {название_поля: значение}."""
+        return {prop.field.field_name: prop.value for prop in self.properties}
+
+    def get_property(self, field_name: str) -> str | None:
+        """Возвращает значение свойства по имени поля."""
+        for prop in self.properties:
+            if prop.field.field_name == field_name:
+                return prop.value
+        return None

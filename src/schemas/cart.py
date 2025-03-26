@@ -25,7 +25,6 @@ class UserIdentificationSchema(BaseModel):
 class BaseCartSchema(BaseModel):
     """Базовая схема корзины."""
 
-    firework: FireworkNameSchema
     amount: int
 
 
@@ -33,6 +32,7 @@ class ReadCartSchema(BaseCartSchema):
     """Схема для чтения корзины пользователя."""
 
     id: int
+    firework: FireworkNameSchema
 
     class Config:
         """Прямая работа с атрибутами."""
@@ -43,7 +43,7 @@ class ReadCartSchema(BaseCartSchema):
 class CreateCartSchema(BaseCartSchema):
     """Схема для добавления товара в корзину."""
 
-    pass
+    firework_id: int
 
 
 class UpdateCartSchema(UserIdentificationSchema):
