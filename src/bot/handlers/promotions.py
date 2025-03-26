@@ -8,14 +8,102 @@
 #   await promotions_handler(update, context)
 
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from aiohttp import ClientSession
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext
 
-API_URL = 'http://localhost'
+API_URL = 'http://127.0.0.1:8000'
 ITEMS_PER_PAGE = 5
+
+
+MOCK_FIREWORKS = {
+    101: {'id': 101, 'name': "Ракета 'Метеор'", 'price': 1500},
+    102: {'id': 102, 'name': "Фонтан 'Сияние'", 'price': 2300},
+    103: {'id': 103, 'name': "Петарды 'Гром'", 'price': 500},
+    104: {'id': 104, 'name': "Римская свеча 'Палитра'", 'price': 1200},
+    105: {'id': 105, 'name': "Батарея салютов 'Феерия'", 'price': 3500},
+    106: {'id': 106, 'name': "Вулкан 'Этна'", 'price': 1800},
+    107: {'id': 107, 'name': "Свечи 'Звездопад'", 'price': 900},
+    108: {'id': 108, 'name': "Фонтаны 'Радуга'", 'price': 2100},
+    109: {'id': 109, 'name': "Ракета 'Комета'", 'price': 1700},
+    110: {'id': 110, 'name': "Бенгальские огни 'Кристалл'", 'price': 600},
+}
+
+# Тестовые данные для акций (10 штук)
+MOCK_DISCOUNTS = [
+    {
+        'id': 1,
+        'name': 'Новогодний Сюрприз',
+        'description': 'Скидка 30% на все ракеты',
+        'end_date': (datetime.now() + timedelta(days=7)).isoformat(),
+        'fireworks': [101, 109],  # Ракеты
+    },
+    {
+        'id': 2,
+        'name': 'Чёрная Пятница',
+        'description': '2 товара по цене 1',
+        'end_date': (datetime.now() + timedelta(days=3)).isoformat(),
+        'fireworks': [103, 110],  # Петарды и огни
+    },
+    {
+        'id': 3,
+        'name': 'Зимняя Распродажа',
+        'description': 'Скидка 25% на фонтаны',
+        'end_date': (datetime.now() + timedelta(days=5)).isoformat(),
+        'fireworks': [102, 108],  # Фонтаны
+    },
+    {
+        'id': 4,
+        'name': "Акция 'Счастливый Час'",
+        'description': 'Все товары со скидкой 15%',
+        'end_date': (datetime.now() + timedelta(hours=12)).isoformat(),
+        'fireworks': [104, 105, 106],  # Разные типы
+    },
+    {
+        'id': 5,
+        'name': 'Феерверк-Комбо',
+        'description': 'Набор из 3 товаров за 5000₽',
+        'end_date': (datetime.now() + timedelta(days=2)).isoformat(),
+        'fireworks': [101, 103, 107],  # Комплект
+    },
+    {
+        'id': 6,
+        'name': 'Скидка на Вулканы',
+        'description': 'Вулканы по цене 1500₽',
+        'end_date': (datetime.now() + timedelta(days=4)).isoformat(),
+        'fireworks': [106],  # Только вулканы
+    },
+    {
+        'id': 7,
+        'name': "Акция 'Красный Цвет'",
+        'description': 'Красные фейерверки -20%',
+        'end_date': (datetime.now() + timedelta(days=1)).isoformat(),
+        'fireworks': [102, 105],  # Красные изделия
+    },
+    {
+        'id': 8,
+        'name': 'День Рождения',
+        'description': 'Подарок к каждому заказу',
+        'end_date': (datetime.now() + timedelta(days=10)).isoformat(),
+        'fireworks': [101, 110],  # Подарочные наборы
+    },
+    {
+        'id': 9,
+        'name': 'Вечерняя Акция',
+        'description': 'Скидки после 18:00',
+        'end_date': (datetime.now() + timedelta(hours=6)).isoformat(),
+        'fireworks': [104, 107, 109],  # Вечерние товары
+    },
+    {
+        'id': 10,
+        'name': 'Мега-Распродажа',
+        'description': 'Скидки до 50%',
+        'end_date': (datetime.now() + timedelta(days=14)).isoformat(),
+        'fireworks': list(MOCK_FIREWORKS.keys()),  # Все товары
+    },
+]
 
 
 async def promotions_handler(update: Update, context: CallbackContext):
@@ -46,11 +134,15 @@ async def show_promotions_list(
     """Показать список акций с пагинацией."""
     try:
         async with ClientSession() as session:
-            response = await session.post(
-                f'{API_URL}/discounts',
-                json={'telegram_id': update.effective_user.id},
-            )
-            discounts = await response.json()
+            async with session.get(
+                'http://127.0.0.1:8000/discounts'
+            ) as response:
+                # response = await session.get(
+                #     'http://127.0.0.1:8000/discounts',
+                # )
+                discounts = await response.json()
+        # try:
+        #     discounts = MOCK_DISCOUNTS
 
         total_pages = (len(discounts) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
         start_idx = (page - 1) * ITEMS_PER_PAGE
@@ -63,7 +155,7 @@ async def show_promotions_list(
             )
             buttons.append([
                 InlineKeyboardButton(
-                    f'{discount["name"]} (до {end_date})',
+                    f'{discount["type"]} (до {end_date})',
                     callback_data=f'promo_detail_{discount["id"]}',
                 )
             ])
@@ -97,15 +189,15 @@ async def show_promotions_list(
         ])
 
         text = '🎁 Акции и скидки:\n\n' + '\n'.join(
-            f'• {d["name"]} - {d["description"]}' for d in current_discounts
+            f'• {d["type"]} - {d["description"]}' for d in current_discounts
         )
 
         await update.callback_query.edit_message_text(
             text=text, reply_markup=InlineKeyboardMarkup(buttons)
         )
 
-    except Exception:
-        await handle_error(update, context)
+    except Exception as error:
+        raise error
 
 
 async def show_promo_details(
@@ -114,11 +206,16 @@ async def show_promo_details(
     """Показать товары акции."""
     try:
         async with ClientSession() as session:
-            response = await session.post(
-                f'{API_URL}/discounts/{promo_id}',
-                json={'telegram_id': update.effective_user.id},
-            )
-            fireworks = await response.json()
+            async with session.get(
+                f'http://127.0.0.1:8000/discounts/{promo_id}'
+            ) as response:
+                # response = await session.get(
+                #     f'{API_URL}/discounts/{promo_id}',
+                # )
+                fireworks = await response.json()
+                for firework in fireworks:
+                    for key, value in firework.items():
+                        print(key, value)
         # кнопки возвращают id фейерверка
         buttons = [
             [
@@ -142,8 +239,8 @@ async def show_promo_details(
             reply_markup=InlineKeyboardMarkup(buttons),
         )
 
-    except Exception:
-        await handle_error(update, context)
+    except Exception as e:
+        raise e
 
 
 async def handle_error(update: Update, context: CallbackContext):
