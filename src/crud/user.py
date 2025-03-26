@@ -1,11 +1,15 @@
 from typing import Generic, Optional, TypeVar
 from uuid import UUID
 
+from fastapi_users.password import PasswordHelper
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from src.models.user import User
-from src.schemas.user import TelegramIDSchema
+from src.schemas.user import (
+    AdminUserUpdate,
+    TelegramIDSchema,
+)
 
 ModelType = TypeVar('ModelType')
 SchemaType = TypeVar('SchemaType', bound=TelegramIDSchema)
@@ -33,6 +37,35 @@ class UserCRUD(Generic[ModelType, SchemaType]):
             )
         )
         return result.scalar_one_or_none()
+
+    async def get_user_by_telegram_id(
+        self,
+        telegram_id: int,
+        session: AsyncSession,
+    ) -> Optional[User]:
+        """Возвращает пользователя по полю telegram_id."""
+        result = await session.execute(
+            select(self.model).filter(self.model.telegram_id == telegram_id)
+        )
+        return result.scalars().first()
+
+    async def update_admin_user(
+        self,
+        schema_data: AdminUserUpdate,
+        user: User,
+        session: AsyncSession,
+    ) -> User:
+        update_data = schema_data.model_dump(exclude_unset=True)
+        if update_data.get('password'):
+            update_data['hashed_password'] = PasswordHelper().hash(
+                update_data.pop('password')
+            )
+        for key, value in update_data.items():
+            setattr(user, key, value)
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return user
 
 
 user_crud: UserCRUD = UserCRUD(User)

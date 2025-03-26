@@ -1,8 +1,10 @@
+
 from collections import Counter
+from datetime import date
 from typing import TYPE_CHECKING, List
 
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import BigInteger, Boolean, String, func, select
+from sqlalchemy import BigInteger, Boolean, Date, func, select, String
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -48,6 +50,7 @@ class User(BaseJFModel, SQLAlchemyBaseUserTableUUID):  # type: ignore[misc]
     nickname: Mapped[str | None] = mapped_column(
         String, unique=True, nullable=True
     )
+    birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     phone_number: Mapped[str | None] = mapped_column(
         String, unique=True, nullable=True
     )

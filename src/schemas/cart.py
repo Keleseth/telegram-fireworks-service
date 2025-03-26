@@ -1,24 +1,52 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, condecimal
 
-# TODO: telegram_id будет в теле запроса
-# Схема на удаление, создание, изменение объекта должна содержать telegram_id.
+
+class MessageResponse(BaseModel):
+    """Базовая схема для ответов."""
+
+    message: str
+
+
+class FireworkNameSchema(BaseModel):
+    """Схема для данных о фейерверке, без id и price."""
+
+    name: str
+    price: condecimal(max_digits=10, decimal_places=2)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserIdentificationSchema(BaseModel):
+    """Базовая схема для telegram_id."""
+
+    telegram_id: int
 
 
 class BaseCartSchema(BaseModel):
     """Базовая схема корзины."""
 
-
-class ReadCartSchema(BaseModel):
-    """Докстринг."""
+    amount: int
 
 
-class CreateCartSchema(BaseModel):
-    """Докстринг."""
+class ReadCartSchema(BaseCartSchema):
+    """Схема для чтения корзины пользователя."""
+
+    id: int
+    firework: FireworkNameSchema
+
+    class Config:
+        """Прямая работа с атрибутами."""
+
+        from_attributes = True
 
 
-class UpdateCartSchema(BaseModel):
-    """Докстринг."""
+class CreateCartSchema(BaseCartSchema):
+    """Схема для добавления товара в корзину."""
+
+    firework_id: int
 
 
-class DeleteCartSchema(BaseModel):
-    """Докстринг."""
+class UpdateCartSchema(UserIdentificationSchema):
+    """Схема для обновления количества товара в корзине."""
+
+    amount: int
