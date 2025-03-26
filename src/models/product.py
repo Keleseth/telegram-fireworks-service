@@ -137,13 +137,13 @@ class Firework(BaseJFModel):
         ForeignKey('category.id'), nullable=True
     )
     category: Mapped['Category'] = relationship(
-        'Category', back_populates='fireworks', lazy='joined'
+        'Category', back_populates='fireworks', lazy='selectin'
     )
     tags: Mapped[list['Tag']] = relationship(
         'Tag',
         secondary='firework_tag',
         back_populates='fireworks',
-        lazy='joined',
+        lazy='selectin',
     )
     media: Mapped[list['Media']] = relationship(
         'Media',
@@ -164,13 +164,18 @@ class Firework(BaseJFModel):
     )
     discounts: Mapped[list['Discount']] = relationship(
         secondary='fireworkdiscount',
-        lazy='joined',
+        lazy='selectin',
         back_populates='fireworks',
     )
     carts: Mapped[List['Cart']] = relationship(
         back_populates='firework', cascade='all, delete-orphan'
     )
     article: Mapped[str] = mapped_column(nullable=False)
+
+    def __repr__(self) -> str:
+        return self.name
+
+    # --- админская часть ---
 
     @hybrid_property
     def favorited_count(self):
@@ -188,12 +193,12 @@ class Firework(BaseJFModel):
         )
 
     @hybrid_property
-    def ordered_count(self):
-        user_ids = {
+    def ordered_count(self) -> int:
+        user_ids = [
             ofw.order.user_id
             for ofw in self.order_fireworks
             if ofw.order is not None
-        }
+        ]
         return len(user_ids)
 
     @ordered_count.expression
@@ -207,6 +212,3 @@ class Firework(BaseJFModel):
             .where(OrderFirework.firework_id == self.id)
             .scalar_subquery()
         )
-
-    def __repr__(self) -> str:
-        return self.name

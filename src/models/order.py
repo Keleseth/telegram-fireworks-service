@@ -72,6 +72,9 @@ class Order(BaseJFModel):
     )
     status: Mapped['OrderStatus'] = relationship(lazy='selectin')
 
+    def __repr__(self) -> str:
+        return f'Заказ номер: {self.id}'
+
 
 class OrderFirework(BaseJFModel):
     """Таблица содержащая перечень товаров заказа, их количество и цену.
