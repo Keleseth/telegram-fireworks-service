@@ -19,8 +19,8 @@ from src.models.product import Firework
 class FireworkView(ModelView, model=Firework):
     """Представление фейерверков в админке."""
 
-    name = 'Фейерверк'
-    name_plural = 'Фейерверки'
+    name = 'товар'
+    name_plural = 'Товары'
     list_template = 'sqladmin/custom_list.html'
 
     column_list = [
@@ -111,4 +111,11 @@ class FireworkView(ModelView, model=Firework):
 
     page_size = PAGE_SIZE
 
-    form_widget_args = {'tags': {'data-role': 'tagsinput'}}
+    # form_widget_args = {'tags': {'data-role': 'tagsinput'}}
+
+    form_widget_args = {
+        'tags': {
+            'rows': 10,
+            'style': 'min-height:200px; width:100%;',
+        },
+    }
