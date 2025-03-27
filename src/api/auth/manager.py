@@ -4,11 +4,10 @@ from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, UUIDIDMixin
 from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi_users.password import PasswordHelper
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
-from src.database.db_dependencies import get_async_session
+from src.database.db_dependencies import AsyncSessionLocal, get_async_session
 from src.models.user import User
 from src.schemas.user import BaseUserUpdate, UserCreate
 
@@ -64,26 +63,14 @@ class UserManager(UUIDIDMixin, BaseUserManager):
             update_data['age_verified'] = True
         return await self.user_db.update(user, update_data)
 
-    async def get_by_email(
-        self,
-        email: str,
-        session: AsyncSession,  # Убираем Depends
-    ) -> Optional[User]:
-        try:
-            email = email.lower().strip()
-            print(email)
-            print('код дошел до поиска юзера')
-            stmt = select(User).where(User.email == email)
-            print('запрос сформирован')
-            result = await session.execute(stmt)
-            print('blabla')
-            user = result.scalars().first()
-            if user is None:
-                print(f'Пользователь с email {email} не найден.')
-            return user
-        except Exception as e:
-            print(f'Ошибка при выполнении запроса: {e}')
-            return None
+    # async def get_by_email(
+    #     self, user_email: str, session: AsyncSession = None
+    # ) -> Optional[User]:
+    #     if session:
+    #         user_db = SQLAlchemyUserDatabase(session, User)
+    #         user = await user_db.get_by_email(user_email)
+    #         return user
+    #     return await super().get_by_email(user_email)
 
 
 async def get_user_db(session: AsyncSession = Depends(get_async_session)):
@@ -92,3 +79,9 @@ async def get_user_db(session: AsyncSession = Depends(get_async_session)):
 
 async def get_user_manager(user_db=Depends(get_user_db)):  # noqa: ANN001
     yield UserManager(user_db)
+
+
+async def get_user_manager_no_depends():
+    async with AsyncSessionLocal() as session:
+        user_db = SQLAlchemyUserDatabase(session, User)
+        yield UserManager(user_db)

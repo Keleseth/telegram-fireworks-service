@@ -9,7 +9,7 @@ from src.admin.promotion_admin import DiscountView
 from src.admin.tag_admin import TagView
 from src.admin.user_admin import UserView
 from src.api.auth.auth import authentication_backend
-from src.api.auth.manager import get_user_manager
+from src.api.auth.manager import get_user_manager_no_depends
 from src.config import settings
 from src.database.db_dependencies import engine
 
@@ -17,7 +17,7 @@ from src.database.db_dependencies import engine
 
 
 async def get_sqladmin_auth():
-    user_manager = await anext(get_user_manager())
+    user_manager = await anext(get_user_manager_no_depends())
     return SQLAdminAuth(
         secret_key=settings.secret,
         user_manager=user_manager,
@@ -25,12 +25,12 @@ async def get_sqladmin_auth():
     )
 
 
-def setup_admin(app: FastAPI) -> Admin:
+async def setup_admin(app: FastAPI) -> Admin:
     """Настраивает админку и подключает её к FastAPI."""
     admin = Admin(
         app,
         engine,
-        # authentication_backend=get_sqladmin_auth(),
+        authentication_backend=await get_sqladmin_auth(),
         templates_dir='src/admin/templates',
     )
     admin.add_view(FireworkView)
