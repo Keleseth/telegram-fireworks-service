@@ -16,8 +16,12 @@ AsyncSessionLocal = sessionmaker(
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, Any]:
+    print('Создаём сессию в get_async_session')
     async with AsyncSessionLocal() as async_session:
+        print(f'Сессия создана: {id(async_session)}')
         yield async_session
+        print(f'Сессия закрывается: {id(async_session)}')
+    print(f'Сессия закрыта: {id(async_session)}')
 
 
 async def get_user_id(

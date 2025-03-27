@@ -12,6 +12,7 @@ from telegram.ext import (
 
 from src.bot import config
 from src.bot.handlers.catalog import catalog_menu, catalog_register
+from src.bot.handlers.promotions import promotions_handler
 from src.bot.keyboards import keyboard_main
 
 logging.basicConfig(
@@ -51,9 +52,16 @@ async def button(update: Update, context: CallbackContext) -> None:
         )
     elif option == 'catalog':
         await catalog_menu(update, context)
+    elif option == 'promotions' or option.startswith((
+        'promo_page_',
+        'promo_detail_',
+        'promo_back',
+    )):
+        await promotions_handler(update, context)
 
 
 def main() -> None:
+    print(f'Loaded TOKEN: {config.TOKEN}')
     application = ApplicationBuilder().token(config.TOKEN).build()
 
     start_handler = CommandHandler('start', start)
