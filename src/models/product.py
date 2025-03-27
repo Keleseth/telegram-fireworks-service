@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from src.models.discounts import Discount
     from src.models.favorite import FavoriteFirework
     from src.models.media import Media
+    from src.models.newsletter import Newsletter
     from src.models.order import OrderFirework
 
 
@@ -26,18 +27,21 @@ class FireworkTag(BaseJFModel):
     """Промежуточная модель many-to-many.
 
     Поля:
-        1. id: уникальный индетификатор.
-        2. tag_id: id тега.
-        3. firework_id: id товара.
+        1. tag_id: id тега.
+        2. firework_id: id товара.
 
     Связывает между собой модели Tag и Firework.
     """
 
     __tablename__ = 'firework_tag'
 
-    id: Mapped[int_pk]
-    tag_id: Mapped[int] = mapped_column(ForeignKey('tag.id'))
-    firework_id: Mapped[int] = mapped_column(ForeignKey('firework.id'))
+    tag_id: Mapped[int] = mapped_column(ForeignKey('tag.id'), primary_key=True)
+    firework_id: Mapped[int] = mapped_column(
+        ForeignKey('firework.id'), primary_key=True
+    )
+
+    def __repr__(self) -> str:
+        return f'{self.tag_id}:{self.firework_id}'
 
 
 class Tag(BaseJFModel):
@@ -47,6 +51,8 @@ class Tag(BaseJFModel):
         1. id: уникальный индетификатор.
         2. name: уникальное название тега (обязательное поле).
         3. fireworks: объекты модели Firework с текущим тегом.
+        4. newsletters: list[Newsletter] - поле связанных объектов модели
+           Newsletter.
 
     """
 
@@ -55,6 +61,12 @@ class Tag(BaseJFModel):
     fireworks: Mapped[list['Firework']] = relationship(
         'Firework',
         secondary='firework_tag',
+        back_populates='tags',
+        lazy='selectin',
+    )
+    newsletters: Mapped[list['Newsletter']] = relationship(
+        'Newsletter',
+        secondary='newslettertag',
         back_populates='tags',
         lazy='selectin',
     )
@@ -134,13 +146,13 @@ class Firework(BaseJFModel):
         ForeignKey('category.id'), nullable=True
     )
     category: Mapped['Category'] = relationship(
-        'Category', back_populates='fireworks', lazy='joined'
+        'Category', back_populates='fireworks', lazy='selectin'
     )
     tags: Mapped[list['Tag']] = relationship(
         'Tag',
         secondary='firework_tag',
         back_populates='fireworks',
-        lazy='joined',
+        lazy='selectin',
     )
     media: Mapped[list['Media']] = relationship(
         'Media',
@@ -161,13 +173,18 @@ class Firework(BaseJFModel):
     )
     discounts: Mapped[list['Discount']] = relationship(
         secondary='fireworkdiscount',
-        lazy='joined',
+        lazy='selectin',
         back_populates='fireworks',
     )
     carts: Mapped[List['Cart']] = relationship(
         back_populates='firework', cascade='all, delete-orphan'
     )
     article: Mapped[str] = mapped_column(nullable=False)
+
+    def __repr__(self) -> str:
+        return self.name
+
+    # --- админская часть ---
 
     @hybrid_property
     def favorited_count(self):
@@ -185,12 +202,12 @@ class Firework(BaseJFModel):
         )
 
     @hybrid_property
-    def ordered_count(self):
-        user_ids = {
+    def ordered_count(self) -> int:
+        user_ids = [
             ofw.order.user_id
             for ofw in self.order_fireworks
             if ofw.order is not None
-        }
+        ]
         return len(user_ids)
 
     @ordered_count.expression
@@ -204,6 +221,3 @@ class Firework(BaseJFModel):
             .where(OrderFirework.firework_id == self.id)
             .scalar_subquery()
         )
-
-    def __repr__(self) -> str:
-        return self.name

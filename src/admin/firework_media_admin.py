@@ -11,7 +11,6 @@ class FireworkMediaAdmin(ModelView, model=FireworkMedia):
     name_plural = 'Медиа для Фейерверков'
 
     column_list = [
-        FireworkMedia.id,
         FireworkMedia.firework_id,
         FireworkMedia.image_id,
     ]

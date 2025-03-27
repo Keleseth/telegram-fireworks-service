@@ -16,3 +16,4 @@ python-telegram-bot==20.8
 redis==5.2.1
 sqladmin==0.20.1
 aiohttp==3.11.14
+APScheduler==3.11.0
