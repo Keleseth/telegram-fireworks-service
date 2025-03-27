@@ -7,9 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.annotations import int_pk, str_not_null_and_unique
 from src.models.base import BaseJFModel
-from src.models.property import FireworkProperty
 from src.models.favorite import FavoriteFirework
-
+from src.models.property import FireworkProperty
 
 if TYPE_CHECKING:
     from src.models.cart import Cart

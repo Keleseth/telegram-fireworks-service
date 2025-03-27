@@ -131,8 +131,6 @@ async def process_categories(session: AsyncSession, df: pd.DataFrame) -> dict:
     return category_map
 
 
-# service/csv_loader.py (исправленная версия)
-
 async def process_fireworks(
         session: AsyncSession, df: pd.DataFrame, category_map: dict
 ) -> dict:

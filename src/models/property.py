@@ -17,6 +17,7 @@ class PropertyField(BaseJFModel):
         1. id: уникальный идентификатор.
         2. field_name: название поля характеристики.
     """
+
     __tablename__ = 'property_field'
 
     id: Mapped[int_pk]
