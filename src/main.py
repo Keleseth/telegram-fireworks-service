@@ -11,13 +11,16 @@ from src.config import settings
 from src.utils.scheduler.scheduler import setup_scheduler, shutdown_scheduler
 
 configure_mappers()
-
+admin_app = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global admin_app
     setup_scheduler()
+    admin_app = await setup_admin(app)
     yield
     shutdown_scheduler()
+    await engine.dispose()
 
 
 app = FastAPI(
@@ -25,7 +28,7 @@ app = FastAPI(
     description=settings.description,
     lifespan=lifespan,
 )
-setup_admin(app)
+# setup_admin(app)
 app.router.include_router(main_router)
 
 
