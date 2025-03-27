@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from src.models.discounts import Discount
     from src.models.favorite import FavoriteFirework
     from src.models.media import Media
+    from src.models.newsletter import Newsletter
     from src.models.order import OrderFirework
 
 
@@ -50,6 +51,8 @@ class Tag(BaseJFModel):
         1. id: уникальный индетификатор.
         2. name: уникальное название тега (обязательное поле).
         3. fireworks: объекты модели Firework с текущим тегом.
+        4. newsletters: list[Newsletter] - поле связанных объектов модели
+           Newsletter.
 
     """
 
@@ -58,6 +61,12 @@ class Tag(BaseJFModel):
     fireworks: Mapped[list['Firework']] = relationship(
         'Firework',
         secondary='firework_tag',
+        back_populates='tags',
+        lazy='selectin',
+    )
+    newsletters: Mapped[list['Newsletter']] = relationship(
+        'Newsletter',
+        secondary='newslettertag',
         back_populates='tags',
         lazy='selectin',
     )
