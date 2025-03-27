@@ -42,8 +42,8 @@ MOCK_FIREWORKS = {
 
 API_URL = 'http://127.0.0.1:8000'
 
-ITEMS_PER_PAGE = 3
-PROMO_PER_PAGE = 5
+ITEMS_PER_PAGE = 1
+PROMO_PER_PAGE = 1
 
 FIREWORK_PROMO_CARD = """
 🎆 *{name}* 🎆
@@ -154,8 +154,8 @@ def build_promo_firework_card(fields: dict) -> str:
         if not fields.get(field):
             fields[field] = defaults[field]
     return FIREWORK_PROMO_CARD.format(
-        name=fields['type'],
-        price=fields['value'],
+        name=fields['name'],
+        price=fields['price'],
         description=fields['description'],
         charges_count=fields['charges_count'],
         effects_count=fields['effects_count'],
@@ -169,7 +169,9 @@ async def show_promo_details(
     try:
         # Тестовые данные вместо API
         async with ClientSession() as session:
-            async with session.get(f'{API_URL}/discounts') as response:
+            async with session.get(
+                f'{API_URL}/discounts/{promo_id}'
+            ) as response:
                 all_fireworks = await response.json()
 
         # Пагинация
