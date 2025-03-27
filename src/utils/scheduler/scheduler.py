@@ -1,8 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import settings
 from src.crud.newsletter import newsletter_crud
 from src.database.db_dependencies import get_async_session
 from src.utils.scheduler.send_newsletter import send_newsletter_to_users
@@ -23,6 +24,7 @@ async def check_newsletters(session: AsyncSession):
     for newsletter in all_newsletters_unsett:
         if (
             newsletter.datetime_send <= current_time
+            and current_time - newsletter.datetime_send <= timedelta(days=1)
             and newsletter.canceled is False
         ):
             filtered_users = (
@@ -31,11 +33,14 @@ async def check_newsletters(session: AsyncSession):
                     session=session,
                 )
             )
+            # TODO проверочная функция отправки рассылки самостоятельно.
+            # TODO заменить на передачу данных в телеграм-бот и рассылку юзерам
+            #  в цикле. За основу можно брать функцию send_newsletter_to_users.
             await send_newsletter_to_users(
                 newsletter=newsletter,
                 users=filtered_users,
                 session=session,
-                # bot_token=settings.telegram_token
+                bot_token=settings.telegram_token,
             )
 
 

@@ -1,4 +1,4 @@
-from typing import Generic, Optional, TypeVar
+from typing import Generic, List, Optional, TypeVar
 from uuid import UUID
 
 from fastapi_users.password import PasswordHelper
@@ -66,6 +66,16 @@ class UserCRUD(Generic[ModelType, SchemaType]):
         await session.commit()
         await session.refresh(user)
         return user
+
+    async def get_all_users_admin(
+        self,
+        session: AsyncSession,
+    ) -> List[User]:
+        """Возвращает пользователей админов."""
+        admins = await session.execute(
+            select(User).where(User.is_admin.is_(True))
+        )
+        return admins.scalars().all()
 
 
 user_crud: UserCRUD = UserCRUD(User)
