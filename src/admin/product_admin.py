@@ -24,9 +24,8 @@ class FireworkView(ModelView, model=Firework):
     list_template = 'sqladmin/custom_list.html'
 
     column_list = [
-        Firework.id,
-        Firework.name,
         Firework.code,
+        Firework.name,
         Firework.article,
         Firework.category,
         Firework.tags,
