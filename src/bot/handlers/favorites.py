@@ -61,11 +61,12 @@ async def show_favorites(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not favorites:
             await update.callback_query.edit_message_text("🌟 Ваш список пуст.")
             return ConversationHandler.END
+        print(favorites)
         for firework in favorites:
             await context.bot.send_message(
                 chat_id=telegram_id,
-                text=f"{firework['name']}\n",
-                reply_markup=get_product_keyboard(firework['id'])
+                text=f"{firework['firework']['name']}\n",
+                reply_markup=get_product_keyboard(firework['firework']['id'])
             )
         return FAVORITES_STATE
 
@@ -80,65 +81,66 @@ async def handle_favorites_actions(update: Update,
     await query.answer()
     data = query.data
     telegram_id = query.from_user.id
-    firework_id = int(data.split("_")[1])
+    if '_' in data:
+        firework_id = int(data.split("_")[1])
 
-    try:
-        if data.startswith("details_"):
-            url = f"{API_BASE_URL}/fireworks/{firework_id}"
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    url,
-                    headers={"Accept": "application/json"}
-                ) as response:
-                    if response.status == 200:
-                        firework = await response.json()
-
-            await query.edit_message_text(
-                f"📦 <b>{firework['name']}</b>\n"
-                f"💵 Цена: {firework['price']} ₽\n"
-                f"📝 Описание: {firework['description']}",
-                parse_mode="HTML",
-                reply_markup=get_product_keyboard(firework_id)
-            )
-
-        elif data.startswith("cart_"):
-            async with aiohttp.ClientSession() as session:
-                try:
-                    async with session.post(
-                        f"{API_BASE_URL}/user/cart",
-                        json={
-                            "telegram_id": telegram_id,
-                            "firework_id": firework_id
-                        }
-                    ) as response:
-                        if response.status == 201:
-                            await query.answer("Товар добавлен в корзину 🛒")
-                        else:
-                            error = await response.text()
-                            print(f"Delete error: {error}")
-                            await query.answer("⚠️ Ошибка!")
-                except aiohttp.ClientError:
-                    await query.answer("🚫 Ошибка соединения с сервером")
-
-        elif data.startswith("remove_"):
-            async with aiohttp.ClientSession() as session:
-                try:
-                    async with session.delete(
-                        f"{API_BASE_URL}/favorites/{firework_id}",
-                        json={
-                            "telegram_id": telegram_id
-                        }
+        try:
+            if data.startswith("details_"):
+                url = f"{API_BASE_URL}/fireworks/{firework_id}"
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(
+                        url,
+                        headers={"Accept": "application/json"}
                     ) as response:
                         if response.status == 200:
-                            await query.edit_message_text("❌ Товар убран")
-                        else:
-                            error = await response.text()
-                            print(f"Delete error: {error}")
-                            await query.answer("⚠️ Не удалось удалить!")
-                except aiohttp.ClientError:
-                    await query.answer("🚫 Ошибка соединения с сервером")
-    except Exception as e:
-        await query.answer(f"⚠️ Произошла ошибка: {str(e)}")
+                            firework = await response.json()
+
+                await query.edit_message_text(
+                    f"📦 <b>{firework['name']}</b>\n"
+                    f"💵 Цена: {firework['price']} ₽\n"
+                    f"📝 Описание: {firework['description']}",
+                    parse_mode="HTML",
+                    reply_markup=get_product_keyboard(firework_id)
+                )
+
+            elif data.startswith("cart_"):
+                async with aiohttp.ClientSession() as session:
+                    try:
+                        async with session.post(
+                            f"{API_BASE_URL}/user/cart",
+                            json={
+                                "telegram_id": telegram_id,
+                                "firework_id": firework_id
+                            }
+                        ) as response:
+                            if response.status == 201:
+                                await query.answer("Товар добавлен в корзину 🛒")
+                            else:
+                                error = await response.text()
+                                print(f"Error: {error}")
+                                await query.answer("⚠️ Ошибка!")
+                    except aiohttp.ClientError:
+                        await query.answer("🚫 Ошибка соединения с сервером")
+
+            elif data.startswith("remove_"):
+                async with aiohttp.ClientSession() as session:
+                    try:
+                        async with session.delete(
+                            f"{API_BASE_URL}/favorites/{firework_id}",
+                            json={
+                                "telegram_id": telegram_id
+                            }
+                        ) as response:
+                            if response.status == 200:
+                                await query.edit_message_text("❌ Товар убран")
+                            else:
+                                error = await response.text()
+                                print(f"Delete error: {error}")
+                                await query.answer("⚠️ Не удалось удалить!")
+                    except aiohttp.ClientError:
+                        await query.answer("🚫 Ошибка соединения с сервером")
+        except Exception as e:
+            await query.answer(f"⚠️ Произошла ошибка: {str(e)}")
 
     return FAVORITES_STATE
 
