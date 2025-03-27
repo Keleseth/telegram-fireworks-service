@@ -8,7 +8,7 @@ from src.database.db_dependencies import get_async_session
 from src.schemas.discounts import (
     ReadDiscountsSchema,
 )
-from src.schemas.product import FireworkBase
+from src.schemas.product import FireworkDB
 
 router = APIRouter()
 
@@ -28,10 +28,10 @@ async def get_disctounts(
 @router.get(
     '/discounts/{discount_id}',
     status_code=status.HTTP_200_OK,
-    response_model=List[FireworkBase],
+    response_model=List[FireworkDB],
 )
 async def get_user_address(
-    discount_id: str,
+    discount_id: int,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Получить все фейерверки связанные с конкретной акцией по её id."""
