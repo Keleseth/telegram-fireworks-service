@@ -8,18 +8,18 @@ from sqlalchemy.orm import configure_mappers
 from src.admin.config import setup_admin
 from src.api.v1.router import main_router
 from src.config import settings
-from src.database.db_dependencies import engine
+from src.utils.scheduler.scheduler import setup_scheduler, shutdown_scheduler
 
 configure_mappers()
-
 admin_app = None
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global admin_app
+    setup_scheduler()
     admin_app = await setup_admin(app)
     yield
+    shutdown_scheduler()
     await engine.dispose()
 
 

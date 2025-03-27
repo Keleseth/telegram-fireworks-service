@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     verification_token_secret: str = os.getenv('VERIFICATION_SECRET')
     redis_host: str = os.getenv('REDIS_HOST')
     redis_port: str = os.getenv('REDIS_PORT')
+    telegram_token: str = os.getenv('TELEGRAM_BOT_TOKEN')
 
     @property
     def database_url(self):
