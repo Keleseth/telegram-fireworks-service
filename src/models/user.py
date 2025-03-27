@@ -4,7 +4,7 @@ from datetime import date
 from typing import TYPE_CHECKING, List
 
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import BigInteger, Boolean, Date, func, select, String
+from sqlalchemy import BigInteger, Boolean, Date, String, func, select
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

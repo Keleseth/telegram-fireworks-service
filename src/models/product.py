@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.database.annotations import int_pk, str_not_null_and_unique
 from src.models.base import BaseJFModel
 from src.models.favorite import FavoriteFirework
+from src.models.property import FireworkProperty
 
 if TYPE_CHECKING:
     from src.models.cart import Cart
@@ -130,6 +131,7 @@ class Firework(BaseJFModel):
         13. product_size: размер продукта (обязательное поле).
         14. packing_material: материал упаковки (опционально).
         15. article: артикул товара (обязательное поле).
+        16. caliber: калибр фейерверка (опционально).
     """
 
     id: Mapped[int_pk]
@@ -181,6 +183,14 @@ class Firework(BaseJFModel):
     )
     article: Mapped[str] = mapped_column(nullable=False)
 
+    caliber: Mapped[str | None] = mapped_column(nullable=True)
+    properties: Mapped[list['FireworkProperty']] = relationship(
+        'FireworkProperty',
+        back_populates='firework',
+        lazy='joined',
+        cascade='all, delete-orphan',
+    )
+
     def __repr__(self) -> str:
         return self.name
 
@@ -221,3 +231,15 @@ class Firework(BaseJFModel):
             .where(OrderFirework.firework_id == self.id)
             .scalar_subquery()
         )
+
+    @hybrid_property
+    def properties_dict(self) -> dict:
+        """Возвращает свойства в виде словаря {название_поля: значение}."""
+        return {prop.field.field_name: prop.value for prop in self.properties}
+
+    def get_property(self, field_name: str) -> str | None:
+        """Возвращает значение свойства по имени поля."""
+        for prop in self.properties:
+            if prop.field.field_name == field_name:
+                return prop.value
+        return None
