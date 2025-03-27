@@ -110,7 +110,8 @@ async def handle_favorites_actions(update: Update,
                             f"{API_BASE_URL}/user/cart",
                             json={
                                 "telegram_id": telegram_id,
-                                "firework_id": firework_id
+                                "firework_id": firework_id,
+                                "amount": 1
                             }
                         ) as response:
                             if response.status == 201:
