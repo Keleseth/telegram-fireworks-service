@@ -11,6 +11,7 @@ from telegram.ext import (
 )
 
 from src.bot import config
+from src.bot.handlers.bot_info import show_bot_info
 from src.bot.handlers.catalog import catalog_menu, catalog_register
 from src.bot.handlers.promotions import promotions_handler
 from src.bot.keyboards import keyboard_main
@@ -58,6 +59,8 @@ async def button(update: Update, context: CallbackContext) -> None:
         'promo_back',
     )):
         await promotions_handler(update, context)
+    elif option == 'bot_info':
+        await show_bot_info(update, context)
 
 
 def main() -> None:
