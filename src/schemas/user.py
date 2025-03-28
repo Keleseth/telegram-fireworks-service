@@ -28,6 +28,12 @@ class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class UserReadForTelegram(UserRead):
+    """Схема чтения пользователя (возвращаемые данные)."""
+
+    is_admin: bool
+
+
 class UserCreate(BaseModel):
     """Схема создания обычного пользователя через Telegram."""
 

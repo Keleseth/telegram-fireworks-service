@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi_users import InvalidPasswordException, exceptions
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.auth.auth import (
     create_refresh_token,
@@ -14,10 +15,36 @@ from src.api.auth.dependencies import (
     current_user,
 )
 from src.api.auth.manager import UserManager, get_user_manager
+from src.crud.user import user_crud
+from src.database.db_dependencies import get_async_session
 from src.models import User
-from src.schemas.user import AdminUserUpdate, UserCreate, UserRead, UserUpdate
+from src.schemas.user import (
+    AdminUserUpdate,
+    UserCreate,
+    UserRead,
+    UserReadForTelegram,
+    UserUpdate,
+)
 
 router = APIRouter()
+
+
+@router.get(
+    '/users/{user_telegram_id}',
+    status_code=status.HTTP_200_OK,
+    response_model=UserReadForTelegram,
+    responses={404: {'description': 'User not found'}},
+)
+async def get_user(
+    user_telegram_id: int,
+    session: AsyncSession = Depends(get_async_session),
+):
+    user = await user_crud.get_user_by_telegram_id(
+        session=session, telegram_id=user_telegram_id
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+    return user
 
 
 @router.post(
