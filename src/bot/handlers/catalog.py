@@ -23,8 +23,7 @@ from telegram.ext import (
 )
 
 from src.bot.utils import croling_content
-from src.database.db_dependencies import get_user_id
-from src.schemas.cart import FireworkNameSchema, UserIdentificationSchema
+from src.schemas.cart import UserIdentificationSchema
 
 TELEGRAM_MEDIA_LIMIT = 10
 PHOTO_FORMATS = ('.jpg', '.jpeg', 'png')
@@ -84,22 +83,30 @@ ALL_PRODUCTS_CALLBACK = 'all_products'
 ALL_CATEGORIES_CALLBACK = 'all_categories'
 PARAMETERS_CALLBACK = 'parameters'
 MAIN_MENU_CALLBACK = 'back'
+ADD_TO_CART_CALLBACK = 'add_to_cart_{id}'
+ADD_TO_FAVORITE_CALLBACK = 'add_to_favorite_{id}'
+APPLY_FILTERS_CALLBACK = 'apply_filters'
+CANCEL_FILTERS_CALLBACK = 'cancel_filters'
 
+CATALOG_MESSAGE = '🎆 Каталог продуктов'
+SUCCESS_ADD_MESSAGE = '✅ Добавлено'
 ALL_CATEGORIES_MESSAGE = '📋 Список категорий'
 ALL_PRODUCTS_MESSAGE = '✨ Все товары'
 CATEGORY_MESSAGE = '✨ Категории'
 PARAMETERS_MESSAGE = '✨ Подбор по параметрам'
 NEXT_PAGINATION_MESSAGE = '➡️ Следующая'
 PREV_PAGINATION_MESSAGE = '⬅️ Предыдущая'
-CATALOG_MESSAGE = '📋 В каталог'
-ADD_TO_CARD_MESSAGE = '🛒 В корзину'
-ADD_TO_FAVORITE_MESSAGE = '✅ В избранное'
-MAIN_MENU_MESSAGE = '🏠 Перейти в главное меню'
+SKIP_MESSAGE = '⏭️ Пропустить'
+CATALOG_BACK_MESSAGE = '📋 В каталог'
+ADD_TO_CART_MESSAGE = '🛒 В корзину'
+ADD_TO_FAVORITE_MESSAGE = '💥 В избранное'
+MAIN_MENU_BACK_MESSAGE = '🏠 Перейти в главное меню'
 NAVIGATION_MESSAGE = '🤖 Навигация'
 BAD_REQUEST_MESSAGE = 'Ошибка❗ Код: {code}. Вернуться в меню каталога:'
 READ_MORE_MESSAGE = '📖 Подробнее'
-EMPTY_QUERY = 'По вашему запросу ничего не найдено ⚠️'
 
+
+EMPTY_QUERY_MESSAGE = 'По вашему запросу ничего не найдено ⚠️'
 EMPTY_DESCRIPTION_MESSAGE = 'Описание в разработке'
 EMPTY_PRICE_MESSAGE = 'Цена за товар не указана'
 EMPTY_TAGS_MESSAGE = 'Для товара теги не указаны'
@@ -108,8 +115,32 @@ EMPTY_DISCOUNS_MESSAGE = 'Скоро появятся 🎆'
 
 PRODUCT_PAGINATE_CALLBACK_DATA = 'pg-pr_{url}'
 CATEGORY_PAGINATE_CALLBACK_DATA = 'pg-cat_{url}'
+PRODUCT_FILTER_PAGINATE_CALLBACK_DATA = 'pg-pr-filter_{url}'
 
 CLIENT_CONNECTION_ERROR = '❗Ошибка соединения❗'
+ADD_TO_CART_ERROR = 'Ошибка добавления товара в корзину ❗'
+ADD_TO_FAVORITE_ERROR = 'Ошибка добавления товара в избранное ❗'
+
+WRITE_NAME_MESSAGE = '✏️ Укажите название товара:'
+WRITE_CHARGES_COUNT = '✏️ Укажите количество зарядов:'
+WRITE_CATEGORIES = '✏️ Укажите название категорий через пробел:'
+WRITE_ARTICLE = '✏️ Укажите артикул:'
+WRITE_TAGS = '📝 Укажите теги через пробел:'
+WRITE_MIN_PRICE = '💰 Укажите минимальную цену: 📉'
+WRITE_MAX_PRICE = '💰 Укажите максимальную цену: 📈'
+WRITE_ORDER_BY = '📝 Укажите поля для сортировки:'
+APPLY_FILTERS_BUTTON = '✅ Применить'
+CANCEL_FILTERS_BUTTON = '❌ Отменить'
+APPLY_FILTERS_MESSAGE = 'Применить полученные фильтры? 💎'
+CANCEL_FILTERS_MESSAGE = 'Фильтрация отменена! ❌'
+
+NOT_NUMERIC_TYPE_OF_CHARGES_COUNT_ERROR = (
+    '🔢 Количество зарядов должно быть целым положительным числом!'
+    ' Попробуйте ввести еще раз ☘️'
+)
+NOT_NUMERIC_TYPE_OF_PRICE_ERROR = (
+    '🔢 Цена должна быть положительным числом! Попробуйте ввести еще раз ☘️'
+)
 
 
 catalog_navigation_keyboard = [
@@ -130,14 +161,35 @@ catalog_navigation_keyboard = [
     ],
     [
         InlineKeyboardButton(
-            MAIN_MENU_MESSAGE, callback_data=MAIN_MENU_CALLBACK
+            MAIN_MENU_BACK_MESSAGE, callback_data=MAIN_MENU_CALLBACK
         )
     ],
 ]
 
 keyboard_back = [
-    [InlineKeyboardButton(MAIN_MENU_MESSAGE, callback_data='back')]
+    [
+        InlineKeyboardButton(
+            MAIN_MENU_BACK_MESSAGE, callback_data=MAIN_MENU_CALLBACK
+        )
+    ]
 ]
+
+filters_keyboard = [
+    [
+        InlineKeyboardButton(
+            APPLY_FILTERS_BUTTON, callback_data=APPLY_FILTERS_CALLBACK
+        )
+    ],
+    [
+        InlineKeyboardButton(
+            CANCEL_FILTERS_BUTTON, callback_data=CANCEL_FILTERS_CALLBACK
+        )
+    ],
+]
+
+main_menu_back_button = InlineKeyboardButton(
+    MAIN_MENU_BACK_MESSAGE, callback_data=MAIN_MENU_CALLBACK
+)
 
 
 def build_firework_card(fields: dict, full_info: bool = True) -> str:
@@ -214,7 +266,8 @@ def build_filter_params_keyboard(filter_param_name: str):
     keyboard = [
         [
             InlineKeyboardButton(
-                MAIN_MENU_MESSAGE, callback_data=f'back_to_{filter_param_name}'
+                MAIN_MENU_BACK_MESSAGE,
+                callback_data=f'back_to_{filter_param_name}',
             )
         ]
     ]
@@ -232,9 +285,9 @@ def go_back_button(message: str, back_point: str):
     return InlineKeyboardButton(message, callback_data=f'back_to_{back_point}')
 
 
-def add_to_card_button(firework_id: str):
+def add_to_cart_button(firework_id: str):
     return InlineKeyboardButton(
-        ADD_TO_CARD_MESSAGE, callback_data=f'add_to_cart_{firework_id}'
+        ADD_TO_CART_MESSAGE, callback_data=f'add_to_cart_{firework_id}'
     )
 
 
@@ -267,15 +320,15 @@ def build_show_all_products_keyboard(
     """
     firework_url = f'http://127.0.0.1:8000/fireworks/{firework_id}'
     return [
-        [add_to_card_button(firework_id), add_to_favorite_button(firework_id)],
+        [add_to_cart_button(firework_id), add_to_favorite_button(firework_id)],
         [firework_read_more_button(firework_url)],
     ]
 
 
 def build_read_more_about_keyboard(firework_id: str) -> None:
     return [
-        [add_to_card_button(firework_id), add_to_favorite_button(firework_id)],
-        [go_back_button(CATALOG_MESSAGE, CATALOG_CALLBACK)],
+        [add_to_cart_button(firework_id), add_to_favorite_button(firework_id)],
+        [go_back_button(CATALOG_BACK_MESSAGE, CATALOG_CALLBACK)],
     ]
 
 
@@ -326,30 +379,72 @@ async def add_to_cart(
 ) -> None:
     query = update.callback_query
     await query.answer()
-    async with aiohttp.ClientSession() as session:
-        try:
-            user_id_schema = UserIdentificationSchema(
-                telegram_id=int(update.effective_user.id)
-            )
-            user_id = await get_user_id(user_id_schema)
+    try:
+        async with aiohttp.ClientSession() as session:
+            # TODO добавить свое id
+            # telegram_id = int(query.data)
+            telegram_id = 10001
             firework_id = query.data.split('_')[-1]
-            async with session.get(
-                f'http://127.0.0.1:8000/fireworks/{firework_id}'
-            ) as response:
-                firework = await response.json()
-            firework_schema = FireworkNameSchema(
-                name=firework['name'], price=firework['price']
-            )
-            add_to_cart_data = dict(
-                create_data=firework_schema.dict(), user_ident=user_id
-            )
             async with session.post(
-                'http://127.0.0.1:8000/user/cart', json=add_to_cart_data
-            ) as response:
-                add_to_cart_message = await response.json()
-            await query.message.reply_text(add_to_cart_message)
-        except aiohttp.ClientError:
-            await query.message.reply_text('Ошибка добаления товара в корзину')
+                'http://127.0.0.1:8000/user/cart',
+                json=dict(
+                    create_data=dict(amount=1, firework_id=firework_id),
+                    user_ident=UserIdentificationSchema(
+                        telegram_id=telegram_id
+                    ).model_dump(),
+                ),
+            ):
+                new_keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            SUCCESS_ADD_MESSAGE,
+                            callback_data=ADD_TO_CART_CALLBACK.format(
+                                id=firework_id
+                            ),
+                        ),
+                        add_to_favorite_button(firework_id),
+                    ],
+                    [go_back_button(CATALOG_BACK_MESSAGE, CATALOG_CALLBACK)],
+                ]
+                await query.edit_message_reply_markup(
+                    reply_markup=InlineKeyboardMarkup(new_keyboard)
+                )
+    except Exception:
+        await query.message.reply_text(ADD_TO_CART_ERROR)
+
+
+async def add_to_favorite(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    query = update.callback_query
+    await query.answer()
+    try:
+        async with aiohttp.ClientSession() as session:
+            # TODO добавить свое id
+            # telegram_id = int(query.data)
+            telegram_id = 10001
+            firework_id = query.data.split('_')[-1]
+            async with session.post(
+                'http://127.0.0.1:8000/user/cart',
+                json=dict(telegram_id=telegram_id, firework_id=firework_id),
+            ):
+                new_keyboard = [
+                    [
+                        add_to_cart_button(firework_id),
+                        InlineKeyboardButton(
+                            SUCCESS_ADD_MESSAGE,
+                            callback_data=ADD_TO_FAVORITE_CALLBACK.format(
+                                id=firework_id
+                            ),
+                        ),
+                    ],
+                    [go_back_button(CATALOG_BACK_MESSAGE, CATALOG_CALLBACK)],
+                ]
+                await query.edit_message_reply_markup(
+                    reply_markup=InlineKeyboardMarkup(new_keyboard)
+                )
+    except Exception:
+        await query.message.reply_text(ADD_TO_FAVORITE_ERROR)
 
 
 async def catalog_menu(
@@ -359,7 +454,7 @@ async def catalog_menu(
     query = update.callback_query
     await query.answer()
     await query.edit_message_text(
-        'Каталог продуктов: ',
+        CATALOG_MESSAGE,
         reply_markup=InlineKeyboardMarkup(catalog_navigation_keyboard),
     )
 
@@ -381,8 +476,8 @@ async def get_paginated_response(
     query = update.callback_query
     await query.answer()
     next_page_url = previous_page_url = None
-    async with aiohttp.ClientSession() as session:
-        try:
+    try:
+        async with aiohttp.ClientSession() as session:
             if method == 'POST':
                 response_context_manager = await session.post(
                     url, json=request_data
@@ -394,7 +489,7 @@ async def get_paginated_response(
                     data = await response.json()
                     objects = data[object_key]
                     if not objects:
-                        await query.message.reply_text(EMPTY_QUERY)
+                        await query.message.reply_text(EMPTY_QUERY_MESSAGE)
                     for obj in objects:
                         caption = build_object_card(obj, full_info=full_info)
                         if obj.get('media'):
@@ -443,12 +538,12 @@ async def get_paginated_response(
                         ),
                         InlineKeyboardMarkup(keyboard_back),
                     )
-        except aiohttp.ClientError:
-            await send_callback_message(
-                query,
-                CLIENT_CONNECTION_ERROR,
-                InlineKeyboardMarkup(keyboard_back),
-            )
+    except Exception:
+        await send_callback_message(
+            query,
+            CLIENT_CONNECTION_ERROR,
+            InlineKeyboardMarkup(keyboard_back),
+        )
 
 
 async def show_all_products(
@@ -460,10 +555,10 @@ async def show_all_products(
     global_keyboard = [
         [
             InlineKeyboardButton(
-                CATALOG_MESSAGE, callback_data=CATALOG_CALLBACK
+                CATALOG_BACK_MESSAGE, callback_data=CATALOG_CALLBACK
             ),
             InlineKeyboardButton(
-                MAIN_MENU_MESSAGE, callback_data=MAIN_MENU_CALLBACK
+                MAIN_MENU_BACK_MESSAGE, callback_data=MAIN_MENU_CALLBACK
             ),
         ]
     ]
@@ -486,8 +581,8 @@ async def read_more_about_product(
     """Возвращает подробную информацию о конкретном продукте."""
     query = update.callback_query
     await query.answer()
-    async with aiohttp.ClientSession() as session:
-        try:
+    try:
+        async with aiohttp.ClientSession() as session:
             url = query.data.split('_')[-1]
             async with session.get(url) as response:
                 if response.status == HTTPStatus.OK:
@@ -507,12 +602,12 @@ async def read_more_about_product(
                         BAD_REQUEST_MESSAGE.format(code=response.status),
                         InlineKeyboardMarkup(keyboard_back),
                     )
-        except aiohttp.ClientError:
-            await send_callback_message(
-                query,
-                CLIENT_CONNECTION_ERROR,
-                InlineKeyboardMarkup(keyboard_back),
-            )
+    except Exception:
+        await send_callback_message(
+            query,
+            CLIENT_CONNECTION_ERROR,
+            InlineKeyboardMarkup(keyboard_back),
+        )
 
 
 async def show_all_categories(
@@ -523,22 +618,18 @@ async def show_all_categories(
     """Возвращает все категории."""
     query = update.callback_query
     await query.answer()
-    if context.user_data.get('categories_message_ids'):
-        for message_id in context.user_data['categories_message_ids']:
-            await context.bot.delete_message(
-                chat_id=update.effective_chat.id, message_id=message_id
-            )
     next_page_url = previous_page_url = None
-    global_keyboard = [[go_back_button(CATALOG_MESSAGE, CATALOG_CALLBACK)]]
-    async with aiohttp.ClientSession() as session:
-        try:
+    global_keyboard = [
+        [go_back_button(CATALOG_BACK_MESSAGE, CATALOG_CALLBACK)]
+    ]
+    try:
+        async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
-                message_ids = []
                 if response.status == HTTPStatus.OK:
                     data = await response.json()
                     categories = data['categories']
                     if not categories:
-                        await query.message.reply_text(EMPTY_QUERY)
+                        await query.message.reply_text(EMPTY_QUERY_MESSAGE)
                     keyboard = [
                         [
                             category_read_more_button(
@@ -547,13 +638,11 @@ async def show_all_categories(
                         ]
                         for category in categories
                     ]
-                    message = await send_callback_message(
+                    await send_callback_message(
                         query,
                         ALL_CATEGORIES_MESSAGE,
                         reply_markup=InlineKeyboardMarkup(keyboard),
                     )
-                    message_ids.append(message.id)
-                    context.user_data['categories_message_ids'] = message_ids
                     next_page_url = data['next_page_url']
                     previous_page_url = data['previous_page_url']
                     if next_page_url:
@@ -584,18 +673,17 @@ async def show_all_categories(
                         InlineKeyboardMarkup(global_keyboard),
                     )
                 else:
-                    context.user_data['categories_message_ids'] = message_ids
                     await send_callback_message(
                         query,
                         BAD_REQUEST_MESSAGE.format(code=response.status),
                         InlineKeyboardMarkup(keyboard_back),
                     )
-        except aiohttp.ClientError:
-            await send_callback_message(
-                query,
-                CLIENT_CONNECTION_ERROR,
-                InlineKeyboardMarkup(keyboard_back),
-            )
+    except Exception:
+        await send_callback_message(
+            query,
+            CLIENT_CONNECTION_ERROR,
+            InlineKeyboardMarkup(keyboard_back),
+        )
 
 
 async def show_categories_fireworks(
@@ -616,7 +704,9 @@ async def show_categories_fireworks(
         object_key='fireworks',
         object_keyboard_builder=build_show_all_products_keyboard,
         build_object_card=build_firework_card,
-        global_keyboard=build_back_keyboard(CATALOG_MESSAGE, CATALOG_CALLBACK),
+        global_keyboard=build_back_keyboard(
+            CATALOG_BACK_MESSAGE, CATALOG_CALLBACK
+        ),
         paginate_callback_data_pattern=PRODUCT_PAGINATE_CALLBACK_DATA,
     )
 
@@ -643,14 +733,23 @@ async def pagination_handler(
         await show_all_products(update, context, url)
     elif target_pagination_point == 'pg-cat':
         await show_all_categories(update, context, url)
+    elif target_pagination_point == 'pg-pr-filter':
+        await apply_filters(
+            update, context, url, request_data=context.user_data['filter']
+        )
 
 
-async def cancel_filtering(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cancel_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     await query.message.reply_text(
-        'Фильтрация отменена!',
-        reply_markup=InlineKeyboardMarkup(keyboard_back),
+        CANCEL_FILTERS_MESSAGE,
+        reply_markup=InlineKeyboardMarkup([
+            [
+                main_menu_back_button,
+                go_back_button(CATALOG_MESSAGE, CATALOG_CALLBACK),
+            ]
+        ]),
     )
     return ConversationHandler.END
 
@@ -660,7 +759,7 @@ def build_filter_params_keyboard(handler_name: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                '⏭️ Пропустить', callback_data=f'skip_{handler_name}'
+                SKIP_MESSAGE, callback_data=f'skip_{handler_name}'
             )
         ]
     ])
@@ -702,6 +801,7 @@ async def check_float_and_int_type(
     needed_type: Union[int, float],
     error_message: str,
 ):
+    """Проверяет checked_value на числовой тип."""
     try:
         value = needed_type(checked_value)
         if value < 0:
@@ -727,7 +827,7 @@ async def selection_by_parameters(
     await query.answer()
     context.user_data['filter'] = dict()
     await query.message.reply_text(
-        '✏️ Укажите название товара:',
+        WRITE_NAME_MESSAGE,
         reply_markup=build_filter_params_keyboard('name'),
     )
     return NAME
@@ -738,7 +838,7 @@ async def select_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update,
         context,
         next_step=CHARGES_COUNT,
-        next_question='✏️ Укажите количество зарядов:',
+        next_question=WRITE_CHARGES_COUNT,
         field_name='name',
         next_field_name='charges_count',
         value=update.message.text,
@@ -750,7 +850,7 @@ async def skip_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update,
         context,
         next_step=CHARGES_COUNT,
-        next_question='✏️ Укажите количество зарядов:',
+        next_question=WRITE_CHARGES_COUNT,
         field_name='name',
         next_field_name='charges_count',
         value=None,
@@ -765,14 +865,11 @@ async def select_charges_count(
         context,
         next_step=CATEGORIES,
         current_step=CHARGES_COUNT,
-        next_question='✏️ Укажите название категорий через пробел:',
+        next_question=WRITE_CATEGORIES,
         field_name='charges_count',
         next_field_name='categories',
         checked_value=update.message.text,
-        error_message=(
-            '🔢 Количество зарядов должно быть целым положительным числом!'
-            ' Попробуйте ввести еще раз ☘️'
-        ),
+        error_message=NOT_NUMERIC_TYPE_OF_CHARGES_COUNT_ERROR,
         needed_type=int,
     )
 
@@ -784,7 +881,7 @@ async def skip_charges_count(
         update,
         context,
         next_step=CATEGORIES,
-        next_question='Укажите название категорий через пробел:',
+        next_question=WRITE_CATEGORIES,
         field_name='charges_count',
         next_field_name='categories',
         value=None,
@@ -798,7 +895,7 @@ async def select_categories(
         update,
         context,
         next_step=ARTICLE,
-        next_question='✏️ Укажите артикул:',
+        next_question=WRITE_ARTICLE,
         field_name='categories',
         next_field_name='article',
         value=update.message.text.split(),
@@ -810,7 +907,7 @@ async def skip_categories(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update,
         context,
         next_step=ARTICLE,
-        next_question='✏️ Укажите артикул:',
+        next_question=WRITE_ARTICLE,
         field_name='categories',
         next_field_name='article',
         value=None,
@@ -822,7 +919,7 @@ async def select_article(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update,
         context,
         next_step=TAGS,
-        next_question='📝 Укажите теги через пробел:',
+        next_question=WRITE_TAGS,
         field_name='article',
         next_field_name='tags',
         value=update.message.text.split(),
@@ -834,7 +931,7 @@ async def skip_article(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update,
         context,
         next_step=TAGS,
-        next_question='📝 Укажите теги через пробел:',
+        next_question=WRITE_TAGS,
         field_name='article',
         next_field_name='tags',
         value=None,
@@ -846,7 +943,7 @@ async def select_tags(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update,
         context,
         next_step=MIN_RPICE,
-        next_question='💰 Укажите минимальную цену: 📉',
+        next_question=WRITE_MIN_PRICE,
         field_name='tags',
         next_field_name='min_price',
         value=update.message.text,
@@ -858,7 +955,7 @@ async def skip_tags(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update,
         context,
         next_step=MIN_RPICE,
-        next_question='💰 Укажите минимальную цену: 📉',
+        next_question=WRITE_MIN_PRICE,
         field_name='tags',
         next_field_name='min_price',
         value=None,
@@ -871,14 +968,11 @@ async def select_min_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context,
         next_step=MAX_RPICE,
         current_step=MIN_RPICE,
-        next_question='💰 Укажите максимальную цену: 📈',
+        next_question=WRITE_MAX_PRICE,
         field_name='min_price',
         next_field_name='max_price',
         checked_value=update.message.text,
-        error_message=(
-            '🔢 Цена должна быть положительным числом!'
-            ' Попробуйте ввести еще раз ☘️'
-        ),
+        error_message=NOT_NUMERIC_TYPE_OF_PRICE_ERROR,
         needed_type=float,
     )
 
@@ -888,7 +982,7 @@ async def skip_min_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update,
         context,
         next_step=MAX_RPICE,
-        next_question='💰 Укажите максимальную цену: 📈',
+        next_question=WRITE_MAX_PRICE,
         field_name='min_price',
         next_field_name='max_price',
         value=None,
@@ -901,14 +995,11 @@ async def select_max_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context,
         next_step=ORDER_BY,
         current_step=MAX_RPICE,
-        next_question='📝 Укажите поля для сортировки:',
+        next_question=WRITE_ORDER_BY,
         field_name='max_price',
         next_field_name='order_by',
         checked_value=update.message.text,
-        error_message=(
-            '🔢 Цена должна быть положительным числом!'
-            ' Попробуйте ввести еще раз ☘️'
-        ),
+        error_message=NOT_NUMERIC_TYPE_OF_PRICE_ERROR,
         needed_type=float,
     )
 
@@ -918,7 +1009,7 @@ async def skip_max_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update,
         context,
         next_step=ORDER_BY,
-        next_question='📝 Укажите поля для сортировки:',
+        next_question=WRITE_ORDER_BY,
         field_name='max_price',
         next_field_name='order_by',
         value=None,
@@ -933,17 +1024,9 @@ async def select_order_by(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         message_edit = update.message.reply_text
     context.user_data['filter']['order_by'] = update.message.text.split()
-    keyboard = [
-        [InlineKeyboardButton('✅ Применить', callback_data='apply_filters')],
-        [
-            InlineKeyboardButton(
-                '❌ Отменить', callback_data='cancel_filtering'
-            )
-        ],
-    ]
     await message_edit(
-        'Применить полученные фильтры? 💎',
-        reply_markup=InlineKeyboardMarkup(keyboard),
+        APPLY_FILTERS_MESSAGE,
+        reply_markup=InlineKeyboardMarkup(filters_keyboard),
     )
     return APPLY
 
@@ -955,46 +1038,43 @@ async def skip_order_by(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message_edit = query.edit_message_text
     else:
         message_edit = update.message.reply_text
-    keyboard = [
-        [InlineKeyboardButton('✅ Применить', callback_data='apply_filters')],
-        [
-            InlineKeyboardButton(
-                '❌ Отменить', callback_data='cancel_filtering'
-            )
-        ],
-    ]
     await message_edit(
-        'Применить полученные фильтры?',
-        reply_markup=InlineKeyboardMarkup(keyboard),
+        APPLY_FILTERS_MESSAGE,
+        reply_markup=InlineKeyboardMarkup(filters_keyboard),
     )
     return APPLY
 
 
 async def apply_filters(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    url: str = 'http://127.0.0.1:8000/fireworks',
+    request_data: dict = None,
 ) -> None:
-    filter_data = context.user_data['filter']
+    if not request_data:
+        filter_data = context.user_data['filter']
+    else:
+        filter_data = request_data
     global_keyboard = [
         [
             InlineKeyboardButton(
-                CATALOG_MESSAGE, callback_data=CATALOG_CALLBACK
+                CATALOG_BACK_MESSAGE, callback_data=CATALOG_CALLBACK
             ),
             InlineKeyboardButton(
-                MAIN_MENU_MESSAGE, callback_data=MAIN_MENU_CALLBACK
+                MAIN_MENU_BACK_MESSAGE, callback_data=MAIN_MENU_CALLBACK
             ),
         ]
     ]
     await get_paginated_response(
         update=update,
         context=context,
-        url='http://127.0.0.1:8000/fireworks',
+        url=url,
         method='POST',
         object_key='fireworks',
-        message_ids_key='fireworks_message_ids',
         object_keyboard_builder=build_show_all_products_keyboard,
         build_object_card=build_firework_card,
         global_keyboard=global_keyboard,
-        paginate_callback_data_pattern=PRODUCT_PAGINATE_CALLBACK_DATA,
+        paginate_callback_data_pattern=PRODUCT_FILTER_PAGINATE_CALLBACK_DATA,
         request_data=filter_data,
     )
     return ConversationHandler.END
@@ -1030,6 +1110,9 @@ def catalog_register(application: ApplicationBuilder) -> None:
     )
     application.add_handler(
         CallbackQueryHandler(add_to_cart, pattern='^add_to_cart')
+    )
+    application.add_handler(
+        CallbackQueryHandler(add_to_favorite, pattern='^add_to_favorite')
     )
     conversation_handler = ConversationHandler(
         entry_points=[
@@ -1079,12 +1162,14 @@ def catalog_register(application: ApplicationBuilder) -> None:
                 CallbackQueryHandler(skip_order_by, pattern='^skip_order_by$'),
             ],
             APPLY: [
-                CallbackQueryHandler(apply_filters, pattern='^apply_filters$')
+                CallbackQueryHandler(
+                    apply_filters, pattern=f'^{APPLY_FILTERS_CALLBACK}$'
+                )
             ],
         },
         fallbacks=[
             CallbackQueryHandler(
-                cancel_filtering, pattern='^cancel_filtering$'
+                cancel_filters, pattern=f'^{CANCEL_FILTERS_CALLBACK}$'
             )
         ],
     )

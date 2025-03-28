@@ -47,10 +47,10 @@ async def get_сategories(
     Доступен всем пользователям.
     """
     pagination_schema = PaginationSchema(offset=offset, limit=limit)
-    categories = await category_crud.get_multi(
+    categories, categories_count = await category_crud.get_multi(
         session, pagination_schema=pagination_schema
     )
-    categories_count = await category_crud.get_count(session)
+    # categories_count = await category_crud.get_count(session)
     previous_page_url, next_page_url, pages_count = build_next_and_prev_urls(
         offset, limit, categories_count, str(request.url)
     )
@@ -98,12 +98,12 @@ async def get_fireworks(
     Доступен всем пользователям.
     """
     pagination_schema = PaginationSchema(offset=offset, limit=limit)
-    fireworks = await firework_crud.get_multi(
+    fireworks, fireworks_count = await firework_crud.get_multi(
         session,
         pagination_schema=pagination_schema,
         filter_schema=filter_schema,
     )
-    fireworks_count = await firework_crud.get_count(session)
+    # fireworks_count = await firework_crud.get_count(session)
     previous_page_url, next_page_url, pages_count = build_next_and_prev_urls(
         offset, limit, fireworks_count, str(request.url)
     )
@@ -134,12 +134,12 @@ async def get_fireworks_by_category_name(
     category = await category_crud.get(category_id, session)
     pagination_schema = PaginationSchema(offset=offset, limit=limit)
     filter_schema = FireworkFilterSchema(categories=[category.name])
-    fireworks = await firework_crud.get_multi(
+    fireworks, fireworks_count = await firework_crud.get_multi(
         session,
         pagination_schema=pagination_schema,
         filter_schema=filter_schema,
     )
-    fireworks_count = len(fireworks)
+    # fireworks_count = len(fireworks)
     previous_page_url, next_page_url, pages_count = build_next_and_prev_urls(
         offset, limit, fireworks_count, str(request.url)
     )
