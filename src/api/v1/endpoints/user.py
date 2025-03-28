@@ -20,6 +20,7 @@ from src.database.db_dependencies import get_async_session
 from src.models import User
 from src.schemas.user import (
     AdminUserUpdate,
+    BaseUserUpdate,
     UserCreate,
     UserRead,
     UserReadForTelegram,
@@ -45,6 +46,31 @@ async def get_user(
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
     return user
+
+
+@router.patch(
+    '/users/{user_telegram_id}',
+    status_code=status.HTTP_200_OK,
+    response_model=UserReadForTelegram,
+    responses={
+        404: {'description': 'User not found'},
+        403: {'description': 'Forbidden'},
+    },
+)
+async def update_user_parameters(
+    user_telegram_id: int,
+    update_data: BaseUserUpdate,
+    session: AsyncSession = Depends(get_async_session),
+):
+    user = await user_crud.get_user_by_telegram_id(
+        session=session, telegram_id=user_telegram_id
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    return await user_crud.telegram_update(
+        session=session, db_obj=user, obj_in=update_data
+    )
 
 
 @router.post(
@@ -103,11 +129,6 @@ async def update_user_profile(
 ):
     """Обновить профиль пользователя, включая адрес."""
     await user_manager.update(
-        user_update=schema,
-        user=telegram_user,
-        safe=True,
-    )
-    return await user_manager.update(
         user_update=schema,
         user=telegram_user,
         safe=True,
