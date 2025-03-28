@@ -30,7 +30,7 @@ router = APIRouter()
 
 
 @router.get(
-    '/сategories',
+    '/categories',
     status_code=status.HTTP_200_OK,
     response_model=dict[str, Union[list[CategoryDB], str, int, None]],
 )

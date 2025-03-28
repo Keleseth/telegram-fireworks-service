@@ -1,67 +1,178 @@
 """Файл с обработчиками кнопок для каталога."""
 
 from http import HTTPStatus
+from typing import Any, Callable, Union
 
 import aiohttp
 from telegram import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    InputMediaPhoto,
+    InputMediaVideo,
     Message,
     Update,
 )
-from telegram.ext import ApplicationBuilder, CallbackQueryHandler, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder,
+    CallbackQueryHandler,
+    ContextTypes,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
 
-from src.bot.keyboards import keyboard_back
 from src.bot.utils import croling_content
+from src.database.db_dependencies import get_user_id
+from src.schemas.cart import FireworkNameSchema, UserIdentificationSchema
+
+TELEGRAM_MEDIA_LIMIT = 10
+PHOTO_FORMATS = ('.jpg', '.jpeg', 'png')
+VIDEO_FORMATS = ('.mp4', '.mov')
+
+TEXT_FILTER = filters.TEXT & ~filters.COMMAND
+
+(
+    NAME,
+    CHARGES_COUNT,
+    CATEGORIES,
+    ARTICLE,
+    TAGS,
+    MIN_RPICE,
+    MAX_RPICE,
+    ORDER_BY,
+    APPLY,
+    CANCEL,
+) = range(10)
 
 FIREWORK_CARD = """
 🎆 *{name}* 🎆
 ────────────────
-🔢 **Код товара:** `{code}`
-📏 **Единица измерения:** {measurement_unit}
-📝 **Описание:** {description}
-🏷️ **Категория:** {category_id}
-📦 **Размер продукта:** {product_size}
-📦 **Упаковочный материал:** {packing_material}
-💥 **Количество зарядов:** {charges_count}
-✨ **Количество эффектов:** {effects_count}
-🔢 **Артикул:** `{article}`
+💰 Цена: {price} ₽
+🏷️ Акции: {discounts}
+📝 Описание: {description}
+────────────────
+🏷️ Категория: {category_id}
+🏷️ Теги: {tags}
+────────────────
+⚖️ Единица измерения: {measurement_unit}
+📦 Размер продукта: {product_size}
+📦 Упаковочный материал: {packing_material}
+💥 Количество зарядов: {charges_count}
+✨ Количество эффектов: {effects_count}
+🔢 Артикул: `{article}`
 ────────────────
 """
 
-
-CATEGORY_CARD = """
-📂 *{name}*
-
-🆔 **ID:** `{id}`
-📂 **Родительская категория ID:** {parent_category_id}
+FIREWORK_SHORT_CARD = """
+🎆 {name} 🎆
+────────────────
+💰 Цена: {price} ₽
+🏷️ Акции: {discounts}
 """
 
+DISCOUNTS_LINE = """
+🏷️ Скидки: {discounts}
+"""
 
-navigation_keyboard = [
-    [InlineKeyboardButton('Весь каталог', callback_data='all_catalog')],
-    [InlineKeyboardButton('Категории', callback_data='all_categories')],
-    [InlineKeyboardButton('Подбор по параметрам', callback_data='parameters')],
-    [InlineKeyboardButton('Назад', callback_data='back')],
+CATEGORY_CARD = """
+💥 {name}
+"""
+
+CATALOG_CALLBACK = 'catalog'
+ALL_PRODUCTS_CALLBACK = 'all_products'
+ALL_CATEGORIES_CALLBACK = 'all_categories'
+PARAMETERS_CALLBACK = 'parameters'
+MAIN_MENU_CALLBACK = 'back'
+
+ALL_CATEGORIES_MESSAGE = '📋 Список категорий'
+ALL_PRODUCTS_MESSAGE = '✨ Все товары'
+CATEGORY_MESSAGE = '✨ Категории'
+PARAMETERS_MESSAGE = '✨ Подбор по параметрам'
+NEXT_PAGINATION_MESSAGE = '➡️ Следующая'
+PREV_PAGINATION_MESSAGE = '⬅️ Предыдущая'
+CATALOG_MESSAGE = '📋 В каталог'
+ADD_TO_CARD_MESSAGE = '🛒 В корзину'
+ADD_TO_FAVORITE_MESSAGE = '✅ В избранное'
+MAIN_MENU_MESSAGE = '🏠 Перейти в главное меню'
+NAVIGATION_MESSAGE = '🤖 Навигация'
+BAD_REQUEST_MESSAGE = 'Ошибка❗ Код: {code}. Вернуться в меню каталога:'
+READ_MORE_MESSAGE = '📖 Подробнее'
+EMPTY_QUERY = 'По вашему запросу ничего не найдено ⚠️'
+
+EMPTY_DESCRIPTION_MESSAGE = 'Описание в разработке'
+EMPTY_PRICE_MESSAGE = 'Цена за товар не указана'
+EMPTY_TAGS_MESSAGE = 'Для товара теги не указаны'
+EMPTY_PACKING_MATERIAL_MESSAGE = 'Материал упаковки не указан'
+EMPTY_DISCOUNS_MESSAGE = 'Скоро появятся 🎆'
+
+PRODUCT_PAGINATE_CALLBACK_DATA = 'pg-pr_{url}'
+CATEGORY_PAGINATE_CALLBACK_DATA = 'pg-cat_{url}'
+
+CLIENT_CONNECTION_ERROR = '❗Ошибка соединения❗'
+
+
+catalog_navigation_keyboard = [
+    [
+        InlineKeyboardButton(
+            ALL_PRODUCTS_MESSAGE, callback_data=ALL_PRODUCTS_CALLBACK
+        )
+    ],
+    [
+        InlineKeyboardButton(
+            CATEGORY_MESSAGE, callback_data=ALL_CATEGORIES_CALLBACK
+        )
+    ],
+    [
+        InlineKeyboardButton(
+            PARAMETERS_MESSAGE, callback_data=PARAMETERS_CALLBACK
+        )
+    ],
+    [
+        InlineKeyboardButton(
+            MAIN_MENU_MESSAGE, callback_data=MAIN_MENU_CALLBACK
+        )
+    ],
+]
+
+keyboard_back = [
+    [InlineKeyboardButton(MAIN_MENU_MESSAGE, callback_data='back')]
 ]
 
 
-def build_firework_card(fields: dict) -> str:
-    """Заполняет карточку пролукта."""
+def build_firework_card(fields: dict, full_info: bool = True) -> str:
+    """Заполняет карточку продукта."""
+    if not fields['discounts']:
+        fields['discounts'] = croling_content(EMPTY_DISCOUNS_MESSAGE)
+    else:
+        fields['discounts'] = ', '.join([
+            f'✅ {discount["type"]}' for discount in fields['discounts']
+        ])
+    if not full_info:
+        return FIREWORK_SHORT_CARD.format(
+            name=fields['name'],
+            price=croling_content(fields['price']),
+            discounts=fields['discounts'],
+        )
     if not fields['description']:
-        fields['description'] = croling_content('Описание в разработке')
+        fields['description'] = croling_content(EMPTY_DESCRIPTION_MESSAGE)
     if not fields['price']:
-        fields['price'] = croling_content('Цена за товар не указана')
+        fields['price'] = croling_content(EMPTY_PRICE_MESSAGE)
     if not fields['tags']:
-        fields['tags'] = croling_content('Для товара теги не указаны')
+        fields['tags'] = croling_content(EMPTY_TAGS_MESSAGE)
+    else:
+        fields['tags'] = ', '.join(
+            f'💥 `{tag["name"]}`' for tag in fields['tags']
+        )
     if not fields['packing_material']:
         fields['packing_material'] = croling_content(
-            'Материал упаковки не указан'
+            EMPTY_PACKING_MATERIAL_MESSAGE
         )
     return FIREWORK_CARD.format(
         name=fields['name'],
         code=fields['code'],
+        price=croling_content(fields['price']),
+        discounts=fields['discounts'],
         measurement_unit=fields['measurement_unit'],
         description=fields['description'],
         category_id=fields['category_id'],
@@ -70,10 +181,11 @@ def build_firework_card(fields: dict) -> str:
         charges_count=fields['charges_count'],
         effects_count=fields['effects_count'],
         article=fields['article'],
+        tags=fields['tags'],
     )
 
 
-def build_category_card(fields: dict) -> str:
+def build_category_card(fields: dict, full_info: bool = True) -> str:
     """Заполняет карточку категории."""
     return CATEGORY_CARD.format(
         name=fields['name'],
@@ -102,7 +214,7 @@ def build_filter_params_keyboard(filter_param_name: str):
     keyboard = [
         [
             InlineKeyboardButton(
-                'Назад', callback_data=f'back_to_{filter_param_name}'
+                MAIN_MENU_MESSAGE, callback_data=f'back_to_{filter_param_name}'
             )
         ]
     ]
@@ -113,12 +225,38 @@ def build_back_keyboard(
     message: str, back_point: str
 ) -> list[InlineKeyboardButton]:
     """Строит клавиатуру с кнопкой `назад`."""
-    return [
-        [InlineKeyboardButton(message, callback_data=f'back_to_{back_point}')]
-    ]
+    return [[go_back_button(message, back_point)]]
 
 
-def build_cart_and_favorite_keyboard(
+def go_back_button(message: str, back_point: str):
+    return InlineKeyboardButton(message, callback_data=f'back_to_{back_point}')
+
+
+def add_to_card_button(firework_id: str):
+    return InlineKeyboardButton(
+        ADD_TO_CARD_MESSAGE, callback_data=f'add_to_cart_{firework_id}'
+    )
+
+
+def add_to_favorite_button(firework_id: str):
+    return InlineKeyboardButton(
+        ADD_TO_FAVORITE_MESSAGE, callback_data=f'add_to_favorite_{firework_id}'
+    )
+
+
+def firework_read_more_button(firework_url: str):
+    return InlineKeyboardButton(
+        READ_MORE_MESSAGE, callback_data=f'firework_{firework_url}'
+    )
+
+
+def category_read_more_button(category_card: int, category_url: str):
+    return InlineKeyboardButton(
+        category_card, callback_data=f'categories_fireworks_{category_url}'
+    )
+
+
+def build_show_all_products_keyboard(
     firework_id: str,
 ) -> list[InlineKeyboardButton]:
     """Функция для построения клавиатуры.
@@ -127,18 +265,91 @@ def build_cart_and_favorite_keyboard(
         1. В корзину.
         2. В избранное.
     """
+    firework_url = f'http://127.0.0.1:8000/fireworks/{firework_id}'
+    return [
+        [add_to_card_button(firework_id), add_to_favorite_button(firework_id)],
+        [firework_read_more_button(firework_url)],
+    ]
+
+
+def build_read_more_about_keyboard(firework_id: str) -> None:
+    return [
+        [add_to_card_button(firework_id), add_to_favorite_button(firework_id)],
+        [go_back_button(CATALOG_MESSAGE, CATALOG_CALLBACK)],
+    ]
+
+
+def build_show_all_categories_keyboard(
+    category_card: int, category_id: str
+) -> list[InlineKeyboardButton]:
+    """Функция для построения клавиатуры.
+
+    Кнопки:
+        1. В корзину.
+        2. В избранное.
+    """
+    return [[category_read_more_button(category_card, category_id)]]
+
+
+def build_read_more_keyboard(category_id: str) -> list[InlineKeyboardButton]:
     return [
         [
             InlineKeyboardButton(
-                'В корзину', callback_data=f'add_to_cart_{firework_id}'
+                READ_MORE_MESSAGE,
+                callback_data=f'categories_fireworks_{category_id}',
             )
-        ],
-        [
-            InlineKeyboardButton(
-                'В избранное', callback_data=f'add_to_favorite_{firework_id}'
-            )
-        ],
+        ]
     ]
+
+
+async def show_media(
+    query: CallbackQuery,
+    context: ContextTypes.DEFAULT_TYPE,
+    media_list: list[str],
+):
+    media_group = []
+    media_urls = [media['media_url'] for media in media_list][
+        :TELEGRAM_MEDIA_LIMIT
+    ]
+    for media_url in media_urls:
+        if media_url.endswith(PHOTO_FORMATS):
+            media_group.append(InputMediaPhoto(media=media_url, caption=None))
+        elif media_url.endswith(VIDEO_FORMATS):
+            media_group.append(InputMediaVideo(media=media_url, caption=None))
+    await context.bot.send_media_group(
+        chat_id=query.message.chat_id, media=media_group
+    )
+
+
+async def add_to_cart(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    query = update.callback_query
+    await query.answer()
+    async with aiohttp.ClientSession() as session:
+        try:
+            user_id_schema = UserIdentificationSchema(
+                telegram_id=int(update.effective_user.id)
+            )
+            user_id = await get_user_id(user_id_schema)
+            firework_id = query.data.split('_')[-1]
+            async with session.get(
+                f'http://127.0.0.1:8000/fireworks/{firework_id}'
+            ) as response:
+                firework = await response.json()
+            firework_schema = FireworkNameSchema(
+                name=firework['name'], price=firework['price']
+            )
+            add_to_cart_data = dict(
+                create_data=firework_schema.dict(), user_ident=user_id
+            )
+            async with session.post(
+                'http://127.0.0.1:8000/user/cart', json=add_to_cart_data
+            ) as response:
+                add_to_cart_message = await response.json()
+            await query.message.reply_text(add_to_cart_message)
+        except aiohttp.ClientError:
+            await query.message.reply_text('Ошибка добаления товара в корзину')
 
 
 async def catalog_menu(
@@ -149,8 +360,95 @@ async def catalog_menu(
     await query.answer()
     await query.edit_message_text(
         'Каталог продуктов: ',
-        reply_markup=InlineKeyboardMarkup(navigation_keyboard),
+        reply_markup=InlineKeyboardMarkup(catalog_navigation_keyboard),
     )
+
+
+async def get_paginated_response(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    url: str,
+    object_key: str,
+    object_keyboard_builder: Callable[[str], list[InlineKeyboardButton]],
+    build_object_card: Callable[[dict], str],
+    global_keyboard: list[InlineKeyboardButton],
+    paginate_callback_data_pattern: str,
+    method: str = 'GET',
+    full_info: bool = False,
+    request_data: dict = None,
+) -> None:
+    """Базовая функция для возвращения списка объектов с пагинацией."""
+    query = update.callback_query
+    await query.answer()
+    next_page_url = previous_page_url = None
+    async with aiohttp.ClientSession() as session:
+        try:
+            if method == 'POST':
+                response_context_manager = await session.post(
+                    url, json=request_data
+                )
+            else:
+                response_context_manager = await session.get(url)
+            async with response_context_manager as response:
+                if response.status == HTTPStatus.OK:
+                    data = await response.json()
+                    objects = data[object_key]
+                    if not objects:
+                        await query.message.reply_text(EMPTY_QUERY)
+                    for obj in objects:
+                        caption = build_object_card(obj, full_info=full_info)
+                        if obj.get('media'):
+                            await show_media(query, context, obj['media'])
+                        await send_callback_message(
+                            query,
+                            caption,
+                            reply_markup=InlineKeyboardMarkup(
+                                object_keyboard_builder(obj['id'])
+                            ),
+                        )
+                    next_page_url = data['next_page_url']
+                    previous_page_url = data['previous_page_url']
+                    if next_page_url:
+                        global_keyboard.append([
+                            InlineKeyboardButton(
+                                NEXT_PAGINATION_MESSAGE,
+                                callback_data=(
+                                    paginate_callback_data_pattern.format(
+                                        url=next_page_url
+                                    )
+                                ),
+                            )
+                        ])
+                    if previous_page_url:
+                        global_keyboard.append([
+                            InlineKeyboardButton(
+                                PREV_PAGINATION_MESSAGE,
+                                callback_data=(
+                                    paginate_callback_data_pattern.format(
+                                        url=previous_page_url
+                                    )
+                                ),
+                            )
+                        ])
+                    await send_callback_message(
+                        query,
+                        NAVIGATION_MESSAGE,
+                        InlineKeyboardMarkup(global_keyboard),
+                    )
+                else:
+                    await send_callback_message(
+                        query,
+                        croling_content(
+                            BAD_REQUEST_MESSAGE.format(code=response.status)
+                        ),
+                        InlineKeyboardMarkup(keyboard_back),
+                    )
+        except aiohttp.ClientError:
+            await send_callback_message(
+                query,
+                CLIENT_CONNECTION_ERROR,
+                InlineKeyboardMarkup(keyboard_back),
+            )
 
 
 async def show_all_products(
@@ -159,57 +457,167 @@ async def show_all_products(
     url: str | None = 'http://127.0.0.1:8000/fireworks',
 ) -> None:
     """Возвращает весь список товаров."""
+    global_keyboard = [
+        [
+            InlineKeyboardButton(
+                CATALOG_MESSAGE, callback_data=CATALOG_CALLBACK
+            ),
+            InlineKeyboardButton(
+                MAIN_MENU_MESSAGE, callback_data=MAIN_MENU_CALLBACK
+            ),
+        ]
+    ]
+    await get_paginated_response(
+        update=update,
+        context=context,
+        url=url,
+        method='POST',
+        object_key='fireworks',
+        object_keyboard_builder=build_show_all_products_keyboard,
+        build_object_card=build_firework_card,
+        global_keyboard=global_keyboard,
+        paginate_callback_data_pattern=PRODUCT_PAGINATE_CALLBACK_DATA,
+    )
+
+
+async def read_more_about_product(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Возвращает подробную информацию о конкретном продукте."""
     query = update.callback_query
     await query.answer()
-    if context.user_data.get('message_ids'):
-        for message_id in context.user_data['message_ids']:
+    async with aiohttp.ClientSession() as session:
+        try:
+            url = query.data.split('_')[-1]
+            async with session.get(url) as response:
+                if response.status == HTTPStatus.OK:
+                    firework = await response.json()
+                    if firework.get('media'):
+                        await show_media(query, context, firework['media'])
+                    await send_callback_message(
+                        query,
+                        build_firework_card(firework, full_info=True),
+                        reply_markup=InlineKeyboardMarkup(
+                            build_read_more_about_keyboard(firework['id'])
+                        ),
+                    )
+                else:
+                    await send_callback_message(
+                        query,
+                        BAD_REQUEST_MESSAGE.format(code=response.status),
+                        InlineKeyboardMarkup(keyboard_back),
+                    )
+        except aiohttp.ClientError:
+            await send_callback_message(
+                query,
+                CLIENT_CONNECTION_ERROR,
+                InlineKeyboardMarkup(keyboard_back),
+            )
+
+
+async def show_all_categories(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    url: str | None = 'http://127.0.0.1:8000/categories',
+) -> None:
+    """Возвращает все категории."""
+    query = update.callback_query
+    await query.answer()
+    if context.user_data.get('categories_message_ids'):
+        for message_id in context.user_data['categories_message_ids']:
             await context.bot.delete_message(
                 chat_id=update.effective_chat.id, message_id=message_id
             )
     next_page_url = previous_page_url = None
+    global_keyboard = [[go_back_button(CATALOG_MESSAGE, CATALOG_CALLBACK)]]
     async with aiohttp.ClientSession() as session:
-        async with session.post(url) as response:
-            if response.status == HTTPStatus.OK:
-                data = await response.json()
-                fireworks = data['fireworks']
+        try:
+            async with session.get(url) as response:
                 message_ids = []
-                for firework in fireworks:
+                if response.status == HTTPStatus.OK:
+                    data = await response.json()
+                    categories = data['categories']
+                    if not categories:
+                        await query.message.reply_text(EMPTY_QUERY)
+                    keyboard = [
+                        [
+                            category_read_more_button(
+                                build_category_card(category), category['id']
+                            )
+                        ]
+                        for category in categories
+                    ]
                     message = await send_callback_message(
                         query,
-                        build_firework_card(firework),
-                        reply_markup=InlineKeyboardMarkup(
-                            build_cart_and_favorite_keyboard(
-                                firework_id=firework['id']
-                            )
-                        ),
+                        ALL_CATEGORIES_MESSAGE,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
                     )
                     message_ids.append(message.id)
-                context.user_data['message_ids'] = message_ids
-                if data.get('next_page_url'):
+                    context.user_data['categories_message_ids'] = message_ids
                     next_page_url = data['next_page_url']
-                if data.get('previous_page_url'):
                     previous_page_url = data['previous_page_url']
-            else:
-                context.user_data['message_ids'] = message_ids
-                await query.message.reply_text(
-                    'Ошибка запроса. Вернуться в меню каталога:',
-                    reply_markup=InlineKeyboardMarkup(keyboard_back),
-                )
-    keyboard = build_back_keyboard('В каталог', 'catalog')
-    if next_page_url:
-        keyboard.append([
-            InlineKeyboardButton(
-                'Вперёд', callback_data=f'pg-pr_{next_page_url}'
+                    if next_page_url:
+                        global_keyboard.append([
+                            InlineKeyboardButton(
+                                NEXT_PAGINATION_MESSAGE,
+                                callback_data=(
+                                    CATEGORY_PAGINATE_CALLBACK_DATA.format(
+                                        url=next_page_url
+                                    )
+                                ),
+                            )
+                        ])
+                    if previous_page_url:
+                        global_keyboard.append([
+                            InlineKeyboardButton(
+                                PREV_PAGINATION_MESSAGE,
+                                callback_data=(
+                                    CATEGORY_PAGINATE_CALLBACK_DATA.format(
+                                        url=previous_page_url
+                                    )
+                                ),
+                            )
+                        ])
+                    await send_callback_message(
+                        query,
+                        NAVIGATION_MESSAGE,
+                        InlineKeyboardMarkup(global_keyboard),
+                    )
+                else:
+                    context.user_data['categories_message_ids'] = message_ids
+                    await send_callback_message(
+                        query,
+                        BAD_REQUEST_MESSAGE.format(code=response.status),
+                        InlineKeyboardMarkup(keyboard_back),
+                    )
+        except aiohttp.ClientError:
+            await send_callback_message(
+                query,
+                CLIENT_CONNECTION_ERROR,
+                InlineKeyboardMarkup(keyboard_back),
             )
-        ])
-    if previous_page_url:
-        keyboard.append([
-            InlineKeyboardButton(
-                'Назад', callback_data=f'pg-pr_{previous_page_url}'
-            )
-        ])
-    await query.message.reply_text(
-        'Навигация:', reply_markup=InlineKeyboardMarkup(keyboard)
+
+
+async def show_categories_fireworks(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    url: str | None = (
+        'http://127.0.0.1:8000/fireworks/by_category/{category_id}'
+    ),
+) -> None:
+    """Возвращает товары определенной категории."""
+    query = update.callback_query
+    await query.answer()
+    category_id = query.data.split('_')[-1]
+    await get_paginated_response(
+        update=update,
+        context=context,
+        url=url.format(category_id=category_id),
+        object_key='fireworks',
+        object_keyboard_builder=build_show_all_products_keyboard,
+        build_object_card=build_firework_card,
+        global_keyboard=build_back_keyboard(CATALOG_MESSAGE, CATALOG_CALLBACK),
+        paginate_callback_data_pattern=PRODUCT_PAGINATE_CALLBACK_DATA,
     )
 
 
@@ -218,7 +626,7 @@ async def back_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     target_point = query.data.split('_')[-1]
-    if target_point == 'catalog':
+    if target_point == CATALOG_CALLBACK:
         await catalog_menu(update, context)
     else:
         await query.message.reply('Пока в разработке /menu')
@@ -237,111 +645,359 @@ async def pagination_handler(
         await show_all_categories(update, context, url)
 
 
-async def show_all_categories(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-    url: str | None = 'http://127.0.0.1:8000/categories',
-) -> None:
-    """Возвращает все категории."""
+async def cancel_filtering(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    if context.user_data.get('message_ids'):
-        for message_id in context.user_data['message_ids']:
-            await context.bot.delete_message(
-                chat_id=update.effective_chat.id, message_id=message_id
-            )
-    next_page_url = previous_page_url = None
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status == HTTPStatus.OK:
-                data = await response.json()
-                categories = data['categories']
-                message_ids = []
-                for category in categories:
-                    keyboard = [
-                        [
-                            InlineKeyboardButton(
-                                'Подробнее',
-                                callback_data=f'category_{category["id"]}',
-                            )
-                        ]
-                    ]
-                    message = await send_callback_message(
-                        query,
-                        build_category_card(category),
-                        reply_markup=InlineKeyboardMarkup(keyboard),
-                    )
-                    message_ids.append(message.id)
-                context.user_data['message_ids'] = message_ids
-                if data.get('next_page_url'):
-                    next_page_url = data['next_page_url']
-                if data.get('previous_page_url'):
-                    previous_page_url = data['previous_page_url']
-            else:
-                context.user_data['message_ids'] = message_ids
-                await query.message.reply_text(
-                    'Ошибка запроса. Вернуться в меню каталога:',
-                    reply_markup=InlineKeyboardMarkup(keyboard_back),
-                )
-    keyboard = build_back_keyboard('В каталог', 'catalog')
-    if next_page_url:
-        keyboard.append([
-            InlineKeyboardButton(
-                'Вперёд', callback_data=f'pg-cat_{next_page_url}'
-            )
-        ])
-    if previous_page_url:
-        keyboard.append([
-            InlineKeyboardButton(
-                'Назад', callback_data=f'pg-cat_{previous_page_url}'
-            )
-        ])
     await query.message.reply_text(
-        'Навигация:', reply_markup=InlineKeyboardMarkup(keyboard)
+        'Фильтрация отменена!',
+        reply_markup=InlineKeyboardMarkup(keyboard_back),
+    )
+    return ConversationHandler.END
+
+
+def build_filter_params_keyboard(handler_name: str) -> InlineKeyboardMarkup:
+    """Универсальная клавиатура для пропуска."""
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                '⏭️ Пропустить', callback_data=f'skip_{handler_name}'
+            )
+        ]
+    ])
+
+
+async def handle_filter_step(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    next_step: int,
+    next_question: str,
+    field_name: str,
+    next_field_name: str,
+    value: Any = None,
+):
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        message_edit = query.edit_message_text
+    else:
+        message_edit = update.message.reply_text
+    if value:
+        context.user_data['filter'][field_name] = value
+    await message_edit(
+        next_question,
+        reply_markup=build_filter_params_keyboard(next_field_name),
+    )
+    return next_step
+
+
+async def check_float_and_int_type(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    next_question: str,
+    next_step: int,
+    current_step: int,
+    field_name: str,
+    next_field_name: str,
+    checked_value: str,
+    needed_type: Union[int, float],
+    error_message: str,
+):
+    try:
+        value = needed_type(checked_value)
+        if value < 0:
+            raise Exception()
+        return await handle_filter_step(
+            update,
+            context,
+            next_step=next_step,
+            next_question=next_question,
+            field_name=field_name,
+            next_field_name=next_field_name,
+            value=value,
+        )
+    except Exception:
+        await update.message.reply_text(error_message)
+        return current_step
+
+
+async def selection_by_parameters(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    query = update.callback_query
+    await query.answer()
+    context.user_data['filter'] = dict()
+    await query.message.reply_text(
+        '✏️ Укажите название товара:',
+        reply_markup=build_filter_params_keyboard('name'),
+    )
+    return NAME
+
+
+async def select_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await handle_filter_step(
+        update,
+        context,
+        next_step=CHARGES_COUNT,
+        next_question='✏️ Укажите количество зарядов:',
+        field_name='name',
+        next_field_name='charges_count',
+        value=update.message.text,
     )
 
 
-# async def show_categories_inline_handler(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     """Обработчик кнопок show_categories."""
-#     query = update.callback_query
-#     await query.answer()
-#     option = query.data
-#     if option.startswith('category_'):
-#         return await show_categories_fireworks(update, context)
-#     return await show_all_categories(update, context)
+async def skip_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await handle_filter_step(
+        update,
+        context,
+        next_step=CHARGES_COUNT,
+        next_question='✏️ Укажите количество зарядов:',
+        field_name='name',
+        next_field_name='charges_count',
+        value=None,
+    )
 
 
-async def show_categories_fireworks(
+async def select_charges_count(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    return await check_float_and_int_type(
+        update,
+        context,
+        next_step=CATEGORIES,
+        current_step=CHARGES_COUNT,
+        next_question='✏️ Укажите название категорий через пробел:',
+        field_name='charges_count',
+        next_field_name='categories',
+        checked_value=update.message.text,
+        error_message=(
+            '🔢 Количество зарядов должно быть целым положительным числом!'
+            ' Попробуйте ввести еще раз ☘️'
+        ),
+        needed_type=int,
+    )
+
+
+async def skip_charges_count(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    return await handle_filter_step(
+        update,
+        context,
+        next_step=CATEGORIES,
+        next_question='Укажите название категорий через пробел:',
+        field_name='charges_count',
+        next_field_name='categories',
+        value=None,
+    )
+
+
+async def select_categories(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    return await handle_filter_step(
+        update,
+        context,
+        next_step=ARTICLE,
+        next_question='✏️ Укажите артикул:',
+        field_name='categories',
+        next_field_name='article',
+        value=update.message.text.split(),
+    )
+
+
+async def skip_categories(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await handle_filter_step(
+        update,
+        context,
+        next_step=ARTICLE,
+        next_question='✏️ Укажите артикул:',
+        field_name='categories',
+        next_field_name='article',
+        value=None,
+    )
+
+
+async def select_article(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await handle_filter_step(
+        update,
+        context,
+        next_step=TAGS,
+        next_question='📝 Укажите теги через пробел:',
+        field_name='article',
+        next_field_name='tags',
+        value=update.message.text.split(),
+    )
+
+
+async def skip_article(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await handle_filter_step(
+        update,
+        context,
+        next_step=TAGS,
+        next_question='📝 Укажите теги через пробел:',
+        field_name='article',
+        next_field_name='tags',
+        value=None,
+    )
+
+
+async def select_tags(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await handle_filter_step(
+        update,
+        context,
+        next_step=MIN_RPICE,
+        next_question='💰 Укажите минимальную цену: 📉',
+        field_name='tags',
+        next_field_name='min_price',
+        value=update.message.text,
+    )
+
+
+async def skip_tags(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await handle_filter_step(
+        update,
+        context,
+        next_step=MIN_RPICE,
+        next_question='💰 Укажите минимальную цену: 📉',
+        field_name='tags',
+        next_field_name='min_price',
+        value=None,
+    )
+
+
+async def select_min_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await check_float_and_int_type(
+        update,
+        context,
+        next_step=MAX_RPICE,
+        current_step=MIN_RPICE,
+        next_question='💰 Укажите максимальную цену: 📈',
+        field_name='min_price',
+        next_field_name='max_price',
+        checked_value=update.message.text,
+        error_message=(
+            '🔢 Цена должна быть положительным числом!'
+            ' Попробуйте ввести еще раз ☘️'
+        ),
+        needed_type=float,
+    )
+
+
+async def skip_min_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await handle_filter_step(
+        update,
+        context,
+        next_step=MAX_RPICE,
+        next_question='💰 Укажите максимальную цену: 📈',
+        field_name='min_price',
+        next_field_name='max_price',
+        value=None,
+    )
+
+
+async def select_max_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await check_float_and_int_type(
+        update,
+        context,
+        next_step=ORDER_BY,
+        current_step=MAX_RPICE,
+        next_question='📝 Укажите поля для сортировки:',
+        field_name='max_price',
+        next_field_name='order_by',
+        checked_value=update.message.text,
+        error_message=(
+            '🔢 Цена должна быть положительным числом!'
+            ' Попробуйте ввести еще раз ☘️'
+        ),
+        needed_type=float,
+    )
+
+
+async def skip_max_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await handle_filter_step(
+        update,
+        context,
+        next_step=ORDER_BY,
+        next_question='📝 Укажите поля для сортировки:',
+        field_name='max_price',
+        next_field_name='order_by',
+        value=None,
+    )
+
+
+async def select_order_by(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        message_edit = query.edit_message_text
+    else:
+        message_edit = update.message.reply_text
+    context.user_data['filter']['order_by'] = update.message.text.split()
+    keyboard = [
+        [InlineKeyboardButton('✅ Применить', callback_data='apply_filters')],
+        [
+            InlineKeyboardButton(
+                '❌ Отменить', callback_data='cancel_filtering'
+            )
+        ],
+    ]
+    await message_edit(
+        'Применить полученные фильтры? 💎',
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return APPLY
+
+
+async def skip_order_by(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        message_edit = query.edit_message_text
+    else:
+        message_edit = update.message.reply_text
+    keyboard = [
+        [InlineKeyboardButton('✅ Применить', callback_data='apply_filters')],
+        [
+            InlineKeyboardButton(
+                '❌ Отменить', callback_data='cancel_filtering'
+            )
+        ],
+    ]
+    await message_edit(
+        'Применить полученные фильтры?',
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return APPLY
+
+
+async def apply_filters(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    """Возвращает товары определенной категории."""
-    # category_id = update.callback_query.data.split('_')[-1]
-    # TODO обращение к БД
-    fireworks = ['Firework_category1', 'Firework_category2']
-    for firework in fireworks:
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    'В корзину', callback_data=f'add_to_cart_{firework}'
-                ),
-                InlineKeyboardButton(
-                    'В избранное', callback_data=f'add_to_favorite_{firework}'
-                ),
-            ]
+    filter_data = context.user_data['filter']
+    global_keyboard = [
+        [
+            InlineKeyboardButton(
+                CATALOG_MESSAGE, callback_data=CATALOG_CALLBACK
+            ),
+            InlineKeyboardButton(
+                MAIN_MENU_MESSAGE, callback_data=MAIN_MENU_CALLBACK
+            ),
         ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.callback_query.message.reply_text(
-            firework, reply_markup=reply_markup
-        )
-    await update.callback_query.message.reply_text(
-        'Вернуться к категориям:',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton('Назад', callback_data='back_to_categories')]
-        ]),
+    ]
+    await get_paginated_response(
+        update=update,
+        context=context,
+        url='http://127.0.0.1:8000/fireworks',
+        method='POST',
+        object_key='fireworks',
+        message_ids_key='fireworks_message_ids',
+        object_keyboard_builder=build_show_all_products_keyboard,
+        build_object_card=build_firework_card,
+        global_keyboard=global_keyboard,
+        paginate_callback_data_pattern=PRODUCT_PAGINATE_CALLBACK_DATA,
+        request_data=filter_data,
     )
+    return ConversationHandler.END
 
 
 def catalog_register(application: ApplicationBuilder) -> None:
@@ -349,263 +1005,87 @@ def catalog_register(application: ApplicationBuilder) -> None:
         CallbackQueryHandler(pagination_handler, pattern='^pg-')
     )
     application.add_handler(
-        CallbackQueryHandler(catalog_menu, pattern='^catalog$')
+        CallbackQueryHandler(catalog_menu, pattern=f'^{CATALOG_CALLBACK}$')
     )
     application.add_handler(
-        CallbackQueryHandler(show_all_products, pattern='^all_catalog$')
+        CallbackQueryHandler(
+            show_all_products, pattern=f'^{ALL_PRODUCTS_CALLBACK}$'
+        )
     )
     application.add_handler(
-        CallbackQueryHandler(show_all_categories, pattern='^all_categories$')
+        CallbackQueryHandler(
+            show_all_categories, pattern=f'^{ALL_CATEGORIES_CALLBACK}$'
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(read_more_about_product, pattern='^firework_')
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            show_categories_fireworks, pattern='^categories_fireworks_'
+        )
     )
     application.add_handler(
         CallbackQueryHandler(back_button, pattern='^back_to_')
     )
-
-
-# async def selection_by_parameters(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ) -> None:
-#     await update.callback_query.edit_message_text(
-#         'Укажите название товара'
-#     )
-#     return NAME
-
-
-# async def select_name(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     context.user_data['filter'] = FireworkFilterSchema(
-#         name=update.message.text
-#     )
-#     await update.message.reply_text(
-#         'Укажите количество зарядов:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return CHARGES_COUNT
-
-
-# async def skip_name(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     context.user_data['filter'] = FireworkFilterSchema()
-#     await update.message.reply_text(
-#         'Укажите количество зарядов:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return CHARGES_COUNT
-
-
-# async def select_charges_count(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     context.user_data['filter'].charges_count = int(update.message.text)
-#     await update.message.reply_text(
-#         'Введите категории:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return CATEGORIES
-
-
-# async def skip_charges_count(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     await update.message.reply_text(
-#         'Укажите категории:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return CATEGORIES
-
-
-# async def select_categories(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     # TODO оптимизировать парсинг категорий из сообщения пользователя
-#     context.user_data['filter'].categories = [
-#         category for category in update.message.text.split()
-#     ]
-#     await update.message.reply_text(
-#         'Введите артикул:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return ARTICLE
-
-
-# async def skip_categories(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     await update.message.reply_text(
-#         'Введите артикул:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return ARTICLE
-
-
-# async def select_article(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     context.user_data['filter'].article = update.message.text
-#     await update.message.reply_text(
-#         'Укажите теги товаров:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return TAGS
-
-
-# async def skip_article(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     await update.message.reply_text(
-#         'Укажите теги товаров:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return TAGS
-
-
-# async def select_tags(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     tag_names = []
-#     context.user_data['filter'].tags = [
-#         tag_name for tag_name in tag_names
-#     ]
-#     await update.message.reply_text(
-#         'Укажите минимальную цену товаров:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return MIN_PRICE
-
-
-# async def skip_tags(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     await update.message.reply_text(
-#         'Укажите минимальную цену товаров:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return MIN_PRICE
-
-
-# async def select_min_price(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     context.user_data['filter'].min_price = update.message.text
-#     await update.message.reply_text(
-#         'Укажите максимальную цену товаров:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return MAX_PRICE
-
-
-# async def skip_min_price(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     await update.message.reply_text(
-#         'Укажите максималую цену товаров:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return MAX_PRICE
-
-
-# async def select_max_price(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     context.user_data['filter'].max_price = update.message.text
-#     await update.message.reply_text(
-#         'Укажите параметры для сортировки товаров:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return ORDER_BY
-
-
-# async def skip_max_price(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     await update.message.reply_text(
-#         'Укажите параметры для сортировки товаров:',
-#         reply_markup=build_filter_params_keyboard(
-#             inspect.currentframe().f_code.co_name
-#         )
-#     )
-#     return ORDER_BY
-
-
-# async def select_order_by(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     orders_by = [
-#         order_by for order_by in update.message.text
-#     ]
-#     context.user_data['filter'].order_by = orders_by
-#     await apply_filters(update, context)
-#     return ConversationHandler.END
-
-
-# async def skip_order_by(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ):
-#     await apply_filters(update, context)
-#     return ConversationHandler.END
-
-
-# async def apply_filters(
-#     update: Update,
-#     context: ContextTypes.DEFAULT_TYPE
-# ) -> None:
-#     filter_data = context.user_data['filter_data']
-#     # TODO запрашиваем у API get_multi с filter_schema
-#     fireworks = []
-#     if fireworks:
-#         for firework in fireworks:
-#             await update.message.reply_text(
-#                 firework,
-#                 reply_markup=InlineKeyboardMarkup(
-#                     build_cart_and_favorite_keyboard()
-#                 )
-#             )
-#     else:
-#         await update.message.reply_text(
-#             'Товары по вашему запросу не найдены('
-#         )
+    application.add_handler(
+        CallbackQueryHandler(add_to_cart, pattern='^add_to_cart')
+    )
+    conversation_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(
+                selection_by_parameters, pattern=f'^{PARAMETERS_CALLBACK}$'
+            )
+        ],
+        states={
+            NAME: [
+                MessageHandler(TEXT_FILTER, select_name),
+                CallbackQueryHandler(skip_name, pattern='^skip_name$'),
+            ],
+            CHARGES_COUNT: [
+                MessageHandler(TEXT_FILTER, select_charges_count),
+                CallbackQueryHandler(
+                    skip_charges_count, pattern='^skip_charges_count$'
+                ),
+            ],
+            CATEGORIES: [
+                MessageHandler(TEXT_FILTER, select_categories),
+                CallbackQueryHandler(
+                    skip_categories, pattern='^skip_categories$'
+                ),
+            ],
+            ARTICLE: [
+                MessageHandler(TEXT_FILTER, select_article),
+                CallbackQueryHandler(skip_article, pattern='^skip_article$'),
+            ],
+            TAGS: [
+                MessageHandler(TEXT_FILTER, select_tags),
+                CallbackQueryHandler(skip_tags, pattern='^skip_tags$'),
+            ],
+            MIN_RPICE: [
+                MessageHandler(TEXT_FILTER, select_min_price),
+                CallbackQueryHandler(
+                    skip_min_price, pattern='^skip_min_price$'
+                ),
+            ],
+            MAX_RPICE: [
+                MessageHandler(TEXT_FILTER, select_max_price),
+                CallbackQueryHandler(
+                    skip_max_price, pattern='^skip_max_price$'
+                ),
+            ],
+            ORDER_BY: [
+                MessageHandler(TEXT_FILTER, select_order_by),
+                CallbackQueryHandler(skip_order_by, pattern='^skip_order_by$'),
+            ],
+            APPLY: [
+                CallbackQueryHandler(apply_filters, pattern='^apply_filters$')
+            ],
+        },
+        fallbacks=[
+            CallbackQueryHandler(
+                cancel_filtering, pattern='^cancel_filtering$'
+            )
+        ],
+    )
+    application.add_handler(conversation_handler)
