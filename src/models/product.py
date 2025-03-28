@@ -187,7 +187,7 @@ class Firework(BaseJFModel):
     properties: Mapped[list['FireworkProperty']] = relationship(
         'FireworkProperty',
         back_populates='firework',
-        lazy='joined',
+        lazy='selectin',
         cascade='all, delete-orphan',
     )
 

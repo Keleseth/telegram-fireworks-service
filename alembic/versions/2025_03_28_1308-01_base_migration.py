@@ -2,7 +2,7 @@
 
 Revision ID: 01
 Revises:
-Create Date: 2025-03-27 16:15:35.037873
+Create Date: 2025-03-28 13:08:32.086863
 
 """
 from typing import Sequence, Union
@@ -92,6 +92,15 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('id')
     )
+    op.create_table('property_field',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('field_name', sa.String(), nullable=False),
+    sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('field_name'),
+    sa.UniqueConstraint('id')
+    )
     op.create_table('tag',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('name', sa.String(), nullable=False),
@@ -136,6 +145,7 @@ def upgrade() -> None:
     sa.Column('product_size', sa.String(), nullable=False),
     sa.Column('packing_material', sa.String(), nullable=True),
     sa.Column('article', sa.String(), nullable=False),
+    sa.Column('caliber', sa.String(), nullable=True),
     sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['category_id'], ['category.id'], ),
@@ -210,6 +220,18 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['image_id'], ['media.id'], ),
     sa.PrimaryKeyConstraint('firework_id', 'image_id')
     )
+    op.create_table('firework_property',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('field_id', sa.Integer(), nullable=False),
+    sa.Column('value', sa.String(), nullable=False),
+    sa.Column('firework_id', sa.Integer(), nullable=False),
+    sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['field_id'], ['property_field.id'], ),
+    sa.ForeignKeyConstraint(['firework_id'], ['firework.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('id')
+    )
     op.create_table('firework_tag',
     sa.Column('tag_id', sa.Integer(), nullable=False),
     sa.Column('firework_id', sa.Integer(), nullable=False),
@@ -263,6 +285,7 @@ def downgrade() -> None:
     op.drop_table('order')
     op.drop_table('fireworkdiscount')
     op.drop_table('firework_tag')
+    op.drop_table('firework_property')
     op.drop_table('firework_media')
     op.drop_table('favoritefirework')
     op.drop_table('cart')
@@ -272,6 +295,7 @@ def downgrade() -> None:
     op.drop_table('firework')
     op.drop_table('user')
     op.drop_table('tag')
+    op.drop_table('property_field')
     op.drop_table('orderstatus')
     op.drop_table('newsletter')
     op.drop_table('media')
