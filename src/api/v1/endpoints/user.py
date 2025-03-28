@@ -17,7 +17,7 @@ from src.api.auth.manager import UserManager, get_user_manager
 from src.models import User
 from src.schemas.user import AdminUserUpdate, UserCreate, UserRead, UserUpdate
 
-router = APIRouter(tags=['Users'])
+router = APIRouter()
 
 
 @router.post(
@@ -43,7 +43,7 @@ async def user_create(
 
 
 @router.patch(
-    '/admin/update-profile/',
+    '/moderator/update-profile/',
     response_model=UserRead,
 )
 async def update_admin_profile(

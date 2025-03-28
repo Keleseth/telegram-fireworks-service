@@ -14,18 +14,20 @@ class FireworkMedia(BaseJFModel):
     """Промежуточная модель many-to-many.
 
     Поля:
-        1. id: уникальный индетификатор.
-        2. firework_id: id товара.
-        3. image_id: id медиа.
+        1. firework_id: id товара.
+        2. image_id: id медиа.
 
     Связывает между собой модели Media и Firework.
     """
 
     __tablename__ = 'firework_media'
 
-    id: Mapped[int_pk]
-    firework_id: Mapped[int] = mapped_column(ForeignKey('firework.id'))
-    image_id: Mapped[int] = mapped_column(ForeignKey('media.id'))
+    firework_id: Mapped[int] = mapped_column(
+        ForeignKey('firework.id'), primary_key=True
+    )
+    image_id: Mapped[int] = mapped_column(
+        ForeignKey('media.id'), primary_key=True
+    )
 
     def __repr__(self) -> str:
         return f'{self.firework_id}:{self.image_id}'
