@@ -8,6 +8,7 @@ from sqlalchemy.future import select
 from src.models.user import User
 from src.schemas.user import (
     AdminUserUpdate,
+    BaseUserUpdate,
     TelegramIDSchema,
 )
 
@@ -66,6 +67,22 @@ class UserCRUD(Generic[ModelType, SchemaType]):
         await session.commit()
         await session.refresh(user)
         return user
+
+    async def telegram_update(
+        self, session: AsyncSession, db_obj: User, obj_in: BaseUserUpdate
+    ) -> User:
+        if isinstance(obj_in, dict):
+            update_data = obj_in
+        else:
+            update_data = obj_in.model_dump(exclude_unset=True)
+
+        for field in update_data:
+            if hasattr(db_obj, field):
+                setattr(db_obj, field, update_data[field])
+        session.add(db_obj)
+        await session.commit()
+        await session.refresh(db_obj)
+        return db_obj
 
     async def get_all_users_admin(
         self,
