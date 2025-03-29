@@ -13,7 +13,7 @@ from telegram.ext import (
 from src.bot import config
 from src.bot.handlers.catalog import catalog_menu, catalog_register
 from src.bot.handlers.promotions import promotions_handler
-from src.bot.handlers.users import UserManager
+from src.bot.handlers.users import TelegramUserManager
 from src.bot.keyboards import keyboard_main
 
 logging.basicConfig(
@@ -43,9 +43,7 @@ async def menu(update: Update, context: CallbackContext):
     user_data = await user_manager.check_registration(update.effective_user.id)
 
     if user_data:
-        await user_manager._send_main_menu(
-            update, user_data.get('is_admin', False)
-        )
+        await user_manager._send_main_menu(update)
     else:
         await update.message.reply_text(
             'Пожалуйста, сначала зарегистрируйтесь через /start'
@@ -79,7 +77,7 @@ async def button(update: Update, context: CallbackContext):
 def main() -> None:
     print(f'Loaded TOKEN: {config.TOKEN}')
     application = ApplicationBuilder().token(config.TOKEN).build()
-    application.user_manager = UserManager(application)
+    application.user_manager = TelegramUserManager(application)
 
     # Регистрация обработчиков
     application.add_handler(CommandHandler('start', start))

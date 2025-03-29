@@ -21,6 +21,8 @@ from src.models import User
 from src.schemas.user import (
     AdminUserUpdate,
     BaseUserUpdate,
+    TelegramAdminUserRead,
+    TelegramAdminUserUpdate,
     UserCreate,
     UserRead,
     UserReadForTelegram,
@@ -73,6 +75,49 @@ async def update_user_parameters(
     )
 
 
+@router.get(
+    '/moderator/{user_telegram_id}',
+    status_code=status.HTTP_200_OK,
+    response_model=TelegramAdminUserRead,
+    responses={404: {'description': 'User not found'}},
+)
+async def get_admin_user(
+    user_telegram_id: int,
+    session: AsyncSession = Depends(get_async_session),
+):
+    user = await user_crud.get_user_by_telegram_id(
+        session=session, telegram_id=user_telegram_id
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+    return user
+
+
+@router.patch(
+    '/moderator/{user_telegram_id}',
+    status_code=status.HTTP_200_OK,
+    response_model=UserReadForTelegram,
+    responses={
+        404: {'description': 'User not found'},
+        403: {'description': 'Forbidden'},
+    },
+)
+async def update_admin_user_parameters(
+    user_telegram_id: int,
+    update_data: TelegramAdminUserUpdate,
+    session: AsyncSession = Depends(get_async_session),
+):
+    user = await user_crud.get_user_by_telegram_id(
+        session=session, telegram_id=user_telegram_id
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    return await user_crud.telegram_update(
+        session=session, db_obj=user, obj_in=update_data
+    )
+
+
 @router.post(
     '/auth/telegram-register',
     response_model=UserRead,
@@ -105,11 +150,6 @@ async def update_admin_profile(
     user_manager: UserManager = Depends(get_user_manager),
 ):
     """Обновить email и пароль админа через менеджер."""
-    await user_manager.update(
-        user_update=schema,
-        user=admin,
-        safe=True,
-    )
     return await user_manager.update(
         user_update=schema,
         user=admin,
