@@ -135,16 +135,19 @@ class CRUDBaseRead(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             list[self.model]: список всех объектов модели.
         """
         query = select(self.model)
+        count_query = select(func.count()).select_from(self.model)
         if filter_schema:
             query = self.apply_filters(query, filter_schema)
             if filter_schema.order_by:
                 query = self.apply_sort(query, filter_schema.order_by)
+            count_query = self.apply_filters(count_query, filter_schema)
+        total = (await session.execute(count_query)).scalar()
         if pagination_schema:
             query = query.offset(pagination_schema.offset).limit(
                 pagination_schema.limit
             )
         fireworks = await session.execute(query)
-        return fireworks.unique().scalars().all()
+        return fireworks.unique().scalars().all(), total
 
     async def get(
         self, object_id: int, session: AsyncSession

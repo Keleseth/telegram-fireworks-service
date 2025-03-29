@@ -3,6 +3,9 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from src.schemas.discounts import ShortDiscountSchema
+from src.schemas.media import MediaDB
+
 MEDIA_TYPE_MIN_LENGTH = 1
 MAX_LENGTH = 255
 MAX_LENGTH_URL = 512
@@ -50,6 +53,8 @@ class FireworkBase(BaseModel):
     product_size: str = Field(...)
     packing_material: Optional[str] = Field(None)
     article: str = Field(...)
+    discounts: list[ShortDiscountSchema] = Field(None)
+    media: list[MediaDB] = Field(None)
 
 
 class FireworkDB(FireworkBase):

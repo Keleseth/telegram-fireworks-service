@@ -32,7 +32,6 @@ class Discount(BaseJFModel):
 
     Поля:
         id: int - primary key.
-        firework_id: ссылка на модель Firework
         type: тип скидки, процентная, фиксированая, подарочная
         value: сумма скидки или процент.
         start_date: дата начала действия скидки.
@@ -48,10 +47,8 @@ class Discount(BaseJFModel):
     start_date: Mapped[datetime]
     end_date: Mapped[datetime]
     description: Mapped[str] = mapped_column(nullable=True)
-
     fireworks: Mapped[list['Firework']] = relationship(
-        secondary='fireworkdiscount',
-        back_populates='discounts',
+        secondary='fireworkdiscount', back_populates='discounts', lazy='joined'
     )
 
     def __repr__(self) -> str:

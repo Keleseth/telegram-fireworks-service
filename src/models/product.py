@@ -174,6 +174,7 @@ class Firework(BaseJFModel):
         back_populates='firework'
     )
     discounts: Mapped[list['Discount']] = relationship(
+        'Discount',
         secondary='fireworkdiscount',
         lazy='selectin',
         back_populates='fireworks',
