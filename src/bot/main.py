@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from telegram import InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
     ApplicationBuilder,
     CallbackContext,
@@ -14,34 +14,51 @@ from src.bot import config
 from src.bot.handlers.bot_info import show_bot_info
 from src.bot.handlers.catalog import catalog_menu, catalog_register
 from src.bot.handlers.promotions import promotions_handler
+from src.bot.handlers.users import TelegramUserManager
 from src.bot.keyboards import keyboard_main
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
 )
-
 logger = logging.getLogger(__name__)
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=(
-            'Добро пожаловать в телеграм бот Joker Fireworks! '
-            'Для входа в меню введите /menu'
-        ),
-    )
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_manager = context.application.user_manager
+    user_data = await user_manager.check_registration(update.effective_user.id)
+
+    if user_data:
+        await user_manager._send_main_menu(
+            update,
+        )
+    else:
+        await update.message.reply_text(
+            'Добро пожаловать! Введите ваш возраст:',
+            reply_markup=ReplyKeyboardRemove(),
+        )
 
 
-async def menu(update: Update, contex: CallbackContext) -> None:
-    reply_markup = InlineKeyboardMarkup(keyboard_main)
-    await update.message.reply_text(
-        'Выберите пункт меню:', reply_markup=reply_markup
-    )
+async def menu(update: Update, context: CallbackContext):
+    user_manager = context.application.user_manager
+    user_data = await user_manager.check_registration(update.effective_user.id)
+
+    if user_data:
+        await user_manager._send_main_menu(update)
+    else:
+        await update.message.reply_text(
+            'Пожалуйста, сначала зарегистрируйтесь через /start'
+        )
 
 
-async def button(update: Update, context: CallbackContext) -> None:
+async def button(update: Update, context: CallbackContext):
+    user_manager = context.application.user_manager
+    if not await user_manager.check_registration(update.effective_user.id):
+        await update.message.reply_text(
+            'Пожалуйста, сначала зарегистрируйтесь через /start'
+        )
+        return
+
     query = update.callback_query
     await query.answer()
     option = query.data
@@ -53,30 +70,25 @@ async def button(update: Update, context: CallbackContext) -> None:
         )
     elif option == 'catalog':
         await catalog_menu(update, context)
-    elif option == 'promotions' or option.startswith((
-        'promo_page_',
-        'promo_detail_',
-        'promo_back',
-    )):
+    elif option.startswith(('promo_', 'promotions')):
         await promotions_handler(update, context)
     elif option == 'bot_info':
         await show_bot_info(update, context)
+
+    await user_manager.refresh_keyboard(update)
+
 
 
 def main() -> None:
     print(f'Loaded TOKEN: {config.TOKEN}')
     application = ApplicationBuilder().token(config.TOKEN).build()
+    application.user_manager = TelegramUserManager(application)
 
-    start_handler = CommandHandler('start', start)
-    application.add_handler(start_handler)
-
-    menu_handler = CommandHandler('menu', menu)
-    application.add_handler(menu_handler)
-
+    # Регистрация обработчиков
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('menu', menu))
     catalog_register(application)
-
-    button_handler = CallbackQueryHandler(button)
-    application.add_handler(button_handler)
+    application.add_handler(CallbackQueryHandler(button))
 
     application.run_polling()
 

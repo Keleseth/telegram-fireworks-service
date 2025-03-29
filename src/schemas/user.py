@@ -28,6 +28,25 @@ class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class UserReadForTelegram(UserRead):
+    """Схема чтения пользователя (возвращаемые данные)."""
+
+    is_admin: bool
+
+
+class TelegramAdminUserRead(UserReadForTelegram):
+    """Схема чтения профиля админа."""
+
+    hashed_password: str | None = Field(None, title='Пароль пользователя.')
+
+
+class TelegramAdminUserUpdate(BaseModel):
+    """Схема обновления профиля админа."""
+
+    hashed_password: str | None = Field(None, title='Пароль пользователя.')
+    email: EmailStr | None = Field(None, title='Почта пользователя.')
+
+
 class UserCreate(BaseModel):
     """Схема создания обычного пользователя через Telegram."""
 
