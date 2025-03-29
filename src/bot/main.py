@@ -11,6 +11,7 @@ from telegram.ext import (
 )
 
 from src.bot import config
+from src.bot.handlers.bot_info import show_bot_info
 from src.bot.handlers.catalog import catalog_menu, catalog_register
 from src.bot.handlers.promotions import promotions_handler
 from src.bot.handlers.users import TelegramUserManager
@@ -71,7 +72,11 @@ async def button(update: Update, context: CallbackContext):
         await catalog_menu(update, context)
     elif option.startswith(('promo_', 'promotions')):
         await promotions_handler(update, context)
+    elif option == 'bot_info':
+        await show_bot_info(update, context)
+
     await user_manager.refresh_keyboard(update)
+
 
 
 def main() -> None:
