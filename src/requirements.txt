@@ -18,3 +18,4 @@ sqladmin==0.20.1
 pandas==2.2.3
 aiohttp==3.11.14
 APScheduler==3.11.0
+aiohttp==3.11.14

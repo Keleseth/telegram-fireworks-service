@@ -97,7 +97,7 @@ class TelegramUserManager:
             new_keyboard = await self.get_dynamic_keyboard(
                 update.effective_user.id
             )
-            await update.message.reply_text(
+            await update.effective_message.reply_text(
                 text='🤖 загрузка...',  # Невидимый символ
                 reply_markup=new_keyboard,
             )
@@ -441,6 +441,7 @@ class TelegramUserManager:
                         'age_verified': True,
                     },
                 ) as response:
+                    print(response.status)
                     if response.status == 200:
                         user_data = await response.json()
                         is_admin = user_data.get('is_admin', False)

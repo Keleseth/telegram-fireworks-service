@@ -66,15 +66,31 @@ class CRUDCart(CRUDBase[Cart, CreateCartSchema, UpdateCartSchema]):
         firework_id: int,
         schema: UpdateCartSchema,
         session: AsyncSession,
-    ) -> Cart:
-        """Обновляет количество конкретного товара в корзине."""
-        cart_item = await self.get_cart_item(user_id, firework_id, session)
-        if not cart_item:
+    ) -> Cart | None:
+        """Обновляет количество товара в корзине."""
+        try:
+            cart_item = await self.get_cart_item(user_id, firework_id, session)
+            if not cart_item:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail='Товар не найден в корзине',
+                )
+
+            if schema.amount > 0:
+                cart_item.amount = schema.amount
+                await session.commit()
+                await session.refresh(cart_item)
+                return cart_item
+
+            await session.delete(cart_item)
+            await session.commit()
+            return None
+
+        except Exception as e:
+            print(f'Ошибка при обновлении товара: {e}')
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Товар не найден в корзине',
+                status_code=500, detail='Ошибка при обновлении товара'
             )
-        return await self.update(cart_item, schema, session)
 
     async def remove(
         self, user_id: UUID, firework_id: int, session: AsyncSession

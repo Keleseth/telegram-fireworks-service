@@ -14,6 +14,7 @@ from src.schemas.cart import (
     CreateCartSchema,
     MessageResponse,
     ReadCartSchema,
+    UpdateCartSchema,
 )
 
 router = APIRouter()
@@ -56,6 +57,26 @@ async def get_user_cart(
     return cart_items[offset : offset + limit]
 
 
+@router.patch(
+    '/user/cart/{firework_id}',
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+)
+async def update_product_amount(
+    firework_id: int,
+    update_data: UpdateCartSchema,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+) -> MessageResponse:
+    """Устанавливает новое количество товара в корзине."""
+    update_item = await cart_crud.update_cart_item(
+        user_id, firework_id, update_data, session
+    )
+    if update_item is None:
+        return MessageResponse(message='Товар не найден или не обновлен')
+    return MessageResponse(message='Товар успешно обновлен')
+
+
 @router.delete(
     '/user/cart/{firework_id}',
     status_code=status.HTTP_200_OK,
@@ -70,8 +91,11 @@ async def delete_product_from_cart(
 
     Доступен age_verified пользователям.
     """
-    await cart_crud.remove(user_id, firework_id, session)
-    return MessageResponse(message='Товар удалён из корзины!')
+    try:
+        await cart_crud.remove(user_id, firework_id, session)
+        return MessageResponse(message='Товар успешно удален из корзины.')
+    except Exception as e:
+        return MessageResponse(message=f'Ошибка при удалении товара: {str(e)}')
 
 
 @router.delete(

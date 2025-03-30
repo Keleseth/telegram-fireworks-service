@@ -25,10 +25,6 @@ from telegram.ext import (
 from src.bot.utils import croling_content
 from src.schemas.cart import UserIdentificationSchema
 
-TELEGRAM_MEDIA_LIMIT = 10
-PHOTO_FORMATS = ('.jpg', '.jpeg', 'png')
-VIDEO_FORMATS = ('.mp4', '.mov')
-
 TEXT_FILTER = filters.TEXT & ~filters.COMMAND
 
 (
@@ -43,6 +39,10 @@ TEXT_FILTER = filters.TEXT & ~filters.COMMAND
     APPLY,
     CANCEL,
 ) = range(10)
+
+TELEGRAM_MEDIA_LIMIT = 10
+PHOTO_FORMATS = ('.jpg', '.jpeg', 'png')
+VIDEO_FORMATS = ('.mp4', '.mov')
 
 FIREWORK_CARD = """
 🎆 *{name}* 🎆
@@ -82,7 +82,7 @@ CATALOG_CALLBACK = 'catalog'
 ALL_PRODUCTS_CALLBACK = 'all_products'
 ALL_CATEGORIES_CALLBACK = 'all_categories'
 PARAMETERS_CALLBACK = 'parameters'
-MAIN_MENU_CALLBACK = 'back'
+MAIN_MENU_CALLBACK = 'back_to_main-menu'
 ADD_TO_CART_CALLBACK = 'add_to_cart_{id}'
 ADD_TO_FAVORITE_CALLBACK = 'add_to_favorite_{id}'
 APPLY_FILTERS_CALLBACK = 'apply_filters'
@@ -246,17 +246,6 @@ def build_category_card(fields: dict, full_info: bool = True) -> str:
     )
 
 
-async def send_callback_message(
-    query: CallbackQuery,
-    content: str,
-    reply_markup: InlineKeyboardMarkup | None,
-) -> Message:
-    """Отправляет сообщение в Markdown2 формате."""
-    return await query.message.reply_text(
-        content, parse_mode='MarkdownV2', reply_markup=reply_markup
-    )
-
-
 def build_filter_params_keyboard(filter_param_name: str):
     """Функция для построения клавиатуры.
 
@@ -355,25 +344,6 @@ def build_read_more_keyboard(category_id: str) -> list[InlineKeyboardButton]:
     ]
 
 
-async def show_media(
-    query: CallbackQuery,
-    context: ContextTypes.DEFAULT_TYPE,
-    media_list: list[str],
-):
-    media_group = []
-    media_urls = [media['media_url'] for media in media_list][
-        :TELEGRAM_MEDIA_LIMIT
-    ]
-    for media_url in media_urls:
-        if media_url.endswith(PHOTO_FORMATS):
-            media_group.append(InputMediaPhoto(media=media_url, caption=None))
-        elif media_url.endswith(VIDEO_FORMATS):
-            media_group.append(InputMediaVideo(media=media_url, caption=None))
-    await context.bot.send_media_group(
-        chat_id=query.message.chat_id, media=media_group
-    )
-
-
 async def add_to_cart(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
@@ -381,10 +351,8 @@ async def add_to_cart(
     await query.answer()
     try:
         async with aiohttp.ClientSession() as session:
-            # TODO добавить свое id
-            # telegram_id = int(query.data)
-            telegram_id = 10001
-            firework_id = query.data.split('_')[-1]
+            telegram_id = update.effective_user.id
+            firework_id = int(query.data.split('_')[-1])
             async with session.post(
                 'http://127.0.0.1:8000/user/cart',
                 json=dict(
@@ -422,10 +390,10 @@ async def add_to_favorite(
         async with aiohttp.ClientSession() as session:
             # TODO добавить свое id
             # telegram_id = int(query.data)
-            telegram_id = 10001
-            firework_id = query.data.split('_')[-1]
+            telegram_id = update.effective_user.id
+            firework_id = int(query.data.split('_')[-1])
             async with session.post(
-                'http://127.0.0.1:8000/user/cart',
+                'http://127.0.0.1:8000/favorites',
                 json=dict(telegram_id=telegram_id, firework_id=firework_id),
             ):
                 new_keyboard = [
@@ -453,10 +421,76 @@ async def catalog_menu(
     """Создает каталог продуктов."""
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text(
+    if context.chat_data.get(update.effective_chat.id, 'empty') == 'empty':
+        context.chat_data[update.effective_chat.id] = []
+    else:
+        await catalog_delete_messages_from_memory(update, context)
+        context.chat_data[update.effective_chat.id] = []
+    await send_callback_message(
+        query,
+        update,
+        context,
         CATALOG_MESSAGE,
         reply_markup=InlineKeyboardMarkup(catalog_navigation_keyboard),
     )
+
+
+async def show_media(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    media_list: list[str],
+):
+    media_group = []
+    media_urls = [media['media_url'] for media in media_list][
+        :TELEGRAM_MEDIA_LIMIT
+    ]
+    for media_url in media_urls:
+        if media_url.endswith(PHOTO_FORMATS):
+            media_group.append(InputMediaPhoto(media=media_url, caption=None))
+        elif media_url.endswith(VIDEO_FORMATS):
+            media_group.append(InputMediaVideo(media=media_url, caption=None))
+    media_messages = await context.bot.send_media_group(
+        chat_id=update.effective_chat.id, media=media_group
+    )
+    if media_group:
+        for message in media_messages:
+            await add_messages_to_memory(update, context, message.id)
+
+
+async def send_callback_message(
+    query: CallbackQuery,
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    content: str,
+    reply_markup: InlineKeyboardMarkup | None,
+    add_to_chat_data: bool = True,
+) -> Message:
+    """Отправляет сообщение в Markdown2 формате."""
+    message = await query.message.reply_text(
+        content, parse_mode='MarkdownV2', reply_markup=reply_markup
+    )
+    if add_to_chat_data:
+        await add_messages_to_memory(update, context, message.id)
+    return message
+
+
+async def add_messages_to_memory(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, message_id: Message
+):
+    context.chat_data[update.effective_chat.id].append(message_id)
+
+
+async def catalog_delete_messages_from_memory(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    try:
+        for message_id in context.chat_data[update.effective_chat.id].copy():
+            await context.bot.delete_message(
+                chat_id=update.effective_chat.id, message_id=message_id
+            )
+            context.chat_data[update.effective_chat.id].remove(message_id)
+    except Exception:
+        print('Ошибка')
 
 
 async def get_paginated_response(
@@ -476,6 +510,8 @@ async def get_paginated_response(
     query = update.callback_query
     await query.answer()
     next_page_url = previous_page_url = None
+    if context.chat_data[update.effective_chat.id]:
+        await catalog_delete_messages_from_memory(update, context)
     try:
         async with aiohttp.ClientSession() as session:
             if method == 'POST':
@@ -489,18 +525,27 @@ async def get_paginated_response(
                     data = await response.json()
                     objects = data[object_key]
                     if not objects:
-                        await query.message.reply_text(EMPTY_QUERY_MESSAGE)
+                        await send_callback_message(
+                            query,
+                            update,
+                            context,
+                            EMPTY_QUERY_MESSAGE,
+                            reply_markup=None,
+                        )
                     for obj in objects:
                         caption = build_object_card(obj, full_info=full_info)
                         if obj.get('media'):
-                            await show_media(query, context, obj['media'])
+                            await show_media(update, context, obj['media'])
                         await send_callback_message(
                             query,
+                            update,
+                            context,
                             caption,
                             reply_markup=InlineKeyboardMarkup(
                                 object_keyboard_builder(obj['id'])
                             ),
                         )
+                    print(context.chat_data[update.effective_chat.id])
                     next_page_url = data['next_page_url']
                     previous_page_url = data['previous_page_url']
                     if next_page_url:
@@ -527,12 +572,16 @@ async def get_paginated_response(
                         ])
                     await send_callback_message(
                         query,
+                        update,
+                        context,
                         NAVIGATION_MESSAGE,
                         InlineKeyboardMarkup(global_keyboard),
                     )
                 else:
                     await send_callback_message(
                         query,
+                        update,
+                        context,
                         croling_content(
                             BAD_REQUEST_MESSAGE.format(code=response.status)
                         ),
@@ -541,6 +590,8 @@ async def get_paginated_response(
     except Exception:
         await send_callback_message(
             query,
+            update,
+            context,
             CLIENT_CONNECTION_ERROR,
             InlineKeyboardMarkup(keyboard_back),
         )
@@ -587,24 +638,27 @@ async def read_more_about_product(
             async with session.get(url) as response:
                 if response.status == HTTPStatus.OK:
                     firework = await response.json()
-                    if firework.get('media'):
-                        await show_media(query, context, firework['media'])
-                    await send_callback_message(
-                        query,
+                    await query.edit_message_text(
                         build_firework_card(firework, full_info=True),
                         reply_markup=InlineKeyboardMarkup(
                             build_read_more_about_keyboard(firework['id'])
                         ),
+                        parse_mode='MarkdownV2',
                     )
                 else:
                     await send_callback_message(
                         query,
+                        update,
+                        context,
                         BAD_REQUEST_MESSAGE.format(code=response.status),
                         InlineKeyboardMarkup(keyboard_back),
+                        add_to_chat_data=False,
                     )
     except Exception:
         await send_callback_message(
             query,
+            update,
+            context,
             CLIENT_CONNECTION_ERROR,
             InlineKeyboardMarkup(keyboard_back),
         )
@@ -622,6 +676,8 @@ async def show_all_categories(
     global_keyboard = [
         [go_back_button(CATALOG_BACK_MESSAGE, CATALOG_CALLBACK)]
     ]
+    if context.chat_data[update.effective_chat.id]:
+        await catalog_delete_messages_from_memory(update, context)
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
@@ -640,6 +696,8 @@ async def show_all_categories(
                     ]
                     await send_callback_message(
                         query,
+                        update,
+                        context,
                         ALL_CATEGORIES_MESSAGE,
                         reply_markup=InlineKeyboardMarkup(keyboard),
                     )
@@ -667,20 +725,27 @@ async def show_all_categories(
                                 ),
                             )
                         ])
-                    await send_callback_message(
+                    message = await send_callback_message(
                         query,
+                        update,
+                        context,
                         NAVIGATION_MESSAGE,
                         InlineKeyboardMarkup(global_keyboard),
                     )
+                    print(message.id)
                 else:
                     await send_callback_message(
                         query,
+                        update,
+                        context,
                         BAD_REQUEST_MESSAGE.format(code=response.status),
                         InlineKeyboardMarkup(keyboard_back),
                     )
     except Exception:
         await send_callback_message(
             query,
+            update,
+            context,
             CLIENT_CONNECTION_ERROR,
             InlineKeyboardMarkup(keyboard_back),
         )
@@ -717,7 +782,12 @@ async def back_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     target_point = query.data.split('_')[-1]
     if target_point == CATALOG_CALLBACK:
+        print(888)
         await catalog_menu(update, context)
+    elif target_point == 'main-menu':
+        print(999)
+        if context.chat_data[update.effective_chat.id]:
+            await catalog_delete_messages_from_memory(update, context)
     else:
         await query.message.reply('Пока в разработке /menu')
 
@@ -737,21 +807,6 @@ async def pagination_handler(
         await apply_filters(
             update, context, url, request_data=context.user_data['filter']
         )
-
-
-async def cancel_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    await query.message.reply_text(
-        CANCEL_FILTERS_MESSAGE,
-        reply_markup=InlineKeyboardMarkup([
-            [
-                main_menu_back_button,
-                go_back_button(CATALOG_MESSAGE, CATALOG_CALLBACK),
-            ]
-        ]),
-    )
-    return ConversationHandler.END
 
 
 def build_filter_params_keyboard(handler_name: str) -> InlineKeyboardMarkup:
@@ -774,18 +829,24 @@ async def handle_filter_step(
     next_field_name: str,
     value: Any = None,
 ):
+    write_to_chat_data = False
     if update.callback_query:
         query = update.callback_query
         await query.answer()
         message_edit = query.edit_message_text
     else:
         message_edit = update.message.reply_text
+        write_to_chat_data = True
     if value:
         context.user_data['filter'][field_name] = value
-    await message_edit(
+    message = await message_edit(
         next_question,
         reply_markup=build_filter_params_keyboard(next_field_name),
     )
+    if write_to_chat_data:
+        user_message = update.message.message_id
+        context.chat_data[update.effective_chat.id].append(user_message)
+        await add_messages_to_memory(update, context, message.id)
     return next_step
 
 
@@ -823,10 +884,16 @@ async def check_float_and_int_type(
 async def selection_by_parameters(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
+    print(999)
+    if context.chat_data.get(update.effective_chat.id, 'empty') == 'empty':
+        context.chat_data[update.effective_chat.id] = []
     query = update.callback_query
     await query.answer()
     context.user_data['filter'] = dict()
-    await query.message.reply_text(
+    await send_callback_message(
+        query,
+        update,
+        context,
         WRITE_NAME_MESSAGE,
         reply_markup=build_filter_params_keyboard('name'),
     )
@@ -1017,32 +1084,60 @@ async def skip_max_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def select_order_by(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    write_to_chat_data = False
     if update.callback_query:
         query = update.callback_query
         await query.answer()
         message_edit = query.edit_message_text
     else:
         message_edit = update.message.reply_text
+        write_to_chat_data = True
     context.user_data['filter']['order_by'] = update.message.text.split()
-    await message_edit(
+    message = await message_edit(
         APPLY_FILTERS_MESSAGE,
         reply_markup=InlineKeyboardMarkup(filters_keyboard),
     )
+    if write_to_chat_data:
+        await add_messages_to_memory(update, context, message.id)
     return APPLY
 
 
 async def skip_order_by(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    write_to_chat_data = False
     if update.callback_query:
         query = update.callback_query
         await query.answer()
         message_edit = query.edit_message_text
     else:
         message_edit = update.message.reply_text
-    await message_edit(
+        write_to_chat_data = True
+    message = await message_edit(
         APPLY_FILTERS_MESSAGE,
         reply_markup=InlineKeyboardMarkup(filters_keyboard),
     )
+    if write_to_chat_data:
+        await add_messages_to_memory(update, context, message.id)
     return APPLY
+
+
+async def cancel_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if context.chat_data[update.effective_chat.id]:
+        await catalog_delete_messages_from_memory(update, context)
+    await send_callback_message(
+        query,
+        update,
+        context,
+        croling_content(CANCEL_FILTERS_MESSAGE),
+        reply_markup=InlineKeyboardMarkup([
+            [
+                main_menu_back_button,
+                go_back_button(CATALOG_MESSAGE, CATALOG_CALLBACK),
+            ]
+        ]),
+    )
+    return ConversationHandler.END
 
 
 async def apply_filters(
@@ -1051,6 +1146,8 @@ async def apply_filters(
     url: str = 'http://127.0.0.1:8000/fireworks',
     request_data: dict = None,
 ) -> None:
+    if context.chat_data[update.effective_chat.id]:
+        await catalog_delete_messages_from_memory(update, context)
     if not request_data:
         filter_data = context.user_data['filter']
     else:
@@ -1080,7 +1177,7 @@ async def apply_filters(
     return ConversationHandler.END
 
 
-def catalog_register(application: ApplicationBuilder) -> None:
+def setup_catalog_handler(application: ApplicationBuilder) -> None:
     application.add_handler(
         CallbackQueryHandler(pagination_handler, pattern='^pg-')
     )
