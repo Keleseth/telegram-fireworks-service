@@ -4,7 +4,12 @@ from sqladmin import Admin
 from src.admin.admin_dependencies import SQLAdminAuth
 from src.admin.category_admin import CategoryView
 from src.admin.media_admin import MediaView
+from src.admin.newsletter_admin import NewsletterMediaView, NewsletterView
 from src.admin.product_admin import FireworkView
+from src.admin.product_extra_properties import (
+    FireworkPropertyView,
+    PropertyFieldView,
+)
 from src.admin.promotion_admin import DiscountView
 from src.admin.tag_admin import TagView
 from src.admin.user_admin import UserView
@@ -33,10 +38,14 @@ async def setup_admin(app: FastAPI) -> Admin:
         authentication_backend=await get_sqladmin_auth(),
         templates_dir='src/admin/templates',
     )
-    admin.add_view(FireworkView)
     admin.add_view(UserView)
-    admin.add_view(TagView)
+    admin.add_view(FireworkView)
+    admin.add_view(PropertyFieldView)
+    admin.add_view(FireworkPropertyView)
     admin.add_view(CategoryView)
+    admin.add_view(TagView)
     admin.add_view(DiscountView)
     admin.add_view(MediaView)
+    admin.add_view(NewsletterView)
+    admin.add_view(NewsletterMediaView)
     return admin

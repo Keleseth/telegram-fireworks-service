@@ -1,19 +1,17 @@
 {% extends "sqladmin/layout.html" %}
 {% from 'sqladmin/_macros.html' import render_form_fields %}
-
 {% block head %}
     {{ super() }}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css">
 {% endblock %}
-
 {% block content %}
 <div class="col-12">
   <div class="card">
     <div class="card-header">
-      <h3 class="card-title">New {{ model_view.name }}</h3>
+      <h3 class="card-title">Редактирование: {{ model_view.name }}</h3>
     </div>
     <div class="card-body border-bottom py-3">
-      <form action="{{ url_for('admin:create', identity=model_view.identity) }}" method="POST"
+      <form action="{{ model_view._build_url_for('admin:edit', request, obj) }}" method="POST"
         enctype="multipart/form-data">
         <div class="row">
           {% if error %}
@@ -31,8 +29,7 @@
           </div>
           <div class="col-md-6">
             <div class="btn-group flex-wrap" data-toggle="buttons">
-              <input type="submit" name="save" value="Создать" class="btn">
-              <input type="submit" name="save" value="Сохранить и создать еще" class="btn">
+              <input type="submit" name="save" value="Сохранить" class="btn">
             </div>
           </div>
         </div>
@@ -41,7 +38,6 @@
   </div>
 </div>
 {% endblock %}
-
 {% block tail %}
   {{ super() }}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>

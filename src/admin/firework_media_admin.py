@@ -1,6 +1,6 @@
 from sqladmin import ModelView
 
-# from sqladmin.filters import FilterEqual, FilterLike, FilterIn
+from src.admin.constants import PAGE_SIZE
 from src.models.media import FireworkMedia
 
 
@@ -21,3 +21,5 @@ class FireworkMediaAdmin(ModelView, model=FireworkMedia):
         'created_at',
         'updated_at',
     ]
+
+    page_size = PAGE_SIZE

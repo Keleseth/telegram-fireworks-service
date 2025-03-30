@@ -1,5 +1,7 @@
 from sqladmin import ModelView
 
+from src.admin.constants import PAGE_SIZE
+from src.admin.utils import generate_clickable_formatters
 from src.models.discounts import Discount
 
 
@@ -8,7 +10,6 @@ class DiscountView(ModelView, model=Discount):
 
     name = 'акция'
     name_plural = 'Акции'
-    list_template = 'sqladmin/custom_list.html'
 
     column_list = [
         Discount.id,
@@ -38,3 +39,8 @@ class DiscountView(ModelView, model=Discount):
         'description': 'описание',
         'fireworks': 'акционные фейерверки',
     }
+    column_formatters = generate_clickable_formatters(
+        Discount, '/admin/newsletter/details', column_list
+    )
+
+    page_size = PAGE_SIZE

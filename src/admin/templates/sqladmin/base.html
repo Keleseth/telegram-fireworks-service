@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/select2.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/flatpickr.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/main.css') }}">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   {% if admin.favicon_url %}
   <link rel="icon" href="{{ admin.favicon_url }}">
   {% endif %}
@@ -34,6 +35,7 @@
   <script type="text/javascript" src="{{ url_for('admin:statics', path='js/main.js') }}"></script>
   {% block tail %}
   {% endblock %}
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 </body>
 
 </html>

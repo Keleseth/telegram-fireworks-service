@@ -1,9 +1,10 @@
 from markupsafe import Markup
 from sqladmin import ModelView
+from sqlalchemy import select
+from sqlalchemy.sql import Select
+from starlette.requests import Request
 
-# from sqladmin.filters import FilterEqual, FilterLike, FilterIn
 from src.admin.constants import PAGE_SIZE
-from src.admin.utils import format_date
 from src.models.user import User
 
 
@@ -37,6 +38,16 @@ class UserView(ModelView, model=User):
         'cart',
         'is_verified',
     ]
+    custom_filters = {
+        'Активность': {
+            'is_active:true': 'Активные',
+            'is_active:false': 'Деактивированные',
+        },
+        'Роль': {
+            'is_admin:true': 'Админы',
+            'is_admin:false': 'Пользователи',
+        },
+    }
     column_labels = {
         'telegram_id': 'telegram_id',
         'name': 'имя',
@@ -57,7 +68,9 @@ class UserView(ModelView, model=User):
         'id': 'ID',
         'updated_at': 'дата изменения',
         'addresses': 'адреса',
+        'birth_date': 'дата рождения',
     }
+    column_filters_enabled = True
     column_sortable_list = ['name', 'is_admin', 'has_orders', 'created_at']
     column_default_sort = 'name'
     column_searchable_list = [
@@ -74,7 +87,6 @@ class UserView(ModelView, model=User):
             '<a href="/admin/user/details/'
             f'{getattr(user, "id")}">{getattr(user, "telegram_id")}</a>'
         ),
-        'created_at': format_date,
     }
     form_widget_args = {
         'is_admin': {
@@ -93,3 +105,23 @@ class UserView(ModelView, model=User):
     }
 
     page_size = PAGE_SIZE
+
+    def list_query(self, request: Request) -> Select:
+        stmt = select(User)
+        selected_filters = request.query_params.getlist('filters')
+
+        for f in selected_filters:
+            if ':' not in f:
+                continue
+            field, val = f.split(':')
+            val = val.lower()
+            if field == 'is_admin':
+                stmt = stmt.where(
+                    User.is_admin.is_(val in {'true', '1', 'yes'})
+                )
+            elif field == 'is_active':
+                stmt = stmt.where(
+                    User.is_active.is_(val in {'true', '1', 'yes'})
+                )
+
+        return stmt

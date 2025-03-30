@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from src.api.v1.endpoints import (
     address_router,
+    bot_info_router,
     cart_router,
     discount_router,
     favorite_router,
@@ -19,3 +20,4 @@ main_router.include_router(address_router, tags=['Адреса'])
 main_router.include_router(cart_router, tags=['Корзина'])
 main_router.include_router(user_router, tags=['Пользователи'])
 main_router.include_router(favorite_router, tags=['Избранные'])
+main_router.include_router(bot_info_router, tags=['Информация о боте'])

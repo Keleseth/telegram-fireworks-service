@@ -82,7 +82,7 @@ CATALOG_CALLBACK = 'catalog'
 ALL_PRODUCTS_CALLBACK = 'all_products'
 ALL_CATEGORIES_CALLBACK = 'all_categories'
 PARAMETERS_CALLBACK = 'parameters'
-MAIN_MENU_CALLBACK = 'back'
+MAIN_MENU_CALLBACK = 'back_to_main-menu'
 ADD_TO_CART_CALLBACK = 'add_to_cart_{id}'
 ADD_TO_FAVORITE_CALLBACK = 'add_to_favorite_{id}'
 APPLY_FILTERS_CALLBACK = 'apply_filters'
@@ -426,7 +426,7 @@ async def catalog_menu(
     if context.chat_data.get(update.effective_chat.id, 'empty') == 'empty':
         context.chat_data[update.effective_chat.id] = []
     else:
-        await delete_messages_from_memory(update, context)
+        await catalog_delete_messages_from_memory(update, context)
         context.chat_data[update.effective_chat.id] = []
     await send_callback_message(
         query,
@@ -482,7 +482,7 @@ async def add_messages_to_memory(
     context.chat_data[update.effective_chat.id].append(message_id)
 
 
-async def delete_messages_from_memory(
+async def catalog_delete_messages_from_memory(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     try:
@@ -492,7 +492,7 @@ async def delete_messages_from_memory(
             )
             context.chat_data[update.effective_chat.id].remove(message_id)
     except Exception:
-        pass
+        print('Ошибка')
 
 
 async def get_paginated_response(
@@ -513,7 +513,7 @@ async def get_paginated_response(
     await query.answer()
     next_page_url = previous_page_url = None
     if context.chat_data[update.effective_chat.id]:
-        await delete_messages_from_memory(update, context)
+        await catalog_delete_messages_from_memory(update, context)
     try:
         async with aiohttp.ClientSession() as session:
             if method == 'POST':
@@ -679,7 +679,7 @@ async def show_all_categories(
         [go_back_button(CATALOG_BACK_MESSAGE, CATALOG_CALLBACK)]
     ]
     if context.chat_data[update.effective_chat.id]:
-        await delete_messages_from_memory(update, context)
+        await catalog_delete_messages_from_memory(update, context)
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
@@ -784,7 +784,12 @@ async def back_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     target_point = query.data.split('_')[-1]
     if target_point == CATALOG_CALLBACK:
+        print(888)
         await catalog_menu(update, context)
+    elif target_point == 'main-menu':
+        print(999)
+        if context.chat_data[update.effective_chat.id]:
+            await catalog_delete_messages_from_memory(update, context)
     else:
         await query.message.reply('Пока в разработке /menu')
 
@@ -881,6 +886,9 @@ async def check_float_and_int_type(
 async def selection_by_parameters(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
+    print(999)
+    if context.chat_data.get(update.effective_chat.id, 'empty') == 'empty':
+        context.chat_data[update.effective_chat.id] = []
     query = update.callback_query
     await query.answer()
     context.user_data['filter'] = dict()
@@ -1118,7 +1126,7 @@ async def cancel_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     if context.chat_data[update.effective_chat.id]:
-        await delete_messages_from_memory(update, context)
+        await catalog_delete_messages_from_memory(update, context)
     await send_callback_message(
         query,
         update,
@@ -1141,7 +1149,7 @@ async def apply_filters(
     request_data: dict = None,
 ) -> None:
     if context.chat_data[update.effective_chat.id]:
-        await delete_messages_from_memory(update, context)
+        await catalog_delete_messages_from_memory(update, context)
     if not request_data:
         filter_data = context.user_data['filter']
     else:

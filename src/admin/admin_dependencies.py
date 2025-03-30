@@ -9,6 +9,7 @@ from src.api.auth.auth import (
     create_refresh_token,
     get_jwt_strategy,
     redis_client,
+    verify_refresh_token,
 )
 from src.api.auth.manager import UserManager
 
@@ -27,37 +28,40 @@ class SQLAdminAuth(SQLAdminAuthBackend):
         self.password_helper = PasswordHelper()
 
     async def login(self, request: Request) -> bool:
+        request.state.ok = True
+
         form = await request.form()
-        email = form.get('username', 'ololo')
-        password = form.get('password', 'ololo')
-        print(type(email))
-        print(password)
+        email = form.get('username')
+        password = form.get('password')
 
         if not email or not password:
+            request.state.ok = False
             return False
 
-        print(email)
-        # async with AsyncSessionLocal() as session:  # Добавляем сессию
-        user = await self.user_manager.get_by_email(email)  # , session=session
-        print('юзер по email получен')
-        if user is None:
+        try:
+            user = await self.user_manager.get_by_email(email)
+        except Exception:
+            request.state.ok = False
             return False
-        print(user.name)
 
         if not user.hashed_password:
+            request.state.ok = False
             return False
 
         is_valid, _ = self.password_helper.verify_and_update(
             password, user.hashed_password
         )
         if not is_valid:
+            request.state.ok = False
             return False
 
         if not (user.is_admin or user.is_superuser):
+            request.state.ok = False
             return False
 
-        if not user.age_verified:
-            return False
+        # if not user.age_verified:
+        #     request.state.ok = False
+        #     return False
 
         jwt_strategy = get_jwt_strategy()
         access_token = await jwt_strategy.write_token(user)
@@ -68,13 +72,8 @@ class SQLAdminAuth(SQLAdminAuthBackend):
             'refresh_token': refresh_token,
             'user_id': str(user.id),
         })
-        print('Господин жопосранчик')
+
         return True
-        # except InvalidPasswordException:
-        #     return False
-        # except Exception as e:
-        #     print(f'Ошибка при входе: {e}')
-        #     return False
 
     async def logout(self, request: Request) -> bool:
         # Удаляем refresh-токен из Redis
@@ -88,7 +87,6 @@ class SQLAdminAuth(SQLAdminAuthBackend):
         return True
 
     async def authenticate(self, request: Request) -> bool:
-        # Проверяем наличие токена в сессии
         access_token = request.session.get('access_token')
         refresh_token = request.session.get('refresh_token')
 
@@ -96,27 +94,25 @@ class SQLAdminAuth(SQLAdminAuthBackend):
             return False
 
         try:
-            # Проверяем refresh-токен в Redis
-            user_id = redis_client.get(refresh_token)
+            user_id = verify_refresh_token(refresh_token)
             if not user_id:
                 return False
 
-            # Валидируем JWT-токен
             strategy = self.auth_backend.get_strategy()
             user = await strategy.read_token(access_token, self.user_manager)
             if user is None:
-                return False
+                user = await self.user_manager.get(user_id)
+                if user is None:
+                    return False
 
-            # Проверяем, что пользователь — админ
             if not (user.is_admin or user.is_superuser):
                 return False
-
-            # Для админов age_verified всегда True
-            if not user.age_verified:
-                return False
-
-            # Обновляем user_id в сессии
-            request.session.update({'user_id': str(user.id)})
+            jwt_strategy = get_jwt_strategy()
+            new_access_token = await jwt_strategy.write_token(user)
+            request.session.update({
+                'access_token': new_access_token,
+                'user_id': str(user.id),
+            })
             return True
         except Exception:
             return False
