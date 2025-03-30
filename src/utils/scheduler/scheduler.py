@@ -77,7 +77,7 @@ def setup_scheduler():
     scheduler.add_job(
         check_newsletters_wrapper,
         'interval',
-        seconds=10,
+        seconds=60,
     )
     scheduler.start()
 
