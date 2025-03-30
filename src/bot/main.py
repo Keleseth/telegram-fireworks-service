@@ -11,7 +11,8 @@ from telegram.ext import (
 )
 
 from src.bot import config
-from src.bot.handlers.catalog import catalog_menu, catalog_register
+from src.bot.handlers.catalog import catalog_menu, setup_catalog_handler
+from src.bot.handlers.favorites import setup_favorites_handler, show_favorites
 from src.bot.handlers.promotions import promotions_handler
 from src.bot.keyboards import keyboard_main
 
@@ -52,6 +53,8 @@ async def button(update: Update, context: CallbackContext) -> None:
         )
     elif option == 'catalog':
         await catalog_menu(update, context)
+    elif option == 'favorites':
+        await show_favorites(update, context)
     elif option == 'promotions' or option.startswith((
         'promo_page_',
         'promo_detail_',
@@ -70,7 +73,8 @@ def main() -> None:
     menu_handler = CommandHandler('menu', menu)
     application.add_handler(menu_handler)
 
-    catalog_register(application)
+    setup_catalog_handler(application)
+    setup_favorites_handler(application)
 
     button_handler = CallbackQueryHandler(button)
     application.add_handler(button_handler)

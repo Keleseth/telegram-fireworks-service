@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 
+from src.schemas.product import FireworkDB
 from src.schemas.user import TelegramIDSchema
 
 
@@ -25,7 +26,7 @@ class FavoriteDBGet(BaseModel):
 
     id: int
     firework_id: int
-    firework: FireworkSimpleResponse
+    firework: FireworkDB
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
