@@ -1,17 +1,32 @@
 import asyncio
 import logging
 
-from telegram import InlineKeyboardMarkup, ReplyKeyboardRemove, Update
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardRemove,
+    Update,
+)
 from telegram.ext import (
     ApplicationBuilder,
     CallbackContext,
     CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
+    MessageHandler,
+    filters,
 )
 
 from src.bot import config
 from src.bot.handlers.bot_info import show_bot_info
+from src.bot.handlers.cart import (
+    change_quantity,
+    checkout,
+    clear_cart_handler,
+    handle_new_quantity,
+    remove_item,
+    view_cart,
+)
 from src.bot.handlers.catalog import (
     catalog_menu,
     setup_catalog_handler,
@@ -68,6 +83,26 @@ async def button(update: Update, context: CallbackContext):
         )
         return
 
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=(
+            'Добро пожаловать в телеграм бот Joker Fireworks! '
+            'Для входа в меню введите /menu'
+        ),
+    )
+
+
+keyboard_back = [[InlineKeyboardButton('Назад', callback_data='back')]]
+
+
+async def menu(update: Update, context: CallbackContext):
+    reply_markup = InlineKeyboardMarkup(keyboard_main)
+    await update.message.reply_text(
+        'Выберите пункт меню:', reply_markup=reply_markup
+    )
+
+
+async def button(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()
     option = query.data
@@ -92,6 +127,26 @@ async def button(update: Update, context: CallbackContext):
 
     # await user_manager.refresh_keyboard(update)
 
+    # TODO начало корзина - сделать общий обработчик
+    elif option == 'cart':
+        await view_cart(update, context)
+    elif option == 'checkout':
+        await checkout(update, context)
+    elif option.startswith('change_item_'):
+        item_id = option.split('_')[2]
+        await change_quantity(update, context, item_id)
+    elif option.startswith('remove_'):
+        item_id = option.split('_')[1]
+        await remove_item(update, context, item_id)
+    elif option == 'clear_cart':
+        await clear_cart_handler(update, context)
+    # конец корзина
+    else:
+        reply_markup = InlineKeyboardMarkup(keyboard_back)
+        await query.edit_message_text(
+            text=f'Выбран пункт: {option}', reply_markup=reply_markup
+        )
+
 
 def main() -> None:
     print(f'Loaded TOKEN: {config.TOKEN}')
@@ -110,6 +165,18 @@ def main() -> None:
 
     button_handler = CallbackQueryHandler(button)
     application.add_handler(button_handler)
+
+    checkout_handler = CallbackQueryHandler(checkout, pattern='^checkout$')
+    application.add_handler(checkout_handler)
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_new_quantity)
+    )
+    application.add_handler(
+        CallbackQueryHandler(remove_item, pattern='^remove_')
+    )
+    application.add_handler(
+        CallbackQueryHandler(clear_cart_handler, pattern='clear_cart')
+    )
 
     application.run_polling()
 

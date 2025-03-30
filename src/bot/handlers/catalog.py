@@ -351,9 +351,7 @@ async def add_to_cart(
     await query.answer()
     try:
         async with aiohttp.ClientSession() as session:
-            # TODO добавить свое id
-            # telegram_id = int(query.data)
-            telegram_id = 10001
+            telegram_id = update.effective_user.id
             firework_id = int(query.data.split('_')[-1])
             async with session.post(
                 'http://127.0.0.1:8000/user/cart',
@@ -392,7 +390,7 @@ async def add_to_favorite(
         async with aiohttp.ClientSession() as session:
             # TODO добавить свое id
             # telegram_id = int(query.data)
-            telegram_id = 10001
+            telegram_id = update.effective_user.id
             firework_id = int(query.data.split('_')[-1])
             async with session.post(
                 'http://127.0.0.1:8000/favorites',
