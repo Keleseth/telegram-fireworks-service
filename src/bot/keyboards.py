@@ -17,7 +17,9 @@ keyboard_main = [
     [InlineKeyboardButton('Информация о боте', callback_data='bot_info')],
 ]
 
-keyboard_back = [[InlineKeyboardButton('Назад', callback_data='back')]]
+keyboard_back = [
+    [InlineKeyboardButton('Перейти в общее меню 📋', callback_data='back')]
+]
 
 
 async def menu(update: Update, context: CallbackContext):

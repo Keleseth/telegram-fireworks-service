@@ -43,7 +43,6 @@ class Cart(BaseJFModel):
         nullable=False,
     )
     amount: Mapped[int] = mapped_column(nullable=False, default=1)
-
     user: Mapped['User'] = relationship('User', back_populates='cart')
     firework: Mapped['Firework'] = relationship('Firework', lazy='selectin')
 

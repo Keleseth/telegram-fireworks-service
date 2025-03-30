@@ -1,10 +1,20 @@
+import logging
 from typing import List
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from telegram import Bot
+from telegram import (
+    Bot,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    InputMediaPhoto,
+    InputMediaVideo,
+)
 
-from src.crud.user import user_crud
 from src.models import Newsletter, User
+
+PHOTO_FORMATS = ('.jpg', '.jpeg', '.png')
+VIDEO_FORMATS = ('.mp4', '.mov')
+TELEGRAM_MEDIA_LIMIT = 10
 
 
 async def send_newsletter_to_users(
@@ -24,30 +34,52 @@ async def send_newsletter_to_users(
     """
     bot = Bot(token=bot_token)
 
-    media_links = '\n'.join([
-        media.media_url for media in newsletter.mediafiles
-    ])
-    full_message = newsletter.content
-    if media_links:
-        full_message = f'{newsletter.content}\n\nМедиафайлы:\n{media_links}'
-    for user in users:
-        if user.telegram_id:
-            try:
-                await bot.send_message(
-                    chat_id=user.telegram_id, text=full_message
+    # Создаем клавиатуру с тегами
+    if newsletter.tags:
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    tag.name, callback_data=f'newsletter_tag_{tag.name}'
                 )
-            except Exception:
-                continue
+            ]
+            for tag in newsletter.tags
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+    else:
+        reply_markup = None
+
+    # Формируем медиагруппу
+    media_group = []
+    media_urls = [media.media_url for media in newsletter.mediafiles][
+        :TELEGRAM_MEDIA_LIMIT
+    ]
+    for media_url in media_urls:
+        if media_url.endswith(PHOTO_FORMATS):
+            media_group.append(InputMediaPhoto(media=media_url, caption=None))
+        elif media_url.endswith(VIDEO_FORMATS):
+            media_group.append(InputMediaVideo(media=media_url, caption=None))
+
+    for user in users:
+        if not user.telegram_id or user.is_admin:
+            continue
+
+        try:
+            if media_group:
+                # Отправляем медиагруппу
+                await bot.send_media_group(
+                    chat_id=user.telegram_id, media=media_group
+                )
+                # Отправляем кнопки отдельным сообщением
+            if reply_markup:
+                await bot.send_message(
+                    chat_id=user.telegram_id,
+                    text=f'{newsletter.content}\nТеги:',
+                    reply_markup=reply_markup,
+                )
+        except Exception as e:
+            logging.error(f'User {user.id}: {str(e)}')
+            continue
+
+    # Обновляем статус рассылки
     newsletter.switch_send = True
     await session.commit()
-    admins = await user_crud.get_all_users_admin(session=session)
-    for admin in admins:
-        if admin.telegram_id:
-            try:
-                await bot.send_message(
-                    chat_id=admin.telegram_id,
-                    text=f'Рассылка {newsletter.id} успешно отправлена! '
-                    f'Отправлено {len(users)} пользователям.',
-                )
-            except Exception:
-                continue

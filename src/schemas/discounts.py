@@ -25,3 +25,9 @@ class TelegramIdDiscountsSchema(BaseModel):
     """Схема для передачи телеграм айди."""
 
     telegram_id: int
+
+
+class ShortDiscountSchema(BaseModel):
+    """Схема для отображения."""
+
+    type: str
