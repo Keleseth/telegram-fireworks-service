@@ -1,5 +1,50 @@
 {% extends "sqladmin/layout.html" %}
 {% block content %}
+<style>
+  /* Убираем растягивание */
+  .table-responsive {
+    overflow-x: auto;
+    padding: 0;
+  }
+
+  .card-table {
+    width: auto !important;
+    table-layout: auto !important;
+    border-collapse: collapse;
+    border: 1px solid #dee2e6;
+  }
+
+  .card-table th,
+  .card-table td {
+    max-width: 350px;
+    white-space: normal;
+    word-break: break-word;
+    border: 1px solid #dee2e6;
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: middle;
+  }
+
+  .card-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+  }
+
+  .card-table tbody tr:nth-child(even) {
+    background-color: #f6f6f6;
+  }
+
+  /* Убедимся, что таблица "прилипает" к левому краю */
+  .table-responsive {
+    display: block;
+    text-align: left;
+  }
+
+  /* Убираем автоматическое растягивание карточки */
+  .card-body {
+    overflow-x: auto;
+  }
+</style>
 <div class="col-12">
   <div class="card">
     <div class="card-header">
@@ -10,7 +55,7 @@
         <div class="ms-3 d-inline-block dropdown">
           <a href="#" class="btn btn-secondary dropdown-toggle" id="dropdownMenuButton1" data-bs-toggle="dropdown"
             aria-expanded="false">
-            Export
+            Экспортировать
           </a>
           <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
             {% for export_type in model_view.export_types %}
@@ -32,7 +77,7 @@
         {% if model_view.can_create %}
         <div class="ms-3 d-inline-block">
           <a href="{{ url_for('admin:create', identity=model_view.identity) }}" class="btn btn-primary">
-            + New {{ model_view.name }}
+            Добавить: {{ model_view.name }}
           </a>
         </div>
         {% endif %}
@@ -44,14 +89,14 @@
           <button {% if not model_view.can_delete and not model_view._custom_actions_in_list %} disabled {% endif %}
             class="btn btn-light dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown"
             aria-haspopup="true" aria-expanded="false">
-            Actions
+            Действия
           </button>
           {% if model_view.can_delete or model_view._custom_actions_in_list %}
           <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
             {% if model_view.can_delete %}
             <a class="dropdown-item" id="action-delete" href="#" data-name="{{ model_view.name }}"
               data-url="{{ url_for('admin:delete', identity=model_view.identity) }}" data-bs-toggle="modal"
-              data-bs-target="#modal-delete">Delete selected items</a>
+              data-bs-target="#modal-delete">Удалить выбранные объекты</a>
             {% endif %}
             {% for custom_action, label in model_view._custom_actions_in_list.items() %}
             {% if custom_action in model_view._custom_actions_confirmation %}
@@ -69,18 +114,51 @@
           </div>
           {% endif %}
         </div>
-        {% if model_view.column_searchable_list %}
-        <div class="col-md-4 text-muted">
-          <div class="input-group">
-            <input id="search-input" type="text" class="form-control"
-              placeholder="Search: {{ model_view.search_placeholder() }}"
-              value="{{ request.query_params.get('search', '') }}">
-            <button id="search-button" class="btn" type="button">Search</button>
-            <button id="search-reset" class="btn" type="button" {% if not request.query_params.get('search')
-              %}disabled{% endif %}><i class="fa-solid fa-times"></i></button>
+        <form method="get" action="" class="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-3 px-4">
+
+      <form method="get" action="" class="d-flex flex-wrap align-items-end justify-content-end gap-3 mb-3 px-4">
+        {% if model_view.identity == "user" %}
+          {% set selected_filters = request.query_params.getlist("filters") %}
+          <div class="d-flex align-items-center gap-2">
+            <select name="filters" id="filters" class="form-select js-multi-filter" multiple style="width: 300px;">
+              <optgroup label="Активность">
+                <option value="is_active:true" {% if 'is_active:true' in selected_filters %}selected{% endif %}>Активные</option>
+                <option value="is_active:false" {% if 'is_active:false' in selected_filters %}selected{% endif %}>Деактивированные</option>
+              </optgroup>
+              <optgroup label="Роль">
+                <option value="is_admin:true" {% if 'is_admin:true' in selected_filters %}selected{% endif %}>Админы</option>
+                <option value="is_admin:false" {% if 'is_admin:false' in selected_filters %}selected{% endif %}>Пользователи</option>
+              </optgroup>
+            </select>
+            <button class="btn btn-primary" type="submit">Фильтровать</button>
           </div>
-        </div>
         {% endif %}
+
+        {% if model_view.column_searchable_list %}
+          <div class="d-flex align-items-center gap-2">
+            <div class="input-group" style="width: 300px;">
+              <input id="search-input" type="text" name="search" class="form-control"
+                placeholder="Поиск: {{ model_view.search_placeholder() }}"
+                value="{{ request.query_params.get('search', '') }}">
+              <button class="btn btn-primary" type="submit">Поиск</button>
+            </div>
+            {% if request.query_params.get('search') %}
+              <a href="{{ request.url.path }}" class="btn btn-secondary">Очистить</a>
+            {% endif %}
+          </div>
+        {% endif %}
+      </form>
+
+      <script>
+        document.addEventListener("DOMContentLoaded", function () {
+          $('.js-multi-filter').select2({
+            placeholder: "Выберите фильтры",
+            allowClear: true,
+            closeOnSelect: false,
+            width: 'resolve'
+          });
+        });
+      </script>
       </div>
     </div>
     <div class="table-responsive">
@@ -120,20 +198,20 @@
             <td class="text-end">
               {% if model_view.can_view_details %}
               <a href="{{ model_view._build_url_for('admin:details', request, row) }}" data-bs-toggle="tooltip"
-                data-bs-placement="top" title="View">
+                data-bs-placement="top" title="Просмотр">
                 <span class="me-1"><i class="fa-solid fa-eye"></i></span>
               </a>
               {% endif %}
               {% if model_view.can_edit %}
               <a href="{{ model_view._build_url_for('admin:edit', request, row) }}" data-bs-toggle="tooltip"
-                data-bs-placement="top" title="Edit">
+                data-bs-placement="top" title="Редактировать">
                 <span class="me-1"><i class="fa-solid fa-pen-to-square"></i></span>
               </a>
               {% endif %}
               {% if model_view.can_delete %}
               <a href="#" data-name="{{ model_view.name }}" data-pk="{{ get_object_identifier(row) }}"
                 data-url="{{ model_view._url_for_delete(request, row) }}" data-bs-toggle="modal"
-                data-bs-target="#modal-delete" title="Delete">
+                data-bs-target="#modal-delete" title="Удалить">
                 <span class="me-1"><i class="fa-solid fa-trash"></i></span>
               </a>
               {% endif %}
@@ -178,9 +256,9 @@
       </table>
     </div>
     <div class="card-footer d-flex justify-content-between align-items-center gap-2">
-      <p class="m-0 text-muted">Showing <span>{{ ((pagination.page - 1) * pagination.page_size) + 1 }}</span> to
-        <span>{{ min(pagination.page * pagination.page_size, pagination.count) }}</span> of <span>{{ pagination.count
-          }}</span> items
+      <p class="m-0 text-muted">Объекты от <span>{{ ((pagination.page - 1) * pagination.page_size) + 1 }}</span> до
+        <span>{{ min(pagination.page * pagination.page_size, pagination.count) }}</span> из <span>{{ pagination.count
+          }}</span>
       </p>
       <ul class="pagination m-0 ms-auto">
         <li class="page-item {% if not pagination.has_previous %}disabled{% endif %}">
@@ -190,7 +268,7 @@
             <a class="page-link" href="#">
               {% endif %}
               <i class="fa-solid fa-chevron-left"></i>
-              prev
+              пред
             </a>
         </li>
         {% for page_control in pagination.page_controls %}
@@ -203,21 +281,21 @@
             {% else %}
             <a class="page-link" href="#">
               {% endif %}
-              next
+              сл
               <i class="fa-solid fa-chevron-right"></i>
             </a>
         </li>
       </ul>
       <div class="dropdown text-muted">
-        Show
+        Показать
         <a href="#" class="btn btn-sm btn-light dropdown-toggle" data-toggle="dropdown" aria-haspopup="true"
           aria-expanded="false">
-          {{ request.query_params.get("pageSize") or model_view.page_size }} / Page
+          {{ request.query_params.get("pageSize") or model_view.page_size }} / на странице
         </a>
         <div class="dropdown-menu">
           {% for page_size_option in model_view.page_size_options %}
           <a class="dropdown-item" href="{{ request.url.include_query_params(pageSize=page_size_option, page=pagination.resize(page_size_option).page) }}">
-            {{ page_size_option }} / Page
+            {{ page_size_option }} / на странице
           </a>
           {% endfor %}
         </div>
@@ -238,3 +316,16 @@
   {% endfor %}
 </div>
 {% endblock %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const dropdowns = document.querySelectorAll("tbody .dropdown");
+    if (dropdowns.length > 0) {
+      // Убираем предыдущие dropup (если перерендерилась таблица)
+      dropdowns.forEach(d => d.classList.remove("dropup"));
+
+      // Добавляем dropup последнему .dropdown в таблице
+      const lastDropdown = dropdowns[dropdowns.length - 1];
+      lastDropdown.classList.add("dropup");
+    }
+  });
+</script>

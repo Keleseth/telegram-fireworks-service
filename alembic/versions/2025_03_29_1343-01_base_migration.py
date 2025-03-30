@@ -2,7 +2,7 @@
 
 Revision ID: 01
 Revises:
-Create Date: 2025-03-28 13:08:32.086863
+Create Date: 2025-03-29 13:43:28.032392
 
 """
 from typing import Sequence, Union
@@ -84,6 +84,13 @@ def upgrade() -> None:
     sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('newslettermedia',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('media_url', sa.String(), nullable=False),
+    sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('orderstatus',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('status_text', sa.String(), nullable=False),
@@ -154,14 +161,14 @@ def upgrade() -> None:
     sa.UniqueConstraint('id'),
     sa.UniqueConstraint('name')
     )
-    op.create_table('newslettermedia',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    op.create_table('newslettermedialink',
     sa.Column('newsletter_id', sa.Integer(), nullable=False),
-    sa.Column('media_url', sa.String(), nullable=False),
+    sa.Column('media_id', sa.Integer(), nullable=False),
     sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['media_id'], ['newslettermedia.id'], ),
     sa.ForeignKeyConstraint(['newsletter_id'], ['newsletter.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('newsletter_id', 'media_id')
     )
     op.create_table('newslettertag',
     sa.Column('tag_id', sa.Integer(), nullable=False),
@@ -291,12 +298,13 @@ def downgrade() -> None:
     op.drop_table('cart')
     op.drop_table('useraddress')
     op.drop_table('newslettertag')
-    op.drop_table('newslettermedia')
+    op.drop_table('newslettermedialink')
     op.drop_table('firework')
     op.drop_table('user')
     op.drop_table('tag')
     op.drop_table('property_field')
     op.drop_table('orderstatus')
+    op.drop_table('newslettermedia')
     op.drop_table('newsletter')
     op.drop_table('media')
     op.drop_table('discount')

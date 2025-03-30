@@ -9,9 +9,13 @@ class CategoryView(ModelView, model=Category):
     name = 'категория'
     name_plural = 'Категории'
 
-    column_list = [Category.id, Category.name, Category.parent_category]
+    column_list = [
+        Category.id,
+        Category.name,
+        Category.parent_category,
+        Category.fireworks,
+    ]
     column_details_list = [
-        'id',
         'name',
         'parent_category',
         'categories',
@@ -32,6 +36,7 @@ class CategoryView(ModelView, model=Category):
     }
     column_sortable_list = ['name', 'id']
     column_default_sort = 'name'
+    column_searchable_list = ['name']
     column_formatters = {
         'name': lambda m, _: Markup(
             '<a href="/admin/category/details/'

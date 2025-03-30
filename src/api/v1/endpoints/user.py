@@ -47,18 +47,18 @@ async def user_create(
     response_model=UserRead,
 )
 async def update_admin_profile(
-    schema: AdminUserUpdate,
+    admin_schema: AdminUserUpdate,
     admin: User = Depends(current_admin),
     user_manager: UserManager = Depends(get_user_manager),
 ):
     """Обновить email и пароль админа через менеджер."""
     await user_manager.update(
-        user_update=schema,
+        user_update=admin_schema,
         user=admin,
         safe=True,
     )
     return await user_manager.update(
-        user_update=schema,
+        user_update=admin_schema,
         user=admin,
         safe=True,
     )
@@ -70,18 +70,18 @@ async def update_admin_profile(
     summary='Обновление профиля пользователя через Telegram',
 )
 async def update_user_profile(
-    schema: UserUpdate,
+    user_schema: UserUpdate,
     telegram_user: User = Depends(current_user),
     user_manager: UserManager = Depends(get_user_manager),
 ):
     """Обновить профиль пользователя, включая адрес."""
     await user_manager.update(
-        user_update=schema,
+        user_update=user_schema,
         user=telegram_user,
         safe=True,
     )
     return await user_manager.update(
-        user_update=schema,
+        user_update=user_schema,
         user=telegram_user,
         safe=True,
     )
