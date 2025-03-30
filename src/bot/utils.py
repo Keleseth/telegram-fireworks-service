@@ -1,7 +1,8 @@
 import httpx
 from telegram import CallbackQuery, InlineKeyboardMarkup, Update
+from telegram.helpers import escape_markdown
 
-from src.bot.main import keyboard_main
+from src.bot.keyboards import keyboard_main
 
 # Предположил, что главное меню определено в main.py
 
@@ -28,6 +29,13 @@ async def return_to_main(query: CallbackQuery) -> None:
         reply_markup=InlineKeyboardMarkup(keyboard_main),
     )
     return
+
+
+MARCDOWN_VERSION = 2
+
+
+def croling_content(content: str) -> str:
+    return escape_markdown(content, version=MARCDOWN_VERSION)
 
 
 # В будущем может быть ConversationHandler.END

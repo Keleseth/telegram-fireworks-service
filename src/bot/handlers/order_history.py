@@ -1,11 +1,12 @@
 import logging
+from typing import Optional
 
 import httpx
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
+    Application,
     CallbackContext,
     CallbackQueryHandler,
-    Dispatcher,
     MessageHandler,
     filters,
 )
@@ -18,7 +19,7 @@ from src.bot.utils import (
 
 logger = logging.getLogger(__name__)
 
-# Состояния для будущего ConversationHandler
+# Состояния для ConversationHandler
 AWAITING_ORDER_DETAILS, AWAITING_NEW_ADDRESS = range(2)
 
 # Ключи для context.user_data
@@ -39,7 +40,6 @@ ORDER_DETAILS_MESSAGE = (
     'ФИО: {fio}\n'
     'Телефон: {phone}\n'
     'Звонок оператора: {operator_call}\n'
-    # TO DO: Дата оплаты: {payment_date}
 )
 ORDER_REPEAT_MESSAGE = (
     'Заказ #{order_id} успешно повторён!\n'
@@ -47,14 +47,22 @@ ORDER_REPEAT_MESSAGE = (
     'Итого: {total} руб.\n'
     'Адрес: {address}'
 )
+PLACE_ORDER_ADDRESS_PROMPT = (
+    "Введите адрес доставки (например, 'ул. Ленина 1'):"
+)
+CANCEL_KEEP_KEYBOARD = InlineKeyboardMarkup([
+    [InlineKeyboardButton('Отменить', callback_data='cancel_keep')]
+])
+
 ORDER_ADDRESS_PROMPT = (
     "Введите новый адрес доставки (например, 'ул. Ленина 1'):"
 )
 ORDER_ADDRESS_UPDATED_MESSAGE = 'Адрес доставки успешно обновлён!'
 
 
-async def order_history(update: Update, context: CallbackContext) -> int:
-    """Показ истории заказов."""
+async def order_history(
+    update: Update, context: CallbackContext
+) -> Optional[int]:
     query = update.callback_query
     await query.answer()
 
@@ -89,28 +97,23 @@ async def order_history(update: Update, context: CallbackContext) -> int:
     history_text = ''
     keyboard = []
     for order in orders:
-        total = sum(
-            item['amount'] * item['price_per_unit']
-            for item in order['order_fireworks']
-        )
-        address = order.get('user_address', {}).get('address', 'Не указан')
-        operator_call = 'Да' if order['operator_call'] else 'Нет'
-        fio = order.get('fio', 'Не указано')
-        phone = order.get('phone', 'Не указано')
         history_text += (
             f'Заказ #{order["id"]} ({order["status"]}):\n'
-            f'Состав: '
-            f'{
+            f'Состав: {
                 chr(10).join(
                     f"{item['firework']['name']}: {item['amount']} шт."
                     for item in order["order_fireworks"]
                 )
             }\n'
-            f'Итого: {total} руб.\n'
-            f'Адрес: {address}\n'
-            f'ФИО: {fio}\n'
-            f'Телефон: {phone}\n'
-            f'Звонок оператора: {operator_call}\n\n'
+            f'Итого: {order["total"]} руб.\n'
+            f'Адрес: {
+                order.get("user_address", {}).get("address", "Не указан")
+            }\n'
+            f'ФИО: {order.get("fio", "Не указано")}\n'
+            f'Телефон: {order.get("phone", "Не указано")}\n'
+            f'Звонок оператора: {
+                "Да" if order["operator_call"] else "Нет"
+            }\n\n'
         )
         keyboard.append([
             InlineKeyboardButton(
@@ -126,8 +129,9 @@ async def order_history(update: Update, context: CallbackContext) -> int:
     return AWAITING_ORDER_DETAILS
 
 
-async def show_order(update: Update, context: CallbackContext) -> int:
-    """Показ карточки заказа."""
+async def show_order(
+    update: Update, context: CallbackContext
+) -> Optional[int]:
     query = update.callback_query
     await query.answer()
 
@@ -151,19 +155,10 @@ async def show_order(update: Update, context: CallbackContext) -> int:
             await query.edit_message_text('Заказ не найден.')
             return None
 
-    total = sum(
-        item['amount'] * item['price_per_unit']
-        for item in order['order_fireworks']
-    )
-    address = order.get('user_address', {}).get('address', 'Не указан')
-    operator_call = 'Да' if order['operator_call'] else 'Нет'
-    fio = order.get('fio', 'Не указано')
-    phone = order.get('phone', 'Не указано')
     order_summary = '\n'.join(
         f'{item["firework"]["name"]}: {item["amount"]} шт.'
         for item in order['order_fireworks']
     )
-
     keyboard = []
     if order['status'] != 'Shipped':
         keyboard.append([
@@ -176,6 +171,17 @@ async def show_order(update: Update, context: CallbackContext) -> int:
             'Повторить заказ', callback_data=f'repeat_{order_id}'
         )
     ])
+    keyboard.append([
+        InlineKeyboardButton(
+            'Узнать статус', callback_data=f'status_{order_id}'
+        )
+    ])
+    if order['status'] == 'Shipped':
+        keyboard.append([
+            InlineKeyboardButton(
+                'Статус доставки', callback_data=f'delivery_{order_id}'
+            )
+        ])
     keyboard.append([InlineKeyboardButton('Назад', callback_data='back')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
@@ -183,12 +189,11 @@ async def show_order(update: Update, context: CallbackContext) -> int:
             order_id=order['id'],
             status=order['status'],
             order_summary=order_summary,
-            total=total,
-            address=address,
-            fio=fio,
-            phone=phone,
-            operator_call=operator_call,
-            # payment_date="Не реализовано"  # #TO DO
+            total=order['total'],
+            address=order.get('user_address', {}).get('address', 'Не указан'),
+            fio=order.get('fio', 'Не указано'),
+            phone=order.get('phone', 'Не указано'),
+            operator_call='Да' if order['operator_call'] else 'Нет',
         ),
         reply_markup=reply_markup,
     )
@@ -197,8 +202,58 @@ async def show_order(update: Update, context: CallbackContext) -> int:
     return AWAITING_ORDER_DETAILS
 
 
-async def edit_order_address(update: Update, context: CallbackContext) -> int:
-    """Редактирование адреса заказа."""
+async def check_status(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    await query.answer()
+    order_id = int(query.data.split('_')[1])
+    dialog_data = context.user_data.get(DIALOG_DATA, {})
+    user_id = dialog_data.get('user_id')
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f'{API_BASE_URL}/orders/get',
+            json={'order_id': order_id},
+            headers={'user-id': user_id},
+        )
+        if response.status_code != 200:
+            await query.edit_message_text('Ошибка при получении статуса.')
+            return
+        order = response.json()
+    await query.edit_message_text(
+        f'Текущий статус заказа #{order_id}: {order["status"]}',
+        reply_markup=BACK_KEYBOARD,
+    )
+
+
+async def check_delivery_status(
+    update: Update, context: CallbackContext
+) -> None:
+    query = update.callback_query
+    await query.answer()
+    order_id = int(query.data.split('_')[1])
+    dialog_data = context.user_data.get(DIALOG_DATA, {})
+    user_id = dialog_data.get('user_id')
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f'{API_BASE_URL}/orders/{order_id}/delivery_status',
+            headers={'user-id': user_id},
+        )
+        if response.status_code != 200:
+            await query.edit_message_text(
+                'Ошибка при запросе статуса доставки.'
+            )
+            return
+        data = response.json()
+    await query.edit_message_text(
+        f'Статус доставки заказа #{order_id}: {data["delivery_status"]}',
+        reply_markup=BACK_KEYBOARD,
+    )
+
+
+async def edit_order_address(
+    update: Update, context: CallbackContext
+) -> Optional[int]:
     query = update.callback_query
     await query.answer()
 
@@ -249,7 +304,6 @@ async def edit_order_address(update: Update, context: CallbackContext) -> int:
 
 
 async def handle_new_address(update: Update, context: CallbackContext) -> str:
-    """Обработка нового адреса для заказа."""
     query = update.callback_query
     dialog_data = context.user_data.get(DIALOG_DATA, {})
     user_id = dialog_data.get('user_id')
@@ -279,6 +333,7 @@ async def handle_new_address(update: Update, context: CallbackContext) -> str:
             response = await client.post(
                 f'{API_BASE_URL}/addresses/',
                 json={'address': address_text, 'telegram_id': telegram_id},
+                headers={'user-id': user_id},
             )
             if response.status_code != 201:
                 await update.message.reply_text(
@@ -305,8 +360,9 @@ async def handle_new_address(update: Update, context: CallbackContext) -> str:
     return 'FINISHED'
 
 
-async def repeat_order(update: Update, context: CallbackContext) -> None:
-    """Повторение заказа."""
+async def repeat_order(
+    update: Update, context: CallbackContext
+) -> Optional[int]:
     query = update.callback_query
     await query.answer()
 
@@ -319,7 +375,7 @@ async def repeat_order(update: Update, context: CallbackContext) -> None:
 
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            f'{API_BASE_URL}/orders/{order_id}/repeat',
+            f'{API_BASE_URL}/orders/{order_id}/repeat_direct',
             headers={'user-id': user_id},
         )
         if response.status_code != 200:
@@ -327,30 +383,75 @@ async def repeat_order(update: Update, context: CallbackContext) -> None:
             return None
         new_order = response.json()
 
-    order_summary = '\n'.join(
-        f'{item["firework"]["name"]}: {item["amount"]} шт.'
-        for item in new_order['order_fireworks']
-    )
-    total = sum(
-        item['amount'] * item['price_per_unit']
-        for item in new_order['order_fireworks']
-    )
-    address = new_order.get('user_address', {}).get('address', 'Не указан')
-    await query.edit_message_text(
-        ORDER_REPEAT_MESSAGE.format(
-            order_id=new_order['id'],
-            order_summary=order_summary,
-            total=total,
-            address=address,
+    dialog_data.update({
+        'order_id': new_order['id'],
+        'order_summary': '\n'.join(
+            f'{item["firework"]["name"]}: {item["amount"]} шт.'
+            for item in new_order['order_fireworks']
+        ),
+        'total': new_order['total'],
+        'address': new_order.get('user_address', {}).get(
+            'address', 'Не указан'
+        ),
+        'fio': new_order.get('fio', 'Не указано'),
+        'phone': new_order.get('phone', 'Не указано'),
+        'step': AWAITING_NEW_ADDRESS,
+    })
+    telegram_id = dialog_data.get('telegram_id')
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f'{API_BASE_URL}/addresses/me',
+            json={'telegram_id': telegram_id},
         )
+        if response.status_code != 200:
+            await query.edit_message_text('Ошибка при загрузке адресов.')
+            return None
+        addresses = response.json()
+
+    if not addresses:
+        await query.edit_message_text(
+            PLACE_ORDER_ADDRESS_PROMPT,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton('Отменить', callback_data='cancel_keep')]
+            ]),
+        )
+        return None
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                addr['address'], callback_data=f'addr_{addr["id"]}'
+            )
+        ]
+        for addr in addresses
+    ]
+    keyboard.append([
+        InlineKeyboardButton('Новый адрес', callback_data='new_addr')
+    ])
+    keyboard.append([
+        InlineKeyboardButton('Отменить', callback_data='cancel_keep')
+    ])
+    await query.edit_message_text(
+        'Заказ повторён. Выберите или введите новый адрес:',
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
-    return None
+    return None  # Явный возврат None для согласованности с аннотацией
 
 
-def register_handlers(dp: Dispatcher) -> None:
-    """Временная регистрация хэндлеров до переноса в main.py."""
+async def perform_repeat_order(
+    query: Update, user_id: str, order_id: int
+) -> None:
+    # Оставлено для совместимости (пока не решено что делать)
+    pass  # Удалено, так как используется прямое повторение
+
+
+def register_handlers(dp: Application) -> None:
     dp.add_handler(CallbackQueryHandler(order_history, pattern='^orders$'))
     dp.add_handler(CallbackQueryHandler(show_order, pattern=r'^order_\d+$'))
+    dp.add_handler(CallbackQueryHandler(check_status, pattern=r'^status_\d+$'))
+    dp.add_handler(
+        CallbackQueryHandler(check_delivery_status, pattern=r'^delivery_\d+$')
+    )
     dp.add_handler(
         CallbackQueryHandler(edit_order_address, pattern=r'^edit_addr_\d+$')
     )
