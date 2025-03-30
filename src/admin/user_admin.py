@@ -38,6 +38,16 @@ class UserView(ModelView, model=User):
         'cart',
         'is_verified',
     ]
+    custom_filters = {
+        'Активность': {
+            'is_active:true': 'Активные',
+            'is_active:false': 'Деактивированные',
+        },
+        'Роль': {
+            'is_admin:true': 'Админы',
+            'is_admin:false': 'Пользователи',
+        },
+    }
     column_labels = {
         'telegram_id': 'telegram_id',
         'name': 'имя',

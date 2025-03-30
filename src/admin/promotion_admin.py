@@ -1,5 +1,6 @@
 from sqladmin import ModelView
 
+from src.admin.constants import PAGE_SIZE
 from src.admin.utils import generate_clickable_formatters
 from src.models.discounts import Discount
 
@@ -41,3 +42,5 @@ class DiscountView(ModelView, model=Discount):
     column_formatters = generate_clickable_formatters(
         Discount, '/admin/newsletter/details', column_list
     )
+
+    page_size = PAGE_SIZE

@@ -1,5 +1,6 @@
 from sqladmin import ModelView
 
+from src.admin.constants import PAGE_SIZE
 from src.admin.utils import generate_clickable_formatters
 from src.models.newsletter import Newsletter, NewsletterMedia
 
@@ -49,13 +50,12 @@ class NewsletterView(ModelView, model=Newsletter):
 
 
 class NewsletterMediaView(ModelView, model=NewsletterMedia):
-    name = 'медиа рассылки'
-    name_plural = 'Медиа рассылок'
+    name = 'медиафайл рассылки'
+    name_plural = 'Медиафайлы рассылок'
 
-    column_exclude_list = [
-        NewsletterMedia.id,
-        NewsletterMedia.created_at,
-        NewsletterMedia.updated_at,
+    column_list = [
+        NewsletterMedia.media_url,
+        NewsletterMedia.newsletters,
     ]
     form_excluded_columns = [
         'created_at',
@@ -63,9 +63,12 @@ class NewsletterMediaView(ModelView, model=NewsletterMedia):
     ]
     column_details_exclude_list = [
         'id',
+        'created_at',
         'updated_at',
     ]
     column_labels = {
         'newsletters': 'связанные рассылки',
         'media_url': 'ссылка на медиа',
     }
+
+    page_size = PAGE_SIZE

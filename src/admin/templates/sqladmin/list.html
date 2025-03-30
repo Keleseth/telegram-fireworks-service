@@ -117,19 +117,40 @@
         <form method="get" action="" class="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-3 px-4">
 
       <form method="get" action="" class="d-flex flex-wrap align-items-end justify-content-end gap-3 mb-3 px-4">
-        {% if model_view.identity == "user" %}
+        {% if model_view.custom_filters %}
           {% set selected_filters = request.query_params.getlist("filters") %}
           <div class="d-flex align-items-center gap-2">
             <select name="filters" id="filters" class="form-select js-multi-filter" multiple style="width: 300px;">
-              <optgroup label="Активность">
-                <option value="is_active:true" {% if 'is_active:true' in selected_filters %}selected{% endif %}>Активные</option>
-                <option value="is_active:false" {% if 'is_active:false' in selected_filters %}selected{% endif %}>Деактивированные</option>
-              </optgroup>
-              <optgroup label="Роль">
-                <option value="is_admin:true" {% if 'is_admin:true' in selected_filters %}selected{% endif %}>Админы</option>
-                <option value="is_admin:false" {% if 'is_admin:false' in selected_filters %}selected{% endif %}>Пользователи</option>
-              </optgroup>
+              {% for group_label, options in model_view.custom_filters.items() %}
+                <optgroup label="{{ group_label }}">
+                  {% for value, label in options.items() %}
+                    <option value="{{ value }}" {% if value in selected_filters %}selected{% endif %}>
+                      {{ label }}
+                    </option>
+                  {% endfor %}
+                </optgroup>
+              {% endfor %}
             </select>
+            <button class="btn btn-primary" type="submit">Фильтровать</button>
+          </div>
+        {% endif %}
+        {% if model_view.writing_filters %}
+          <div class="d-flex align-items-center gap-2">
+            {% for label, param in model_view.writing_filters.items() %}
+              <div class="position-relative" style="width: 250px;">
+                <input
+                  class="form-control pe-4"
+                  type="text"
+                  name="{{ param }}"
+                  placeholder="{{ label }}"
+                  value="{{ request.query_params.get(param, '') }}"
+                />
+                {% if request.query_params.get(param) %}
+                  <a href="?" class="btn btn-sm btn-outline-secondary position-absolute end-0 top-0 mt-1 me-1"
+                    title="Очистить" style="z-index: 10; line-height: 1;">&times;</a>
+                {% endif %}
+              </div>
+            {% endfor %}
             <button class="btn btn-primary" type="submit">Фильтровать</button>
           </div>
         {% endif %}

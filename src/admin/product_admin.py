@@ -38,20 +38,30 @@ class FireworkView(ModelView, model=Firework):
         Firework.price,
     ]
     column_details_exclude_list = [
+        'id',
         'favorited_by_users',
         'carts',
         'category_id',
         'updated_at',
         'order_fireworks',
     ]
-    form_excluded_columns = [
-        'id',
-        'carts',
-        'favorited_by_users',
-        'created_at',
-        'updated_at',
-        'order_fireworks',
+    form_columns = [
+        'code',
+        'article',
+        'name',
+        'description',
+        'category',
+        'tags',
+        'media',
         'properties',
+        'discounts',
+        'price',
+        'measurement_unit',
+        'charges_count',
+        'effects_count',
+        'product_size',
+        'packing_material',
+        'caliber',
     ]
     column_labels = {
         'id': 'ID',

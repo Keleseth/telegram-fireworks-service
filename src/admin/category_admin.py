@@ -6,8 +6,8 @@ from src.models.product import Category
 
 
 class CategoryView(ModelView, model=Category):
-    name = 'категория'
-    name_plural = 'Категории'
+    name = 'категория товара'
+    name_plural = 'Категории товаров'
 
     column_list = [
         Category.id,

@@ -50,3 +50,6 @@ class FireworkProperty(BaseJFModel):
         'Firework', back_populates='properties'
     )
     field: Mapped['PropertyField'] = relationship('PropertyField')
+
+    def __repr__(self) -> str:
+        return self.value

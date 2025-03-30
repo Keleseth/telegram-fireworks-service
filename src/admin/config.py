@@ -38,14 +38,14 @@ async def setup_admin(app: FastAPI) -> Admin:
         authentication_backend=await get_sqladmin_auth(),
         templates_dir='src/admin/templates',
     )
-    admin.add_view(FireworkView)
     admin.add_view(UserView)
-    admin.add_view(TagView)
+    admin.add_view(FireworkView)
+    admin.add_view(PropertyFieldView)
+    admin.add_view(FireworkPropertyView)
     admin.add_view(CategoryView)
+    admin.add_view(TagView)
     admin.add_view(DiscountView)
     admin.add_view(MediaView)
     admin.add_view(NewsletterView)
     admin.add_view(NewsletterMediaView)
-    admin.add_view(PropertyFieldView)
-    admin.add_view(FireworkPropertyView)
     return admin
