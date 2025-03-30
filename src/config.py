@@ -16,8 +16,10 @@ class Settings(BaseSettings):
     port_db_postgres: str = os.getenv('PORT_DB_POSTGRES')
     log_level: str = os.getenv('LOG_LEVEL')
     secret: str = os.getenv('SECRET', 'secret')
-    reset_password_token_secret: str = os.getenv('RESET_PASSWORD_SECRET')
-    verification_token_secret: str = os.getenv('VERIFICATION_SECRET')
+    reset_password_token_secret: str = os.getenv(
+        'RESET_PASSWORD_SECRET', '123'
+    )
+    verification_token_secret: str = os.getenv('VERIFICATION_SECRET', '123')
     redis_host: str = os.getenv('REDIS_HOST')
     redis_port: str = os.getenv('REDIS_PORT')
 
