@@ -13,6 +13,7 @@ from telegram.ext import (
 from src.bot import config
 from src.bot.handlers.bot_info import show_bot_info
 from src.bot.handlers.catalog import catalog_menu, catalog_register
+from src.bot.handlers.newsletter import handle_newsletter_tag
 from src.bot.handlers.promotions import promotions_handler
 from src.bot.handlers.users import TelegramUserManager
 from src.bot.keyboards import keyboard_main
@@ -74,9 +75,10 @@ async def button(update: Update, context: CallbackContext):
         await promotions_handler(update, context)
     elif option == 'bot_info':
         await show_bot_info(update, context)
+    elif option.startswith(('newsletter_tag_',)):
+        await handle_newsletter_tag(update, context)
 
     await user_manager.refresh_keyboard(update)
-
 
 
 def main() -> None:
