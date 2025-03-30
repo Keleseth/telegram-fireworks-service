@@ -1,10 +1,13 @@
 from markupsafe import Markup
 from sqladmin import ModelView
 
+# from starlette.responses import RedirectResponse
 # from sqladmin.filters import FilterEqual, FilterLike, FilterIn
 from src.admin.constants import PAGE_SIZE
-from src.admin.utils import format_date
+from src.admin.utils import generate_clickable_formatters
 from src.models.product import Firework
+
+# from sqladmin.filters import BooleanFilter, IntegerFilter
 
 # def format_media(obj, name):
 #     url = getattr(obj, name)
@@ -21,12 +24,12 @@ class FireworkView(ModelView, model=Firework):
 
     name = 'товар'
     name_plural = 'Товары'
-    list_template = 'sqladmin/custom_list.html'
+    # list_template = 'sqladmin/custom_list.html'
 
     column_list = [
         Firework.code,
-        Firework.name,
         Firework.article,
+        Firework.name,
         Firework.category,
         Firework.tags,
         Firework.discounts,
@@ -35,18 +38,30 @@ class FireworkView(ModelView, model=Firework):
         Firework.price,
     ]
     column_details_exclude_list = [
+        'id',
         'favorited_by_users',
         'carts',
         'category_id',
         'updated_at',
         'order_fireworks',
     ]
-    form_excluded_columns = [
-        'carts',
-        'favorited_by_users',
-        'created_at',
-        'updated_at',
-        'order_fireworks',
+    form_columns = [
+        'code',
+        'article',
+        'name',
+        'description',
+        'category',
+        'tags',
+        'media',
+        'properties',
+        'discounts',
+        'price',
+        'measurement_unit',
+        'charges_count',
+        'effects_count',
+        'product_size',
+        'packing_material',
+        'caliber',
     ]
     column_labels = {
         'id': 'ID',
@@ -73,39 +88,38 @@ class FireworkView(ModelView, model=Firework):
         'product_size': 'размер изделия',
         'packing_material': 'материал упаковки',
         'created_at': 'дата создания',
+        'properties': 'доп. характеристики',
+        'caliber': 'калибр',
     }
-    column_searchable_list = ['name', 'article', 'code']
     column_sortable_list = [
-        'id',
         'name',
         'price',
         'favorited_count',
         'ordered_count',
     ]
     column_default_sort = 'name'
+    column_searchable_list = ['name', 'article', 'code']
     # фильтрация объектов по полям включая relationship поля.
-    column_filters = [
-        Firework.name,
-        Firework.category,
-        Firework.price,
-        Firework.tags,
-    ]
-    column_formatters = {
-        'name': lambda m, _: Markup(
-            '<a href="/admin/firework/details/'
-            f'{getattr(m, "id")}">{getattr(m, "name")}</a>'
-        ),
-        'code': lambda m, _: Markup(
-            '<a href="/admin/firework/details/'
-            f'{getattr(m, "id")}">{getattr(m, "code")}</a>'
-        ),
-        'article': lambda m, _: Markup(
-            '<a href="/admin/firework/details/'
-            f'{getattr(m, "id")}">{getattr(m, "article")}</a>'
-        ),
-        'created_at': format_date,
-        # 'media': format_media,
-    }
+    column_filters_enabled = True
+    # column_formatters = {
+    #     'name': lambda m, _: Markup(
+    #         '<a href="/admin/firework/details/'
+    #         f'{getattr(m, "id")}">{getattr(m, "name")}</a>'
+    #     ),
+    #     'code': lambda m, _: Markup(
+    #         '<a href="/admin/firework/details/'
+    #         f'{getattr(m, "id")}">{getattr(m, "code")}</a>'
+    #     ),
+    #     'article': lambda m, _: Markup(
+    #         '<a href="/admin/firework/details/'
+    #         f'{getattr(m, "id")}">{getattr(m, "article")}</a>'
+    #     ),
+    #     'created_at': format_date,
+    #     # 'media': format_media,
+    # }
+    column_formatters = generate_clickable_formatters(
+        Firework, '/admin/newsletter/details', column_list
+    )
     column_filters_enabled = True
 
     page_size = PAGE_SIZE

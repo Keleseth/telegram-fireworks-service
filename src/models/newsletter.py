@@ -34,7 +34,8 @@ class Newsletter(BaseJFModel):
     number_of_orders: Mapped[int] = mapped_column(Integer, default=0)
     age_verified: Mapped[bool] = mapped_column(Boolean, default=True)
     mediafiles: Mapped[list['NewsletterMedia']] = relationship(
-        back_populates='newsletter',
+        secondary='newslettermedialink',
+        back_populates='newsletters',
         lazy='selectin',
     )
     tags: Mapped[list['Tag']] = relationship(
@@ -50,28 +51,43 @@ class Newsletter(BaseJFModel):
     )
     canceled: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    def __repr__(self) -> str:
+        max_len = 30
+        if len(self.content) <= max_len:
+            return self.content
+        cut = self.content[:max_len]
+        if ' ' in cut:
+            cut = cut[: cut.rfind(' ')]
+        return f'{cut}...'
+
+
+class NewsletterMediaLink(BaseJFModel):
+    """Промежуточная модель для связи Newsletter и NewsletterMedia."""
+
+    newsletter_id: Mapped[int] = mapped_column(
+        ForeignKey('newsletter.id'), primary_key=True
+    )
+    media_id: Mapped[int] = mapped_column(
+        ForeignKey('newslettermedia.id'), primary_key=True
+    )
+
 
 class NewsletterMedia(BaseJFModel):
-    """модель для медиа файлов рассылок.
-
-    Поля:
-        1. id: int - primary key.
-        2. newsletter_id: int - рассылка, к которой относятся медифайлы.
-        3. media_url: список ссылок на медиафайлы.
-        4. newsletter: поле для связи с моделью Newsletter.
-    """
+    """Модель для медиа файлов рассылок."""
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        autoincrement=True,
+        Integer, primary_key=True, autoincrement=True
     )
-    newsletter_id: Mapped[int] = mapped_column(ForeignKey('newsletter.id'))
     media_url: Mapped[str]
-    newsletter: Mapped['Newsletter'] = relationship(
+
+    newsletters: Mapped[list['Newsletter']] = relationship(
+        secondary='newslettermedialink',
         back_populates='mediafiles',
         lazy='selectin',
     )
+
+    def __repr__(self) -> str:
+        return self.media_url
 
 
 class NewsletterTag(BaseJFModel):

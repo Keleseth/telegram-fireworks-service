@@ -2,23 +2,9 @@
 {% block content %}
 <div class="col-12">
   <div class="card">
-    <div class="card-header">
-      <h3 class="card-title">
-        {% for pk in model_view.pk_columns -%}
-        {{ pk.name }}
-        {%- if not loop.last %};{% endif -%}
-        {% endfor %}: {{ get_object_identifier(model) }}</h3>
-    </div>
     <div class="card-body border-bottom py-3">
       <div class="table-responsive">
         <table class="table card-table table-vcenter table-hover table-bordered">
-          <thead>
-            <tr>
-              <th style="width:100px;">Column</th>
-              <th class="w-1">Column</th>
-              <th class="w-1">Value</th>
-            </tr>
-          </thead>
           <tbody>
             {% for name in model_view._details_prop_names %}
             {% set label = model_view._column_labels.get(name, name) %}
@@ -67,7 +53,7 @@
         <div class="row">
           <div class="col-md-1">
             <a href="{{ url_for('admin:list', identity=model_view.identity) }}" class="btn">
-              Go Back
+              Назад
             </a>
           </div>
           {% if model_view.can_delete %}
@@ -75,14 +61,14 @@
             <a href="#" data-name="{{ model_view.name }}" data-pk="{{ get_object_identifier(model) }}"
               data-url="{{ model_view._url_for_delete(request, model) }}" data-bs-toggle="modal"
               data-bs-target="#modal-delete" class="btn btn-danger">
-              Delete
+              Удалить
             </a>
           </div>
           {% endif %}
           {% if model_view.can_edit %}
           <div class="col-md-1">
             <a href="{{ model_view._build_url_for('admin:edit', request, model) }}" class="btn btn-primary">
-              Edit
+              Редактировать
             </a>
           </div>
           {% endif %}
@@ -118,5 +104,25 @@ url=model_view._url_for_action(request, custom_action) + '?pks=' + (get_object_i
 {% endwith %}
 {% endif %}
 {% endfor %}
+{% endblock %}
 
+{% block tail %}
+  <style>
+    .card-body .table-responsive {
+      min-height: 300px; /* 👈 тут правим, а не .card-body */
+    }
+
+    .table td:first-child {
+      width: 300px;
+      white-space: nowrap;
+    }
+
+    .table td:nth-child(2) {
+      min-width: 450px;
+    }
+
+    .dropdown-menu {
+      min-width: max-content;
+    }
+  </style>
 {% endblock %}
