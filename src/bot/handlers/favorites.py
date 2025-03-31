@@ -65,9 +65,9 @@ async def fetch_favorites(telegram_id: int):
 async def show_favorites(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    # telegram_id = update.effective_user.id
+    telegram_id = update.effective_user.id
     try:
-        favorites = await fetch_favorites(10001)
+        favorites = await fetch_favorites(telegram_id)
         if not favorites:
             await query.edit_message_text('🌟 Ваш список пуст.')
             return ConversationHandler.END
@@ -104,9 +104,7 @@ async def handle_favorites_actions(
     query = update.callback_query
     await query.answer()
     data = query.data
-    # TODO сделать telegram_id для текущего пользователя
-    # telegram_id = query.from_user.id
-    telegram_id = 10001
+    telegram_id = update.effective_user.id
     if '_' in data:
         firework_id = int(data.split('_')[-1])
 
@@ -139,8 +137,9 @@ async def handle_favorites_actions(
                                 ).model_dump(),
                             ),
                         ) as response:
+                            print(999, response.status)
                             if response.status == 201:
-                                await query.answer(
+                                await query.edit_message_text(
                                     'Товар добавлен в корзину 🛒'
                                 )
                             else:

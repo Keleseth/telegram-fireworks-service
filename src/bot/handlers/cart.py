@@ -189,7 +189,6 @@ async def change_quantity(
 ):
     """Запрашиваем у пользователя новое количество товара."""
     context.user_data['current_item_id'] = item_id
-
     cart_items = context.user_data.get('cart_items', [])
     product_name = next(
         (

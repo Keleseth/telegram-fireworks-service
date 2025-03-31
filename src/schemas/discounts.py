@@ -12,7 +12,7 @@ class BaseDiscountsSchema(BaseModel):
     value: Decimal | None = None
     start_date: datetime
     end_date: datetime
-    description: str
+    description: str | None = None
 
 
 class ReadDiscountsSchema(BaseDiscountsSchema):

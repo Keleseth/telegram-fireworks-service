@@ -26,7 +26,7 @@ async def apply_filtering(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def setup_select_filters(application: ApplicationBuilder):
+def setup_select_filters(application: ApplicationBuilder):
     application.add_handler(
         CallbackQueryHandler(
             apply_filtering, pattern=f'^{SELECT_FILTERS_CALLBACK}$'
