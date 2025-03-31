@@ -2,7 +2,7 @@ import aiohttp
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext, ContextTypes
 
-API_BASE_URL = 'http://127.0.0.1:8000'
+API_BASE_URL = 'http://nginx:8000'
 
 
 async def send_request(method: str, url: str, data: dict = None) -> dict:

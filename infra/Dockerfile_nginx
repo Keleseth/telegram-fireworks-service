@@ -1,0 +1,17 @@
+FROM nginx:1.25-alpine
+
+# Устанавливаем curl и другие полезные утилиты для отладки
+RUN apk update && \
+    apk add --no-cache \
+    curl \
+    bash \
+    && rm -rf /var/cache/apk/*
+
+# Копируем нашу кастомную конфигурацию
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Создаем директорию для логов (опционально)
+RUN mkdir -p /var/log/nginx/app
+
+# Открываем порты
+EXPOSE 8000 8443
