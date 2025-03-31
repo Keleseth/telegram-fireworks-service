@@ -104,7 +104,7 @@ async def handle_favorites_actions(
     query = update.callback_query
     await query.answer()
     data = query.data
-    telegram_id = update.effective_user.i
+    telegram_id = update.effective_user.id
     if '_' in data:
         firework_id = int(data.split('_')[-1])
 
@@ -137,8 +137,9 @@ async def handle_favorites_actions(
                                 ).model_dump(),
                             ),
                         ) as response:
+                            print(999, response.status)
                             if response.status == 201:
-                                await query.answer(
+                                await query.edit_message_text(
                                     'Товар добавлен в корзину 🛒'
                                 )
                             else:
