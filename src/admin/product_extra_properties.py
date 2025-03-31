@@ -37,8 +37,8 @@ class PropertyFieldView(ModelView, model=PropertyField):
 
 
 class FireworkPropertyView(ModelView, model=FireworkProperty):
-    name = 'значение доп. характеристики продукта'
-    name_plural = 'Значения доп. характеристик продукта'
+    name = 'значение доп. характеристики товара'
+    name_plural = 'Значения доп. характеристик товаров'
 
     column_list = [
         FireworkProperty.value,
@@ -89,10 +89,10 @@ class FireworkPropertyView(ModelView, model=FireworkProperty):
 
         # если вдруг в будущем будут ещё стандартные фильтры
         selected_filters = request.query_params.getlist('filters')
-        for f in selected_filters:
-            if ':' not in f:
+        for filter_str in selected_filters:
+            if ':' not in filter_str:
                 continue
-            field, val = f.split(':', 1)
+            field, val = filter_str.split(':', 1)
             val = val.strip().lower()
 
             if field == 'field':

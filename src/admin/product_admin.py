@@ -1,11 +1,14 @@
 from markupsafe import Markup
 from sqladmin import ModelView
+from sqlalchemy import select
+from sqlalchemy.sql import Select
+from starlette.requests import Request
 
 # from starlette.responses import RedirectResponse
 # from sqladmin.filters import FilterEqual, FilterLike, FilterIn
 from src.admin.constants import PAGE_SIZE
 from src.admin.utils import generate_clickable_formatters
-from src.models.product import Firework
+from src.models.product import Category, Firework, Tag
 
 # from sqladmin.filters import BooleanFilter, IntegerFilter
 
@@ -101,22 +104,7 @@ class FireworkView(ModelView, model=Firework):
     column_searchable_list = ['name', 'article', 'code']
     # фильтрация объектов по полям включая relationship поля.
     column_filters_enabled = True
-    # column_formatters = {
-    #     'name': lambda m, _: Markup(
-    #         '<a href="/admin/firework/details/'
-    #         f'{getattr(m, "id")}">{getattr(m, "name")}</a>'
-    #     ),
-    #     'code': lambda m, _: Markup(
-    #         '<a href="/admin/firework/details/'
-    #         f'{getattr(m, "id")}">{getattr(m, "code")}</a>'
-    #     ),
-    #     'article': lambda m, _: Markup(
-    #         '<a href="/admin/firework/details/'
-    #         f'{getattr(m, "id")}">{getattr(m, "article")}</a>'
-    #     ),
-    #     'created_at': format_date,
-    #     # 'media': format_media,
-    # }
+    writing_filters = {'Категория': 'category', 'Тег': 'tag'}
     column_formatters = generate_clickable_formatters(
         Firework, '/admin/newsletter/details', column_list
     )
@@ -132,3 +120,18 @@ class FireworkView(ModelView, model=Firework):
             'style': 'min-height:200px; width:100%;',
         },
     }
+
+    def list_query(self, request: Request) -> Select:
+        stmt = select(Firework).distinct()
+
+        category = request.query_params.get('category')
+        if category:
+            stmt = stmt.join(Firework.category).where(
+                Category.name.ilike(f'%{category}%')
+            )
+
+        tag = request.query_params.get('tag')
+        if tag:
+            stmt = stmt.join(Firework.tags).where(Tag.name.ilike(f'%{tag}%'))
+
+        return stmt
