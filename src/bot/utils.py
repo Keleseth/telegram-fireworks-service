@@ -32,7 +32,7 @@ CLIENT_CONNECTION_ERROR = '❗Ошибка соединения❗'
 
 # Предположил, что главное меню определено в main.py
 
-API_BASE_URL = 'http://localhost:8000/api/v1'  # Уточнить у команды
+API_BASE_URL = 'http://nginx:8000/api/v1'
 
 
 async def get_user_id_from_telegram(update: Update) -> str | None:

@@ -12,10 +12,11 @@ pydantic-extra-types[phone-numbers]==2.10.2
 phonenumbers==8.13.55
 httpx>=0.26.0,<0.29.0
 python-dotenv==1.0.1
-python-telegram-bot==20.8
+python-telegram-bot[webhooks]==20.8
 redis==5.2.1
 sqladmin==0.20.1
 pandas==2.2.3
 aiohttp==3.11.14
 APScheduler==3.11.0
 aiohttp==3.11.14
+itsdangerous==2.2.0
