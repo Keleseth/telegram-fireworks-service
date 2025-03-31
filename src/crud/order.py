@@ -7,6 +7,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from src.crud.base import CRUDBase
+from src.crud.cart import cart_crud  # Добавлен импорт для очистки корзины
 from src.models.cart import Cart
 from src.models.order import Order, OrderFirework
 from src.schemas.order import (
@@ -43,53 +44,10 @@ class CRUDOrder(CRUDBase[Order, BaseOrderSchema, UpdateOrderAddressSchema]):
             for item in cart_items
         ]
         db.add_all(order_fireworks)
-        await db.commit()
-        await db.refresh(
-            new_order, attribute_names=['order_fireworks', 'status']
-        )
-        return ReadOrderSchema(
-            id=new_order.id,
-            status=new_order.status.status_text,
-            user_address_id=new_order.user_address_id,
-            fio=new_order.fio,
-            phone=new_order.phone,
-            operator_call=new_order.operator_call,
-            total=new_order.total,  # Новое поле
-            order_fireworks=[
-                OrderFireworkSchema.model_validate(fw)
-                for fw in new_order.order_fireworks
-            ],
-            user_id=new_order.user_id,
-        )
 
-    async def repeat_order(
-        self, db: AsyncSession, user_id: UUID, order_id: int
-    ) -> ReadOrderSchema:
-        old_order = await db.get(Order, order_id)
-        if not old_order or old_order.user_id != user_id:
-            raise HTTPException(status_code=404, detail='Заказ не найден')
+        # Очистка корзины после создания заказа
+        await cart_crud.clear_cart(user_id, db)
 
-        new_order = Order(
-            user_id=user_id,
-            status_id=1,
-            user_address_id=old_order.user_address_id,
-            fio=old_order.fio,
-            phone=old_order.phone,
-            operator_call=old_order.operator_call,
-        )
-        db.add(new_order)
-        await db.flush()
-
-        order_fireworks = [
-            OrderFirework(
-                order_id=new_order.id,
-                firework_id=item.firework_id,
-                amount=item.amount,
-                price_per_unit=item.price_per_unit,
-            )
-            for item in old_order.order_fireworks
-        ]
-        db.add_all(order_fireworks)
         await db.commit()
         await db.refresh(
             new_order, attribute_names=['order_fireworks', 'status']
@@ -196,6 +154,7 @@ class CRUDOrder(CRUDBase[Order, BaseOrderSchema, UpdateOrderAddressSchema]):
         user_address_id: int | None,
         order_id: int,
         address: str | None = None,
+        # Оставлен для совместимости, но не используется
         fio: str | None = None,
         phone: str | None = None,
         operator_call: bool = False,

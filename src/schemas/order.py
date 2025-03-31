@@ -27,7 +27,7 @@ class ReadOrderSchema(BaseModel):
     fio: Optional[str]
     phone: Optional[str]
     operator_call: bool
-    total: Optional[condecimal(max_digits=10, decimal_places=2)]  # Новое поле
+    total: Optional[condecimal(max_digits=10, decimal_places=2)]
     order_fireworks: List[OrderFireworkSchema]
     user_id: UUID
     model_config = ConfigDict(from_attributes=True)
@@ -35,7 +35,6 @@ class ReadOrderSchema(BaseModel):
 
 class UpdateOrderAddressSchema(BaseOrderSchema):
     user_address_id: Optional[int]
-    address: Optional[str]
     fio: Optional[str]
     phone: Optional[str]
     operator_call: bool

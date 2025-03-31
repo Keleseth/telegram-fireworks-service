@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
     AWAITING_FIO,
     AWAITING_PHONE,
     AWAITING_OPERATOR,
-    AWAITING_FIO_PHONE_CHOICE,  # Новое состояние для выбора fio/phone
+    AWAITING_FIO_PHONE_CHOICE,
 ) = range(6)
 
 # Ключи для context.user_data
@@ -129,7 +129,6 @@ async def place_order_start(update: Update, context: CallbackContext) -> int:
         for item in cart_items
     )
     total = sum(item['amount'] * item['price_per_unit'] for item in cart_items)
-    # Временное вычисление, пока total не в API
 
     await query.edit_message_text(
         PLACE_ORDER_START_MESSAGE.format(
@@ -163,7 +162,7 @@ async def confirm_cart(update: Update, context: CallbackContext) -> int:
             return None
         order = response.json()
         dialog_data['order_id'] = order['id']
-        dialog_data['total'] = order['total']  # Используем total из API
+        dialog_data['total'] = order['total']
 
         response = await client.post(
             f'{API_BASE_URL}/addresses/me',
@@ -249,7 +248,6 @@ async def handle_address(update: Update, context: CallbackContext) -> int:
     else:
         dialog_data['address'] = update.message.text
 
-    # Получаем историю fio и phone из заказов
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f'{API_BASE_URL}/orders/me',
@@ -415,8 +413,6 @@ async def handle_operator_call(
         }
         if dialog_data.get('address_id'):
             json_data['user_address_id'] = dialog_data['address_id']
-        else:
-            json_data['address'] = dialog_data['address']
 
         response = await client.patch(
             f'{API_BASE_URL}/orders/{dialog_data["order_id"]}/address',
@@ -427,14 +423,7 @@ async def handle_operator_call(
             await query.edit_message_text('Ошибка при обновлении заказа.')
             return None
 
-        response = await client.delete(
-            f'{API_BASE_URL}/user/cart/',
-            headers={'user-id': user_id},
-        )
-        if response.status_code != 200:
-            logger.warning('Не удалось очистить корзину после заказа.')
-
-        # Получаем количество активных заказов
+        # Удалён вызов DELETE /user/cart/, так как корзина очищается в API
         response = await client.post(
             f'{API_BASE_URL}/orders/me',
             headers={'user-id': user_id},
@@ -504,31 +493,44 @@ async def handle_cancel(update: Update, context: CallbackContext) -> str:
     dialog_data = context.user_data.get(DIALOG_DATA, {})
     user_id = dialog_data.get('user_id')
 
-    if query.data == 'cancel_clear':
-        async with httpx.AsyncClient() as client:
-            response = await client.delete(
-                f'{API_BASE_URL}/user/cart/',
+    async with httpx.AsyncClient() as client:
+        if query.data == 'cancel_clear':
+            # Переносим товары в корзину перед отменой
+            response = await client.post(
+                f'{API_BASE_URL}/orders/{dialog_data["order_id"]}/to_cart',
+                headers={'user-id': user_id},
+            )
+            if response.status_code != 200:
+                await query.edit_message_text(
+                    'Ошибка при переносе товаров в корзину.'
+                )
+                return 'FINISHED'
+            # Удаляем заказ после переноса
+            response = await client.patch(
+                f'{API_BASE_URL}/orders/{dialog_data["order_id"]}/status',
+                json={'status_id': 3},  # "Cancelled" как число
                 headers={'user-id': user_id},
             )
             if response.status_code == 200:
                 await query.edit_message_text(
-                    'Заказ сохранён, корзина очищена.'
+                    'Заказ отменён, товары возвращены в корзину.'
                 )
             else:
                 await query.edit_message_text(
-                    'Заказ сохранён, ошибка очистки корзины.'
+                    'Заказ отменён, но ошибка при обновлении статуса.'
                 )
-    elif query.data == 'cancel_keep':
-        await query.edit_message_text('Заказ сохранён, корзина осталась.')
-
-    async with httpx.AsyncClient() as client:
-        response = await client.patch(
-            f'{API_BASE_URL}/orders/{dialog_data["order_id"]}/status',
-            json={'status_id': 'Cancelled'},
-            headers={'user-id': user_id},
-        )
-        if response.status_code != 200:
-            logger.warning('Не удалось обновить статус заказа на "Cancelled".')
+        elif query.data == 'cancel_keep':
+            response = await client.patch(
+                f'{API_BASE_URL}/orders/{dialog_data["order_id"]}/status',
+                json={'status_id': 3},  # "Cancelled" как число
+                headers={'user-id': user_id},
+            )
+            if response.status_code == 200:
+                await query.edit_message_text(
+                    'Заказ отменён, корзина осталась.'
+                )
+            else:
+                await query.edit_message_text('Ошибка при отмене заказа.')
 
     context.user_data.pop(DIALOG_DATA, None)
     return 'FINISHED'

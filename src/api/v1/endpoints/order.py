@@ -28,15 +28,6 @@ async def create_new_order(
     return await crud_order.create_order(session, user_id)
 
 
-@router.post('/{order_id}/repeat', response_model=ReadOrderSchema)
-async def repeat_order(
-    order_id: int,
-    user_id: UUID = Depends(get_user_id),
-    session: AsyncSession = Depends(get_async_session),
-):
-    return await crud_order.repeat_order(session, user_id, order_id)
-
-
 @router.post('/{order_id}/repeat_direct', response_model=ReadOrderSchema)
 async def repeat_order_direct(
     order_id: int,
@@ -79,7 +70,7 @@ async def update_order_address(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail='Заказ не найден'
         )
-    if order.status.status_text == 'Shipped':  # Обновлено для OrderStatus
+    if order.status.status_text == 'Shipped':
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail='Нельзя изменить адрес после отправки',
@@ -89,7 +80,6 @@ async def update_order_address(
         user_id,
         data.user_address_id,
         order_id,
-        address=data.address,
         fio=data.fio,
         phone=data.phone,
         operator_call=data.operator_call,
@@ -145,7 +135,6 @@ async def move_order_to_cart(
 
 
 @router.get('/{order_id}/delivery_status', response_model=dict)
-# Новый endpoint для заглушки
 async def get_delivery_status(
     order_id: int,
     user_id: UUID = Depends(get_user_id),
