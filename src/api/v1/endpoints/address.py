@@ -25,6 +25,7 @@ async def create_user_address(
     create_data: CreateAddressSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
+    print('TUT ochko')
     """Создать адрес пользователя."""
     address = await address_crud.get_or_create_address(
         session=session, address=create_data.address
@@ -37,6 +38,7 @@ async def create_user_address(
         address=address,
         user_id=user_id,
     )
+    print('hHHHHHHHHHHH')
     return address
 
 

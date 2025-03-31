@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from pydantic import BaseModel, ConfigDict, condecimal
 
 
@@ -33,6 +35,7 @@ class ReadCartSchema(BaseCartSchema):
 
     id: int
     firework: FireworkNameSchema
+    price_per_unit: Decimal
 
     class Config:
         """Прямая работа с атрибутами."""

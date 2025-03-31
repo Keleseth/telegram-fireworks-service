@@ -150,8 +150,9 @@ class TelegramUserManager:
     async def _fetch_user_data(self, telegram_id: int) -> dict | None:
         """Общая функция для получения данных пользователя."""
         async with ClientSession() as session:
-            async with session.get(
-                f'{API_URL}/users/{telegram_id}'
+            async with session.post(
+                f'{API_URL}/users',
+                json={'telegram_id': telegram_id},
             ) as response:
                 if response.status == 200:
                     return await response.json()
@@ -160,8 +161,9 @@ class TelegramUserManager:
     async def _admin_fetch_user_data(self, telegram_id: int) -> dict | None:
         """Общая функция для получения данных пользователя."""
         async with ClientSession() as session:
-            async with session.get(
-                f'{API_URL}/moderator/{telegram_id}'
+            async with session.post(
+                f'{API_URL}/moderator',
+                json={'telegram_id': telegram_id},
             ) as response:
                 if response.status == 200:
                     return await response.json()
@@ -351,8 +353,8 @@ class TelegramUserManager:
 
             async with ClientSession() as session:
                 async with session.patch(
-                    f'{API_URL}/users/{user_telegram_id}',
-                    json={field: value},
+                    f'{API_URL}/users',
+                    json={field: value, 'telegram_id': user_telegram_id},
                 ) as response:
                     response_data = await response.json()
                     logging.debug(

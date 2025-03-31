@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-import httpx
+import aiohttp
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -143,15 +143,17 @@ async def button(update: Update, context: CallbackContext):
             await query.edit_message_text('Пользователь не найден.')
             return
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
                 f'{API_BASE_URL}/orders/me',
                 headers={'user-id': str(user_id)},
-            )
-            if response.status_code != 200:
-                await query.edit_message_text('Ошибка при загрузке заказов.')
-                return
-            orders = response.json()
+            ) as response:
+                if response.status != 200:
+                    await query.edit_message_text(
+                        'Ошибка при загрузке заказов.'
+                    )
+                    return
+                orders = response.json()
 
         if not orders:
             await query.edit_message_text(
