@@ -22,6 +22,24 @@ keyboard_back = [
 ]
 
 
+def orders_summary_keyboard(last_order_id: int) -> list:
+    """Клавиатура для сводки заказов."""
+    return [
+        [
+            InlineKeyboardButton(
+                'Посмотреть все', callback_data='show_all_orders'
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                'Повторить последний',
+                callback_data=f'repeat_last_{last_order_id}',
+            )
+        ],
+        [InlineKeyboardButton('Назад', callback_data='back')],
+    ]
+
+
 async def menu(update: Update, context: CallbackContext):
     if update.callback_query:
         query = update.callback_query

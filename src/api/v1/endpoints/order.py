@@ -1,7 +1,7 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -22,39 +22,35 @@ router = APIRouter(prefix='/orders', tags=['orders'])
 
 @router.post('/', response_model=ReadOrderSchema)
 async def create_new_order(
-    user_id: UUID = Depends(get_user_id),  # user_id получаем через Depends()
+    user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Создать новый заказ из корзины пользователя."""
     return await crud_order.create_order(session, user_id)
 
 
-@router.post('/{order_id}/repeat', response_model=ReadOrderSchema)
-async def repeat_order(
+@router.post('/{order_id}/repeat_direct', response_model=ReadOrderSchema)
+async def repeat_order_direct(
     order_id: int,
-    user_id: UUID = Depends(get_user_id),  # user_id через зависимость
+    user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Повторить существующий заказ."""
-    return await crud_order.repeat_order(session, user_id, order_id)
+    return await crud_order.repeat_order_direct(session, user_id, order_id)
 
 
 @router.post('/me', response_model=List[ReadOrderSchema])
 async def get_my_orders(
-    user_id: UUID = Depends(get_user_id),  # user_id через зависимость
+    user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Получить список всех заказов пользователя."""
     return await crud_order.get_orders_by_user(session, user_id)
 
 
 @router.post('/get', response_model=ReadOrderSchema)
 async def get_order(
-    data: DeleteOrderSchema,  # Только order_id
-    user_id: UUID = Depends(get_user_id),  # user_id через зависимость
+    data: DeleteOrderSchema,
+    user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Получить заказ по его идентификатору."""
     orders = await crud_order.get_orders_by_user(session, user_id)
     order = next((o for o in orders if o.id == data.order_id), None)
     if order is None:
@@ -65,24 +61,38 @@ async def get_order(
 @router.patch('/{order_id}/address', response_model=ReadOrderSchema)
 async def update_order_address(
     order_id: int,
-    data: UpdateOrderAddressSchema,  # Только user_address_id
-    user_id: UUID = Depends(get_user_id),  # user_id через зависимость
+    data: UpdateOrderAddressSchema,
+    user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Обновить адрес заказа."""
+    order = await session.get(Order, order_id)
+    if not order or order.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail='Заказ не найден'
+        )
+    if order.status.status_text == 'Shipped':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Нельзя изменить адрес после отправки',
+        )
     return await crud_order.update_order_address(
-        session, user_id, data.user_address_id, order_id
+        session,
+        user_id,
+        data.user_address_id,
+        order_id,
+        fio=data.fio,
+        phone=data.phone,
+        operator_call=data.operator_call,
     )
 
 
 @router.patch('/{order_id}/status', response_model=ReadOrderSchema)
 async def update_order_status(
     order_id: int,
-    data: UpdateOrderStatusSchema,  # Только status_id
-    user_id: UUID = Depends(get_user_id),  # user_id через зависимость
+    data: UpdateOrderStatusSchema,
+    user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Обновить статус заказа."""
     return await crud_order.update_order_status(
         session, user_id, data.status_id, order_id
     )
@@ -94,13 +104,11 @@ async def move_order_to_cart(
     user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Переместить товары из заказа в корзину."""
     order = await session.get(Order, order_id)
     if not order or order.user_id != user_id:
         raise HTTPException(status_code=404, detail='Заказ не найден')
 
     for item in order.order_fireworks:
-        # Проверяем, есть ли уже такой товар в корзине
         existing_cart_item = (
             await session.execute(
                 select(Cart).filter(
@@ -111,10 +119,8 @@ async def move_order_to_cart(
         ).scalar_one_or_none()
 
         if existing_cart_item:
-            # Если товар уже в корзине, увеличиваем количество
             existing_cart_item.amount += item.amount
         else:
-            # Если товара нет, добавляем новую запись
             session.add(
                 Cart(
                     user_id=user_id,
@@ -128,16 +134,19 @@ async def move_order_to_cart(
     return {'detail': 'Товары добавлены в корзину'}
 
 
-# @router.post('/delete')
-# async def delete_existing_order(
-#     data: DeleteOrderSchema,  # Только order_id
-#     user_id: UUID = Depends(get_user_id),  # user_id через зависимость
-#     session: AsyncSession = Depends(get_async_session),
-# ):
-#     """Удалить заказ."""
-#     deleted = await crud_order.delete_order(session, user_id, data.order_id)
-#     if not deleted:
-#         raise HTTPException(
-#             status_code=400, detail='Невозможно удалить заказ'
-#         )
-#     return {'detail': 'Заказ успешно удалён'}
+@router.get('/{order_id}/delivery_status', response_model=dict)
+async def get_delivery_status(
+    order_id: int,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    order = await session.get(Order, order_id)
+    if (
+        not order
+        or order.user_id != user_id
+        or order.status.status_text != 'Shipped'
+    ):
+        raise HTTPException(
+            status_code=404, detail='Заказ не найден или не отправлен'
+        )
+    return {'order_id': order_id, 'delivery_status': 'В пути'}
