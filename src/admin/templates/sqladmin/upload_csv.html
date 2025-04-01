@@ -1,0 +1,27 @@
+<!-- templates/upload_csv.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Загрузка CSV</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="container mt-5">
+
+  <h2>Загрузить CSV файл</h2>
+
+  {% if success %}
+    <div class="alert alert-success mt-3" role="alert">
+      ✅ Файл успешно загружен и импортирован в базу!
+    </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data">
+    <div class="form-group mt-3">
+      <input type="file" name="file" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-primary mt-3">Загрузить</button>
+  </form>
+
+</body>
+</html>

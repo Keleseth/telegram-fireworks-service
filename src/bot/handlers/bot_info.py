@@ -16,7 +16,7 @@ BOT_INFO_CARD = """
 ──────────────────────
 """
 
-API_URL = 'http://127.0.0.1:8000'
+API_URL = 'http://app:8000'
 
 
 def build_bot_info_card(fields: dict) -> str:

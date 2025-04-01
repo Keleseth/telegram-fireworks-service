@@ -20,7 +20,7 @@ from telegram.ext import (
 
 from src.bot.keyboards import keyboard_main  # Импортируем keyboard_main
 
-API_URL = 'http://127.0.0.1:8000'
+API_URL = 'http://nginx:8000'
 
 
 class TelegramUserManager:
