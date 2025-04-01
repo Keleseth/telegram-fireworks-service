@@ -1,4 +1,5 @@
 from datetime import date
+from uuid import UUID
 
 import phonenumbers
 from pydantic import (
@@ -16,6 +17,7 @@ from pydantic_extra_types.phone_numbers import PhoneNumber
 class UserRead(BaseModel):
     """Схема чтения пользователя (возвращаемые данные)."""
 
+    id: UUID
     email: EmailStr | None = Field(None, title='Почта пользователя.')
     name: str = Field(..., title='Имя пользователя.')
     nickname: str | None = Field(None, title='Никнейм пользователя.')
@@ -63,6 +65,7 @@ class UserCreate(BaseModel):
 class BaseUserUpdate(BaseModel):
     """Базовая схема обновления профиля пользователя."""
 
+    telegram_id: int
     email: EmailStr | None = Field(None, title='Почта пользователя.')
     name: str | None = Field(None, title='Имя пользователя.')
     nickname: str | None = Field(None, title='Никнейм пользователя.')

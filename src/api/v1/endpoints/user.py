@@ -23,6 +23,7 @@ from src.schemas.user import (
     BaseUserUpdate,
     TelegramAdminUserRead,
     TelegramAdminUserUpdate,
+    TelegramIDSchema,
     UserCreate,
     UserRead,
     UserReadForTelegram,
@@ -32,18 +33,18 @@ from src.schemas.user import (
 router = APIRouter()
 
 
-@router.get(
-    '/users/{user_telegram_id}',
+@router.post(
+    '/users',
     status_code=status.HTTP_200_OK,
     response_model=UserReadForTelegram,
     responses={404: {'description': 'User not found'}},
 )
 async def get_user(
-    user_telegram_id: int,
+    user_telegram_id: TelegramIDSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
     user = await user_crud.get_user_by_telegram_id(
-        session=session, telegram_id=user_telegram_id
+        session=session, telegram_id=user_telegram_id.telegram_id
     )
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
@@ -51,7 +52,7 @@ async def get_user(
 
 
 @router.patch(
-    '/users/{user_telegram_id}',
+    '/users',
     status_code=status.HTTP_200_OK,
     response_model=UserReadForTelegram,
     responses={
@@ -60,12 +61,11 @@ async def get_user(
     },
 )
 async def update_user_parameters(
-    user_telegram_id: int,
     update_data: BaseUserUpdate,
     session: AsyncSession = Depends(get_async_session),
 ):
     user = await user_crud.get_user_by_telegram_id(
-        session=session, telegram_id=user_telegram_id
+        session=session, telegram_id=update_data.telegram_id
     )
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
@@ -75,18 +75,18 @@ async def update_user_parameters(
     )
 
 
-@router.get(
-    '/moderator/{user_telegram_id}',
+@router.post(
+    '/moderator',
     status_code=status.HTTP_200_OK,
     response_model=TelegramAdminUserRead,
     responses={404: {'description': 'User not found'}},
 )
 async def get_admin_user(
-    user_telegram_id: int,
+    user_telegram_id: TelegramIDSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
     user = await user_crud.get_user_by_telegram_id(
-        session=session, telegram_id=user_telegram_id
+        session=session, telegram_id=user_telegram_id.telegram_id
     )
     if not user:
         raise HTTPException(status_code=404, detail='User not found')

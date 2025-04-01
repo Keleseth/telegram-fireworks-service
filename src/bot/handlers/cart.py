@@ -1,8 +1,18 @@
 import aiohttp
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import CallbackContext, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder,
+    CallbackContext,
+    CallbackQueryHandler,
+    ContextTypes,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
 
-API_BASE_URL = 'http://nginx:8000'
+
+API_BASE_URL = 'http://127.0.0.1:8000'
+CHANGE_QUANTITY = 1
 
 
 async def send_request(method: str, url: str, data: dict = None) -> dict:
@@ -136,6 +146,7 @@ async def view_cart(update: Update, context: CallbackContext) -> None:
     total_price = 0
     buttons = []
     for item in cart_items:
+        firework_id = item['firework']['id']
         product_name = item['firework']['name']
         amount = item['amount']
         price = float(item['firework']['price']) * amount
@@ -151,12 +162,12 @@ async def view_cart(update: Update, context: CallbackContext) -> None:
             [
                 InlineKeyboardButton(
                     '✏ Изменить количество',
-                    callback_data=f'change_item_{str(item["id"])}',
+                    callback_data=f'change_item_{str(firework_id)}',
                 )
             ],
             [
                 InlineKeyboardButton(
-                    '❌ Удалить', callback_data=f'remove_{str(item["id"])}'
+                    '❌ Удалить', callback_data=f'remove_{str(firework_id)}'
                 )
             ],
         ]
@@ -184,108 +195,13 @@ async def view_cart(update: Update, context: CallbackContext) -> None:
     context.user_data['cart_messages'].append(total_price_message.message_id)
 
 
-async def change_quantity(
-    update: Update, context: CallbackContext, item_id: str
-):
-    """Запрашиваем у пользователя новое количество товара."""
-    context.user_data['current_item_id'] = item_id
-    cart_items = context.user_data.get('cart_items', [])
-    product_name = next(
-        (
-            item['firework']['name']
-            for item in cart_items
-            if str(item['id']) == item_id
-        ),
-        None,
-    )
-
-    if not product_name:
-        await update.callback_query.message.reply_text(
-            'Ошибка: Товар не найден.'
-        )
-        return
-
-    cart_messages = context.user_data.get('cart_messages', [])
-    if cart_messages:
-        for message_id in cart_messages:
-            try:
-                await context.bot.delete_message(
-                    chat_id=update.effective_chat.id, message_id=message_id
-                )
-                print(f'Удалено сообщение с ID: {message_id}')
-            except Exception as e:
-                print(f'Не удалось удалить сообщение с ID {message_id}: {e}')
-
-        context.user_data['cart_messages'] = []
-
-    await update.callback_query.message.reply_text(
-        f'Введите новое количество для товара {product_name}:'
-    )
-
-
-async def handle_new_quantity(update: Update, context: CallbackContext):
-    """Обрабатывает новое количество товара от пользователя."""
-    new_amount = update.message.text.strip()
-
-    if not new_amount.isdigit() or int(new_amount) <= 0:
-        await update.message.reply_text(
-            'Пожалуйста, введите целое число больше нуля.'
-        )
-        return
-
-    new_amount = int(new_amount)
-
-    item_id = context.user_data.get('current_item_id')
-    if item_id is None:
-        await update.message.reply_text(
-            'Ошибка! Не найден товар для изменения количества.'
-        )
-        return
-
-    cart_items = context.user_data.get('cart_items', [])
-    product_name = next(
-        (
-            item['firework']['name']
-            for item in cart_items
-            if str(item['id']) == item_id
-        ),
-        None,
-    )
-
-    if not product_name:
-        await update.message.reply_text('Ошибка: Товар не найден.')
-        return
-
-    user_id = str(update.effective_user.id)
-    data = await send_request(
-        'patch',
-        f'{API_BASE_URL}/user/cart/{item_id}',
-        {
-            'update_data': {'telegram_id': user_id, 'amount': new_amount},
-            'user_ident': {'telegram_id': user_id},
-        },
-    )
-
-    if 'error' in data:
-        await update.message.reply_text(
-            f'❌ Произошла ошибка: {data["error"]}'
-        )
-    else:
-        await update.message.reply_text(
-            f'Количество товара {product_name} '
-            f'успешно обновлено на {new_amount} шт.'
-        )
-
-    await view_cart(update, context)
-
-
 async def remove_item(
     update: Update, context: CallbackContext, item_id: str
 ) -> None:
     """Обрабатывает кнопку удаления товара из корзины."""
     query = update.callback_query
     await query.answer()
-
+    print(item_id)
     user_id = str(update.effective_user.id)
 
     cart_items = context.user_data.get('cart_items', [])
@@ -293,7 +209,7 @@ async def remove_item(
         (
             item['firework']['name']
             for item in cart_items
-            if str(item['id']) == item_id
+            if str(item['firework']['id']) == item_id
         ),
         None,
     )
@@ -322,6 +238,7 @@ async def remove_item(
             f'{API_BASE_URL}/user/cart/{item_id}',
             json={'telegram_id': user_id},
         ) as response:
+            print(item_id)
             if response.status == 200:
                 await query.message.reply_text(
                     f'✅ Товар {product_name} успешно удален из корзины.'
@@ -364,3 +281,106 @@ async def clear_cart_handler(update: Update, context: CallbackContext) -> None:
                 await query.message.reply_text(f'❌ Ошибка: {error_message}')
 
     await view_cart(update, context)
+
+
+async def change_quantity_entry(
+    update: Update, context: CallbackContext
+) -> int:
+    """Шаг 1: Срабатывает при нажатии на кнопку 'change_item_{item_id}'.
+
+    Извлекаем item_id, сохраняем и спрашиваем новое кол-во.
+    """
+    query = update.callback_query
+    print(query)
+    await query.answer()
+
+    # Получаем item_id из callback_data: "change_item_123"
+    data = query.data  # например, "change_item_123"
+    parts = data.split('_')  # ["change", "item", "123"]
+    print(parts)
+    if len(parts) < 3:
+        await query.message.reply_text('Некорректный callback_data!')
+        return ConversationHandler.END
+
+    item_id = parts[2]
+    context.user_data['current_item_id'] = item_id
+
+    await query.message.reply_text(
+        'Введите новое количество для этого товара:'
+    )
+    print('--------------------------------------------------')
+    print('Вход в конверс 1')
+    # Переходим в состояние ожидания текста (CHANGE_QUANTITY)
+    return CHANGE_QUANTITY
+
+
+async def handle_new_quantity(update: Update, context: CallbackContext) -> int:
+    """Шаг 2: Получаем новое число от пользователя и обновляем количество."""
+    print('--------------------------------------------------')
+    print('Вход в конверс 2')
+    new_amount_text = update.message.text.strip()
+
+    if not new_amount_text.isdigit() or int(new_amount_text) <= 0:
+        await update.message.reply_text(
+            'Пожалуйста, введите целое число больше нуля.'
+        )
+        return CHANGE_QUANTITY
+
+    new_amount = int(new_amount_text)
+
+    item_id = context.user_data.get('current_item_id')
+
+    if item_id is None:
+        await update.message.reply_text(
+            'Ошибка! Не найден товар для изменения количества.'
+        )
+        return ConversationHandler.END
+
+    cart_items = context.user_data.get('cart_items', [])
+    product_name = next(
+        (
+            item['firework']['name']
+            for item in cart_items
+            if str(item['id']) == item_id
+        ),
+        None,
+    )
+
+    user_id = str(update.effective_user.id)
+    print(item_id)
+    async with aiohttp.ClientSession() as session:
+        async with session.patch(
+            f'{API_BASE_URL}/user/cart/{item_id}',
+            json={
+                'update_data': {'telegram_id': user_id, 'amount': new_amount},
+                'user_ident': {'telegram_id': user_id},
+            },
+        ) as response:
+            print(response)
+            name_text = f' {product_name}' if product_name else ''
+            await update.message.reply_text(
+                f'Количество товара{name_text} обновлено на {new_amount} шт.'
+            )
+
+    await view_cart(update, context)
+
+    return ConversationHandler.END
+
+
+def setup_cart_handler(application: ApplicationBuilder) -> None:
+    cart_conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(
+                change_quantity_entry, pattern=r'^change_item_\d+$'
+            )
+        ],
+        states={
+            CHANGE_QUANTITY: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, handle_new_quantity
+                )
+            ],
+        },
+        fallbacks=[],
+    )
+    application.add_handler(cart_conv_handler)

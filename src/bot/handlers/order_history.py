@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-import httpx
+import aiohttp
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     Application,
@@ -79,16 +79,19 @@ async def order_history(
         'step': AWAITING_ORDER_DETAILS,
     }
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f'{API_BASE_URL}/orders/me', headers={'user-id': user_id}
-        )
-        if response.status_code != 200:
-            await query.edit_message_text(
-                'Ошибка при загрузке истории заказов.'
-            )
-            return None
-        orders = response.json()
+    async with (
+        aiohttp.ClientSession() as session
+    ):  # заменили httpx.AsyncClient() на aiohttp.ClientSession()
+        async with session.post(
+            f'{API_BASE_URL}/orders/me',
+            json={'telegram_id': user_id},
+        ) as response:
+            if response.status != 200:
+                await query.edit_message_text(
+                    'Ошибка при загрузке истории заказов.'
+                )
+                return None
+            orders = await response.json()
 
     if not orders:
         await query.edit_message_text('У вас пока нет заказов.')
@@ -142,18 +145,20 @@ async def show_order(
     dialog_data = context.user_data.get(DIALOG_DATA, {})
     user_id = dialog_data.get('user_id')
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f'{API_BASE_URL}/orders/me', headers={'user-id': user_id}
-        )
-        if response.status_code != 200:
-            await query.edit_message_text('Ошибка при загрузке заказа.')
-            return None
-        orders = response.json()
-        order = next((o for o in orders if o['id'] == order_id), None)
-        if not order:
-            await query.edit_message_text('Заказ не найден.')
-            return None
+    async with (
+        aiohttp.ClientSession() as session
+    ):  # заменили httpx.AsyncClient() на aiohttp.ClientSession()
+        async with session.post(
+            f'{API_BASE_URL}/orders/me', json={'telegram_id': user_id}
+        ) as response:
+            if response.status != 200:
+                await query.edit_message_text('Ошибка при загрузке заказа.')
+                return None
+            orders = await response.json()
+            order = next((o for o in orders if o['id'] == order_id), None)
+            if not order:
+                await query.edit_message_text('Заказ не найден.')
+                return None
 
     order_summary = '\n'.join(
         f'{item["firework"]["name"]}: {item["amount"]} шт.'
@@ -209,16 +214,17 @@ async def check_status(update: Update, context: CallbackContext) -> None:
     dialog_data = context.user_data.get(DIALOG_DATA, {})
     user_id = dialog_data.get('user_id')
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
+    async with (
+        aiohttp.ClientSession() as session
+    ):  # заменили httpx.AsyncClient() на aiohttp.ClientSession()
+        async with session.post(
             f'{API_BASE_URL}/orders/get',
-            json={'order_id': order_id},
-            headers={'user-id': user_id},
-        )
-        if response.status_code != 200:
-            await query.edit_message_text('Ошибка при получении статуса.')
-            return
-        order = response.json()
+            json={'order_id': order_id, 'telegram_id': user_id},
+        ) as response:
+            if response.status != 200:
+                await query.edit_message_text('Ошибка при получении статуса.')
+                return
+            order = await response.json()
     await query.edit_message_text(
         f'Текущий статус заказа #{order_id}: {order["status"]}',
         reply_markup=BACK_KEYBOARD,
@@ -234,17 +240,19 @@ async def check_delivery_status(
     dialog_data = context.user_data.get(DIALOG_DATA, {})
     user_id = dialog_data.get('user_id')
 
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
+    async with (
+        aiohttp.ClientSession() as session
+    ):  # заменили httpx.AsyncClient() на aiohttp.ClientSession()
+        async with session.get(
             f'{API_BASE_URL}/orders/{order_id}/delivery_status',
-            headers={'user-id': user_id},
-        )
-        if response.status_code != 200:
-            await query.edit_message_text(
-                'Ошибка при запросе статуса доставки.'
-            )
-            return
-        data = response.json()
+            json={'telegram_id': user_id},
+        ) as response:
+            if response.status != 200:
+                await query.edit_message_text(
+                    'Ошибка при запросе статуса доставки.'
+                )
+                return
+            data = await response.json()
     await query.edit_message_text(
         f'Статус доставки заказа #{order_id}: {data["delivery_status"]}',
         reply_markup=BACK_KEYBOARD,
@@ -265,15 +273,15 @@ async def edit_order_address(
     telegram_id = dialog_data.get('telegram_id')
     dialog_data['order_id'] = order_id
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
+    async with aiohttp.ClientSession() as session:
+        async with session.patch(
             f'{API_BASE_URL}/addresses/me',
             json={'telegram_id': telegram_id},
-        )
-        if response.status_code != 200:
-            await query.edit_message_text('Ошибка при загрузке адресов.')
-            return None
-        addresses = response.json()
+        ) as response:
+            if response.status != 200:
+                await query.edit_message_text('Ошибка при загрузке адресов.')
+                return None
+            addresses = response.json()
 
     if not addresses:
         await query.edit_message_text(ORDER_ADDRESS_PROMPT)
@@ -306,7 +314,7 @@ async def edit_order_address(
 async def handle_new_address(update: Update, context: CallbackContext) -> str:
     query = update.callback_query
     dialog_data = context.user_data.get(DIALOG_DATA, {})
-    user_id = dialog_data.get('user_id')
+    # user_id = dialog_data.get('user_id')
     telegram_id = dialog_data.get('telegram_id')
     order_id = dialog_data.get('order_id')
 
@@ -329,30 +337,34 @@ async def handle_new_address(update: Update, context: CallbackContext) -> str:
             return None
     else:
         address_text = update.message.text
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
                 f'{API_BASE_URL}/addresses/',
                 json={'address': address_text, 'telegram_id': telegram_id},
-                headers={'user-id': user_id},
-            )
-            if response.status_code != 201:
-                await update.message.reply_text(
-                    'Ошибка при сохранении адреса.'
-                )
-                return None
-            address_id = response.json()['id']
+            ) as response:
+                if response.status != 201:
+                    await update.message.reply_text(
+                        'Ошибка при сохранении адреса.'
+                    )
+                    return None
+                address_id = response.json()['id']
 
-    async with httpx.AsyncClient() as client:
-        response = await client.patch(
+    async with aiohttp.ClientSession() as session:
+        async with session.patch(
             f'{API_BASE_URL}/orders/{order_id}/address',
-            json={'user_address_id': address_id, 'operator_call': False},
-            headers={'user-id': user_id},
-        )
-        if response.status_code != 200:
-            await (
-                query.edit_message_text if query else update.message.reply_text
-            )('Ошибка при обновлении адреса.')
-            return None
+            json={
+                'user_address_id': address_id,
+                'operator_call': False,
+                'telegram_id': telegram_id,
+            },
+        ) as response:
+            if response.status != 200:
+                await (
+                    query.edit_message_text
+                    if query
+                    else update.message.reply_text
+                )('Ошибка при обновлении адреса.')
+                return None
     await (query.edit_message_text if query else update.message.reply_text)(
         ORDER_ADDRESS_UPDATED_MESSAGE
     )
@@ -373,15 +385,15 @@ async def repeat_order(
     dialog_data = context.user_data.get(DIALOG_DATA, {})
     user_id = dialog_data.get('user_id')
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
             f'{API_BASE_URL}/orders/{order_id}/repeat_direct',
-            headers={'user-id': user_id},
-        )
-        if response.status_code != 200:
-            await query.edit_message_text('Ошибка при повторении заказа.')
-            return None
-        new_order = response.json()
+            json={'telegram_id': user_id},
+        ) as response:
+            if response.status != 200:
+                await query.edit_message_text('Ошибка при повторении заказа.')
+                return None
+            new_order = response.json()
 
     dialog_data.update({
         'order_id': new_order['id'],
@@ -398,15 +410,15 @@ async def repeat_order(
         'step': AWAITING_NEW_ADDRESS,
     })
     telegram_id = dialog_data.get('telegram_id')
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
             f'{API_BASE_URL}/addresses/me',
             json={'telegram_id': telegram_id},
-        )
-        if response.status_code != 200:
-            await query.edit_message_text('Ошибка при загрузке адресов.')
-            return None
-        addresses = response.json()
+        ) as response:
+            if response.status != 200:
+                await query.edit_message_text('Ошибка при загрузке адресов.')
+                return None
+            addresses = response.json()
 
     if not addresses:
         await query.edit_message_text(

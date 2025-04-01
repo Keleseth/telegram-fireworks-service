@@ -17,4 +17,4 @@ async def get_bot_info(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Получение информации о боте."""
-    return (await bot_info_crud.get_multi(session=session))[0]
+    return (await bot_info_crud.get_multi_bot_info(session=session))[0]

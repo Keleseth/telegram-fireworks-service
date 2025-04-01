@@ -27,6 +27,7 @@ class CRUDCart(CRUDBase[Cart, CreateCartSchema, UpdateCartSchema]):
         self, user_id: UUID, firework_id: int, session: AsyncSession
     ) -> Cart | None:
         """Получает конкретный товар в корзине пользователя."""
+        print(user_id, firework_id)
         result = await session.execute(
             select(self.model)
             .where(self.model.user_id == user_id)

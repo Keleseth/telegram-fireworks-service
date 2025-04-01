@@ -14,18 +14,15 @@ from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
-    MessageHandler,
-    filters,
 )
 
 from src.bot import config
 from src.bot.handlers.bot_info import show_bot_info
 from src.bot.handlers.cart import (
-    change_quantity,
     checkout,
     clear_cart_handler,
-    handle_new_quantity,
     remove_item,
+    setup_cart_handler,
     view_cart,
 )
 from src.bot.handlers.catalog import (
@@ -37,9 +34,6 @@ from src.bot.handlers.newsletter import handle_newsletter_tag
 
 # from src.bot.handlers.catalog import catalog_menu, catalog_register
 from src.bot.handlers.order_history import order_history
-from src.bot.handlers.order_history import (
-    register_handlers as register_order_history,
-)
 from src.bot.handlers.place_order import (
     register_handlers as register_place_order,
 )
@@ -122,9 +116,6 @@ async def button(update: Update, context: CallbackContext):
         await view_cart(update, context)
     elif option == 'checkout':
         await checkout(update, context)
-    elif option.startswith('change_item_'):
-        item_id = option.split('_')[2]
-        await change_quantity(update, context, item_id)
     elif option.startswith('remove_'):
         item_id = option.split('_')[1]
         await remove_item(update, context, item_id)
@@ -200,19 +191,17 @@ def main() -> None:
     setup_catalog_handler(application)
     setup_favorites_handler(application)
     setup_select_filters(application)
-    register_order_history(application)
+    # register_order_history(application)
     # Регистрация хэндлеров из order_history.py
     register_place_order(application)
     # Регистрация хэндлеров из place_order.py
+    setup_cart_handler(application)
 
     button_handler = CallbackQueryHandler(button)
     application.add_handler(button_handler)
 
     checkout_handler = CallbackQueryHandler(checkout, pattern='^checkout$')
     application.add_handler(checkout_handler)
-    application.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_new_quantity)
-    )
     application.add_handler(
         CallbackQueryHandler(remove_item, pattern='^remove_')
     )

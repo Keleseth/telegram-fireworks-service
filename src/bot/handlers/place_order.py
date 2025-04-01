@@ -1,11 +1,14 @@
 import logging
+import re
+from decimal import Decimal
 
-import httpx
+from aiohttp import ClientSession
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     Application,
     CallbackContext,
     CallbackQueryHandler,
+    ConversationHandler,
     MessageHandler,
     filters,
 )
@@ -13,7 +16,6 @@ from telegram.ext import (
 from src.bot.utils import (
     API_BASE_URL,
     get_user_id_from_telegram,
-    return_to_main,
 )
 
 logger = logging.getLogger(__name__)
@@ -25,8 +27,7 @@ logger = logging.getLogger(__name__)
     AWAITING_FIO,
     AWAITING_PHONE,
     AWAITING_OPERATOR,
-    AWAITING_FIO_PHONE_CHOICE,
-) = range(6)
+) = range(5)
 
 # Ключи для context.user_data
 DIALOG_DATA = 'dialog_data'
@@ -35,19 +36,13 @@ DIALOG_DATA = 'dialog_data'
 CONFIRM_KEYBOARD = InlineKeyboardMarkup([
     [
         InlineKeyboardButton('Подтвердить', callback_data='confirm_cart'),
-        InlineKeyboardButton('Назад', callback_data='back'),
+        InlineKeyboardButton('Отмена', callback_data='cancel'),
     ]
 ])
 OPERATOR_KEYBOARD = InlineKeyboardMarkup([
     [
         InlineKeyboardButton('Да', callback_data='operator_yes'),
         InlineKeyboardButton('Нет', callback_data='operator_no'),
-    ]
-])
-SAVE_ADDRESS_KEYBOARD = InlineKeyboardMarkup([
-    [
-        InlineKeyboardButton('Сохранить адрес', callback_data='save_address'),
-        InlineKeyboardButton('Не сохранять', callback_data='no_save_address'),
     ]
 ])
 
@@ -68,67 +63,59 @@ PLACE_ORDER_SUMMARY_MESSAGE = (
     'ФИО: {fio}\n'
     'Телефон: {phone}\n'
     'Итого: {total} руб.\n\n'
-    'Хотите получить звонок от оператора '
-    'для уточнения деталей заказа?\n'
-    'Звонок поступит в течение 15 минут '
-    '(с 9:00 до 18:00 МСК) '
-    'или до 10:00 следующего дня.'
+    'Хотите получить звонок от оператора для уточнения деталей?'
 )
 PLACE_ORDER_CONFIRMATION_MESSAGE = (
-    'Заказ успешно оформлен! '
-    'Ожидайте звонка оператора.\n'
+    'Заказ #{order_id} успешно оформлен!\n'
     'Посмотреть заказ можно в истории заказов.'
-)
-PLACE_ORDER_NO_OPERATOR_MESSAGE = (
-    'Заказ успешно оформлен! '
-    'Посмотреть можно в истории заказов.\n\n'
-    'Сохранить введённый адрес для будущих заказов?'
 )
 
 
 async def place_order_start(update: Update, context: CallbackContext) -> int:
+    """Начало оформления заказа: подтверждение корзины."""
     query = update.callback_query
     await query.answer()
 
     user_id = await get_user_id_from_telegram(update)
     if not user_id:
         await query.edit_message_text('Пользователь не найден.')
-        return None
+        return ConversationHandler.END
 
-    context.user_data[DIALOG_DATA] = {
-        'flow': 'place_order',
-        'user_id': user_id,
-        'telegram_id': update.effective_user.id,
-        'order_id': None,
-        'address_id': None,
-        'address': None,
-        'fio': None,
-        'phone': None,
-        'operator_call': None,
-        'order_summary': None,
-        'total': None,
-        'step': AWAITING_CONFIRMATION,
-    }
-
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
+    async with ClientSession() as session:
+        async with session.post(
             f'{API_BASE_URL}/user/cart/me',
-            headers={'user-id': user_id},
-        )
-        if response.status_code != 200:
-            await query.edit_message_text('Не удалось загрузить корзину.')
-            return None
-        cart_items = response.json()
+            json={'telegram_id': update.effective_user.id},
+        ) as response:
+            if response.status != 200:
+                await query.edit_message_text('Не удалось загрузить корзину.')
+                return ConversationHandler.END
+            cart_items = await response.json()
 
     if not cart_items:
         await query.edit_message_text('Ваша корзина пуста.')
-        return None
+        return ConversationHandler.END
 
     cart_summary = '\n'.join(
         f'{item["firework"]["name"]}: {item["amount"]} шт.'
         for item in cart_items
     )
-    total = sum(item['amount'] * item['price_per_unit'] for item in cart_items)
+    total = sum(
+        item['amount'] * Decimal(item['price_per_unit']) for item in cart_items
+    )
+
+    context.user_data[DIALOG_DATA] = {
+        'user_id': user_id,
+        'telegram_id': update.effective_user.id,
+        'cart_items': cart_items,
+        'order_summary': cart_summary,
+        'total': total,
+        'order_id': None,
+        'address': None,
+        'address_id': None,
+        'fio': None,
+        'phone': None,
+        'operator_call': False,
+    }
 
     await query.edit_message_text(
         PLACE_ORDER_START_MESSAGE.format(
@@ -136,51 +123,48 @@ async def place_order_start(update: Update, context: CallbackContext) -> int:
         ),
         reply_markup=CONFIRM_KEYBOARD,
     )
-    context.user_data[DIALOG_DATA]['order_summary'] = cart_summary
-    context.user_data[DIALOG_DATA]['total'] = total
     return AWAITING_CONFIRMATION
 
 
 async def confirm_cart(update: Update, context: CallbackContext) -> int:
+    """Подтверждение корзины, создание заказа и запрос адреса."""
     query = update.callback_query
     await query.answer()
 
-    if query.data == 'back':
-        return await return_to_main(query)
+    if query.data == 'cancel':
+        await query.edit_message_text('Оформление заказа отменено.')
+        return ConversationHandler.END
 
-    dialog_data = context.user_data.get(DIALOG_DATA, {})
-    user_id = dialog_data.get('user_id')
-    telegram_id = dialog_data.get('telegram_id')
+    dialog_data = context.user_data[DIALOG_DATA]
+    telegram_id = dialog_data['telegram_id']
+    # user_id = dialog_data['user_id']
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
+    # Создаём заказ без адреса
+    async with ClientSession() as session:
+        async with session.post(
             f'{API_BASE_URL}/orders/',
-            headers={'user-id': user_id},
-        )
-        if response.status_code != 200:
-            await query.edit_message_text('Ошибка при создании заказа.')
-            return None
-        order = response.json()
-        dialog_data['order_id'] = order['id']
-        dialog_data['total'] = order['total']
+            json={'telegram_id': telegram_id},
+        ) as response:
+            if response.status != 200:
+                await query.edit_message_text(
+                    f'Ошибка при создании заказа: {await response.text()}'
+                )
+                return ConversationHandler.END
+            order = await response.json()
+            dialog_data['order_id'] = order['id']
 
-        response = await client.post(
+        async with session.post(
             f'{API_BASE_URL}/addresses/me',
             json={'telegram_id': telegram_id},
-        )
-        if response.status_code != 200:
-            await query.edit_message_text('Ошибка при загрузке адресов.')
-            return None
-        addresses = response.json()
+        ) as response:
+            if response.status != 200:
+                await query.edit_message_text('Ошибка при загрузке адресов.')
+                return ConversationHandler.END
+            addresses = await response.json()
+            logger.info(f'Addresses response: {addresses}')
 
     if not addresses:
-        await query.edit_message_text(
-            PLACE_ORDER_ADDRESS_PROMPT,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton('Отменить', callback_data='cancel_keep')]
-            ]),
-        )
-        dialog_data['step'] = AWAITING_ADDRESS
+        await query.edit_message_text(PLACE_ORDER_ADDRESS_PROMPT)
         return AWAITING_ADDRESS
 
     keyboard = [
@@ -194,170 +178,69 @@ async def confirm_cart(update: Update, context: CallbackContext) -> int:
     keyboard.append([
         InlineKeyboardButton('Новый адрес', callback_data='new_addr')
     ])
-    keyboard.append([
-        InlineKeyboardButton('Отменить', callback_data='cancel_keep')
-    ])
-    reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
-        'Выберите адрес доставки или отмените заказ:',
-        reply_markup=reply_markup,
+        'Выберите адрес доставки:',
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
-    dialog_data['step'] = AWAITING_ADDRESS
     return AWAITING_ADDRESS
 
 
 async def handle_address(update: Update, context: CallbackContext) -> int:
-    query = update.callback_query
-    dialog_data = context.user_data.get(DIALOG_DATA, {})
-    telegram_id = dialog_data.get('telegram_id')
-    user_id = dialog_data.get('user_id')
+    dialog_data = context.user_data[DIALOG_DATA]
 
-    if query:
+    if update.callback_query:
+        query = update.callback_query
         await query.answer()
-        if query.data == 'back':
-            return await return_to_main(query)
-        if query.data == 'new_addr':
-            await query.edit_message_text(
-                PLACE_ORDER_ADDRESS_PROMPT,
-                reply_markup=InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton(
-                            'Отменить', callback_data='cancel_keep'
+        telegram_id = str(update.effective_user.id)
+
+        if query.data.startswith('addr_'):
+            address_id = query.data.split('_', 1)[1]
+            async with ClientSession() as session:
+                async with session.get(
+                    f'{API_BASE_URL}/addresses/{address_id}',
+                    headers={'telegram-id': telegram_id},
+                ) as response:
+                    if response.status != 200:
+                        await query.edit_message_text(
+                            'Ошибка при загрузке адреса.'
                         )
-                    ]
-                ]),
-            )
-            dialog_data['step'] = AWAITING_ADDRESS
+                        return ConversationHandler.END
+
+                    address_data = await response.json()
+
+            dialog_data['address'] = address_data['address']
+            dialog_data['address_id'] = address_id
+            await query.edit_message_text(PLACE_ORDER_FIO_PROMPT)
+            return AWAITING_FIO
+
+        if query.data == 'new_addr':
+            await query.edit_message_text(PLACE_ORDER_ADDRESS_PROMPT)
             return AWAITING_ADDRESS
-        address_id = int(query.data.split('_')[1])
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f'{API_BASE_URL}/addresses/me',
-                json={'telegram_id': telegram_id},
-            )
-            if response.status_code != 200:
-                await query.edit_message_text('Ошибка при загрузке адресов.')
-                return None
-            addresses = response.json()
-            address = next(
-                (a['address'] for a in addresses if a['id'] == address_id),
-                None,
-            )
-        dialog_data['address_id'] = address_id
-        dialog_data['address'] = address
-    else:
-        dialog_data['address'] = update.message.text
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f'{API_BASE_URL}/orders/me',
-            headers={'user-id': user_id},
-        )
-        if response.status_code != 200:
-            await (
-                query.edit_message_text if query else update.message.reply_text
-            )('Ошибка при загрузке данных.')
-            return None
-        orders = response.json()
+        return ConversationHandler.END
 
-    used_contacts = {
-        (order.get('fio'), order.get('phone'))
-        for order in orders
-        if order.get('fio') and order.get('phone')
-    }
-    if not used_contacts:
-        await (
-            query.edit_message_text if query else update.message.reply_text
-        )(
-            PLACE_ORDER_FIO_PROMPT,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton('Отменить', callback_data='cancel_keep')]
-            ]),
-        )
-        dialog_data['step'] = AWAITING_FIO
-        return AWAITING_FIO
-
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                f'{fio}, {phone}', callback_data=f'fio_phone_{fio}|{phone}'
-            )
-        ]
-        for fio, phone in used_contacts
-    ]
-    keyboard.append([
-        InlineKeyboardButton('Новый контакт', callback_data='new_contact')
-    ])
-    keyboard.append([
-        InlineKeyboardButton('Отменить', callback_data='cancel_keep')
-    ])
-    await (query.edit_message_text if query else update.message.reply_text)(
-        'Выберите ранее использованные данные или введите новые:',
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
-    dialog_data['step'] = AWAITING_FIO_PHONE_CHOICE
-    return AWAITING_FIO_PHONE_CHOICE
-
-
-async def handle_fio_phone_choice(
-    update: Update, context: CallbackContext
-) -> int:
-    query = update.callback_query
-    await query.answer()
-    dialog_data = context.user_data.get(DIALOG_DATA, {})
-
-    if query.data == 'new_contact':
-        await query.edit_message_text(
-            PLACE_ORDER_FIO_PROMPT,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton('Отменить', callback_data='cancel_keep')]
-            ]),
-        )
-        dialog_data['step'] = AWAITING_FIO
-        return AWAITING_FIO
-
-    fio, phone = query.data.split('_')[2].split('|')
-    dialog_data['fio'] = fio
-    dialog_data['phone'] = phone
-
-    order_summary = dialog_data['order_summary']
-    total = dialog_data['total']
-    await query.edit_message_text(
-        PLACE_ORDER_SUMMARY_MESSAGE.format(
-            order_summary=order_summary,
-            address=dialog_data['address'],
-            fio=fio,
-            phone=phone,
-            total=total,
-        ),
-        reply_markup=OPERATOR_KEYBOARD,
-    )
-    dialog_data['step'] = AWAITING_OPERATOR
-    return AWAITING_OPERATOR
+    dialog_data['address'] = update.message.text.strip()
+    dialog_data['address_id'] = None  # Новый адрес пока не сохранён
+    await update.message.reply_text(PLACE_ORDER_FIO_PROMPT)
+    return AWAITING_FIO
 
 
 async def handle_fio(update: Update, context: CallbackContext) -> int:
-    dialog_data = context.user_data.get(DIALOG_DATA, {})
+    """Обработка ввода ФИО."""
+    dialog_data = context.user_data[DIALOG_DATA]
     fio = update.message.text.strip()
     if len(fio.split()) < 2:
         await update.message.reply_text('Введите полное ФИО (имя и фамилию).')
         return AWAITING_FIO
     dialog_data['fio'] = fio
-    await update.message.reply_text(
-        PLACE_ORDER_PHONE_PROMPT,
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton('Отменить', callback_data='cancel_keep')]
-        ]),
-    )
-    dialog_data['step'] = AWAITING_PHONE
+    await update.message.reply_text(PLACE_ORDER_PHONE_PROMPT)
     return AWAITING_PHONE
 
 
 async def handle_phone(update: Update, context: CallbackContext) -> int:
-    dialog_data = context.user_data.get(DIALOG_DATA, {})
+    """Обработка ввода телефона."""
+    dialog_data = context.user_data[DIALOG_DATA]
     phone = update.message.text.strip()
-    import re
-
     if not re.match(r'^\+7\d{10}$', phone):
         await update.message.reply_text(
             "Введите номер в формате '+79991234567'."
@@ -365,225 +248,136 @@ async def handle_phone(update: Update, context: CallbackContext) -> int:
         return AWAITING_PHONE
     dialog_data['phone'] = phone
 
-    order_summary = dialog_data['order_summary']
-    total = dialog_data['total']
-    await update.message.reply_text(
-        PLACE_ORDER_SUMMARY_MESSAGE.format(
-            order_summary=order_summary,
-            address=dialog_data['address'],
-            fio=dialog_data['fio'],
-            phone=phone,
-            total=total,
-        ),
-        reply_markup=OPERATOR_KEYBOARD,
+    summary_text = PLACE_ORDER_SUMMARY_MESSAGE.format(
+        order_summary=dialog_data['order_summary'],
+        address=dialog_data['address'],
+        fio=dialog_data['fio'],
+        phone=dialog_data['phone'],
+        total=dialog_data['total'],
     )
-    dialog_data['step'] = AWAITING_OPERATOR
+    await update.message.reply_text(
+        summary_text, reply_markup=OPERATOR_KEYBOARD
+    )
     return AWAITING_OPERATOR
 
 
 async def handle_operator_call(
     update: Update, context: CallbackContext
-) -> str:
+) -> int:
+    """Обработка выбора звонка оператора и обновление заказа."""
     query = update.callback_query
     await query.answer()
 
-    dialog_data = context.user_data.get(DIALOG_DATA, {})
-    user_id = dialog_data.get('user_id')
-    operator_call = query.data == 'operator_yes'
+    dialog_data = context.user_data[DIALOG_DATA]
+    dialog_data['operator_call'] = query.data == 'operator_yes'
+    # user_id = dialog_data['user_id']
+    telegram_id = dialog_data['telegram_id']
+    order_id = dialog_data['order_id']
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f'{API_BASE_URL}/orders/get',
-            json={'order_id': dialog_data['order_id']},
-            headers={'user-id': user_id},
-        )
-        if (
-            response.status_code != 200
-            or response.json()['status'] == 'Shipped'
-        ):
-            await query.edit_message_text(
-                'Заказ уже отправлен и не может быть изменён.'
-            )
-            return None
-
-        json_data = {
-            'operator_call': operator_call,
-            'fio': dialog_data['fio'],
-            'phone': dialog_data['phone'],
-        }
-        if dialog_data.get('address_id'):
-            json_data['user_address_id'] = dialog_data['address_id']
-
-        response = await client.patch(
-            f'{API_BASE_URL}/orders/{dialog_data["order_id"]}/address',
-            json=json_data,
-            headers={'user-id': user_id},
-        )
-        if response.status_code != 200:
-            await query.edit_message_text('Ошибка при обновлении заказа.')
-            return None
-
-        # Удалён вызов DELETE /user/cart/, так как корзина очищается в API
-        response = await client.post(
-            f'{API_BASE_URL}/orders/me',
-            headers={'user-id': user_id},
-        )
-        if response.status_code == 200:
-            orders = response.json()
-            active_orders = len([
-                o
-                for o in orders
-                if o['status'] not in ['Delivered', 'Cancelled']
-            ])
-        else:
-            active_orders = 'неизвестно'
-
-    if operator_call:
-        await query.edit_message_text(
-            f'{PLACE_ORDER_CONFIRMATION_MESSAGE}'
-            f'У вас {active_orders} активных заказов.'
-        )
-    else:
-        await query.edit_message_text(
-            f'{PLACE_ORDER_NO_OPERATOR_MESSAGE}'
-            f'У вас {active_orders} активных заказов.',
-            reply_markup=SAVE_ADDRESS_KEYBOARD
-            if not dialog_data.get('address_id')
-            else None,
-        )
-    return 'FINISHED'
-
-
-async def handle_save_address(update: Update, context: CallbackContext) -> str:
-    query = update.callback_query
-    await query.answer()
-
-    dialog_data = context.user_data.get(DIALOG_DATA, {})
-    user_id = dialog_data.get('user_id')
-    telegram_id = dialog_data.get('telegram_id')
-
-    if query.data == 'save_address':
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
+    # Если адрес новый, создаём его через POST /addresses/
+    if not dialog_data['address_id']:
+        async with ClientSession() as session:
+            async with session.post(
                 f'{API_BASE_URL}/addresses/',
                 json={
-                    'address': dialog_data['address'],
                     'telegram_id': telegram_id,
+                    'address': dialog_data['address'],
                 },
-                headers={'user-id': user_id},
-            )
-            if response.status_code != 201:
-                await query.edit_message_text('Ошибка при сохранении адреса.')
-            else:
+            ) as response:
+                if response.status != 201:
+                    await query.edit_message_text(
+                        f'Ошибка при сохранении адреса: '
+                        f'{await response.text()}'
+                    )
+                    return ConversationHandler.END
+                address_data = await response.json()
+                dialog_data['address_id'] = address_data['id']
+
+    # Обновляем заказ через PATCH /orders/{order_id}/address
+    json_data = {
+        'user_address_id': dialog_data['address_id'],
+        'fio': dialog_data['fio'],
+        'phone': dialog_data['phone'],
+        'operator_call': dialog_data['operator_call'],
+    }
+    async with ClientSession() as session:
+        async with session.patch(
+            f'{API_BASE_URL}/orders/{order_id}/address',
+            json=json_data,
+        ) as response:
+            if response.status != 200:
                 await query.edit_message_text(
-                    'Адрес сохранён! Посмотреть заказ можно в истории заказов.'
+                    f'Ошибка при обновлении заказа: {await response.text()}'
                 )
-    else:
-        await query.edit_message_text(
-            'Посмотреть заказ можно в истории заказов.'
-        )
+                return ConversationHandler.END
 
+    confirmation_text = PLACE_ORDER_CONFIRMATION_MESSAGE.format(
+        order_id=order_id
+    )
+    if dialog_data['operator_call']:
+        confirmation_text += '\nОжидайте звонка оператора.'
+    await query.edit_message_text(confirmation_text)
     context.user_data.pop(DIALOG_DATA, None)
-    return 'FINISHED'
+    return ConversationHandler.END
 
 
-async def handle_cancel(update: Update, context: CallbackContext) -> str:
+async def cancel(update: Update, context: CallbackContext) -> int:
+    """Отмена оформления заказа."""
     query = update.callback_query
     await query.answer()
     dialog_data = context.user_data.get(DIALOG_DATA, {})
-    user_id = dialog_data.get('user_id')
-
-    async with httpx.AsyncClient() as client:
-        if query.data == 'cancel_clear':
-            # Переносим товары в корзину перед отменой
-            response = await client.post(
-                f'{API_BASE_URL}/orders/{dialog_data["order_id"]}/to_cart',
-                headers={'user-id': user_id},
-            )
-            if response.status_code != 200:
-                await query.edit_message_text(
-                    'Ошибка при переносе товаров в корзину.'
-                )
-                return 'FINISHED'
-            # Удаляем заказ после переноса
-            response = await client.patch(
-                f'{API_BASE_URL}/orders/{dialog_data["order_id"]}/status',
-                json={'status_id': 3},  # "Cancelled" как число
-                headers={'user-id': user_id},
-            )
-            if response.status_code == 200:
-                await query.edit_message_text(
-                    'Заказ отменён, товары возвращены в корзину.'
-                )
-            else:
-                await query.edit_message_text(
-                    'Заказ отменён, но ошибка при обновлении статуса.'
-                )
-        elif query.data == 'cancel_keep':
-            response = await client.patch(
-                f'{API_BASE_URL}/orders/{dialog_data["order_id"]}/status',
-                json={'status_id': 3},  # "Cancelled" как число
-                headers={'user-id': user_id},
-            )
-            if response.status_code == 200:
-                await query.edit_message_text(
-                    'Заказ отменён, корзина осталась.'
-                )
-            else:
-                await query.edit_message_text('Ошибка при отмене заказа.')
-
+    if dialog_data.get('order_id'):
+        # user_id = dialog_data['user_id']
+        order_id = dialog_data['order_id']
+        async with ClientSession() as session:
+            async with session.patch(
+                f'{API_BASE_URL}/orders/{order_id}/status',
+                json={
+                    'status_id': 3
+                },  # "Shipped" как временная заглушка для отмены
+            ) as response:
+                if response.status != 200:
+                    logger.error(
+                        f'Failed to cancel order {order_id}: '
+                        f'{await response.text()}'
+                    )
+    await query.edit_message_text('Оформление заказа отменено.')
     context.user_data.pop(DIALOG_DATA, None)
-    return 'FINISHED'
+    return ConversationHandler.END
 
 
-def register_handlers(dp: Application) -> None:
-    dp.add_handler(
-        CallbackQueryHandler(place_order_start, pattern='^checkout$')
+def register_handlers(application: Application) -> None:
+    """Регистрация обработчиков для оформления заказа."""
+    conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(place_order_start, pattern='^checkout$')
+        ],
+        states={
+            AWAITING_CONFIRMATION: [
+                CallbackQueryHandler(
+                    confirm_cart, pattern='^confirm_cart$|^cancel$'
+                )
+            ],
+            AWAITING_ADDRESS: [
+                CallbackQueryHandler(
+                    handle_address, pattern=r'^addr_\d+$|^new_addr$'
+                ),
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, handle_address
+                ),
+            ],
+            AWAITING_FIO: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_fio)
+            ],
+            AWAITING_PHONE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_phone)
+            ],
+            AWAITING_OPERATOR: [
+                CallbackQueryHandler(
+                    handle_operator_call, pattern='^operator_(yes|no)$'
+                )
+            ],
+        },
+        fallbacks=[CallbackQueryHandler(cancel, pattern='^cancel$')],
     )
-    dp.add_handler(
-        CallbackQueryHandler(confirm_cart, pattern='^confirm_cart$')
-    )
-    dp.add_handler(CallbackQueryHandler(handle_address, pattern=r'^addr_\d+$'))
-    dp.add_handler(CallbackQueryHandler(handle_address, pattern='^new_addr$'))
-    dp.add_handler(
-        MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            handle_address,
-            lambda u, c: c.user_data.get(DIALOG_DATA, {}).get('step')
-            == AWAITING_ADDRESS,
-        )
-    )
-    dp.add_handler(
-        CallbackQueryHandler(
-            handle_fio_phone_choice, pattern=r'^fio_phone_.*|new_contact$'
-        )
-    )
-    dp.add_handler(
-        MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            handle_fio,
-            lambda u, c: c.user_data.get(DIALOG_DATA, {}).get('step')
-            == AWAITING_FIO,
-        )
-    )
-    dp.add_handler(
-        MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            handle_phone,
-            lambda u, c: c.user_data.get(DIALOG_DATA, {}).get('step')
-            == AWAITING_PHONE,
-        )
-    )
-    dp.add_handler(
-        CallbackQueryHandler(
-            handle_operator_call, pattern='^operator_(yes|no)$'
-        )
-    )
-    dp.add_handler(
-        CallbackQueryHandler(
-            handle_save_address, pattern='^(save|no_save)_address$'
-        )
-    )
-    dp.add_handler(
-        CallbackQueryHandler(handle_cancel, pattern='^cancel_(clear|keep)$')
-    )
+    application.add_handler(conv_handler)

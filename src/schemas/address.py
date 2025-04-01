@@ -6,6 +6,7 @@ MAX_LENGTH = 255
 class BaseAddressSchema(BaseModel):
     """Базовая схема адресов."""
 
+    id: int = Field(...)
     address: str = Field(..., max_length=MAX_LENGTH)
 
 

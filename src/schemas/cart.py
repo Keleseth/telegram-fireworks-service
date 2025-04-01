@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from pydantic import BaseModel, ConfigDict, condecimal
 
 
@@ -10,6 +12,7 @@ class MessageResponse(BaseModel):
 class FireworkNameSchema(BaseModel):
     """Схема для данных о фейерверке, без id и price."""
 
+    id: int
     name: str
     price: condecimal(max_digits=10, decimal_places=2)
 
@@ -33,6 +36,7 @@ class ReadCartSchema(BaseCartSchema):
 
     id: int
     firework: FireworkNameSchema
+    price_per_unit: Decimal
 
     class Config:
         """Прямая работа с атрибутами."""

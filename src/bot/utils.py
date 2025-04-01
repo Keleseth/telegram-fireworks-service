@@ -2,7 +2,6 @@ from http import HTTPStatus
 from typing import Callable
 
 import aiohttp
-import httpx
 from telegram import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -30,21 +29,21 @@ NAVIGATION_MESSAGE = '🤖 Навигация'
 BAD_REQUEST_MESSAGE = 'Ошибка❗ Код: {code}. Вернуться в меню каталога:'
 CLIENT_CONNECTION_ERROR = '❗Ошибка соединения❗'
 
-# Предположил, что главное меню определено в main.py
 
 API_BASE_URL = 'http://nginx:8000/api/v1'
 
 
 async def get_user_id_from_telegram(update: Update) -> str | None:
     """Получение user_id по telegram_id."""
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f'{API_BASE_URL}/users/get-id',
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            f'{API_BASE_URL}/users',
             json={'telegram_id': update.effective_user.id},
-        )
-        if response.status_code == 200:
-            return response.json()['user_id']
-        return None
+        ) as response:
+            if response.status == 200:
+                data = await response.json()  # Ждём результат JSON
+                return data.get('id')
+            return None
 
 
 async def return_to_main(query: CallbackQuery) -> None:
