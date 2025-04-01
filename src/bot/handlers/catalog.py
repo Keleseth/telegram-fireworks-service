@@ -1,11 +1,13 @@
 """Файл с обработчиками кнопок для каталога."""
 
 import os
+import ssl
 import tempfile
 from http import HTTPStatus
 from typing import Any, Callable, Union
 
 import aiohttp
+import certifi
 from telegram import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -191,6 +193,8 @@ filters_keyboard = [
 main_menu_back_button = InlineKeyboardButton(
     MAIN_MENU_BACK_MESSAGE, callback_data=MAIN_MENU_CALLBACK
 )
+
+ssl_context = ssl.create_default_context(cafile=certifi.where())
 
 
 def build_firework_card(fields: dict, full_info: bool = True) -> str:
@@ -529,6 +533,9 @@ async def send_callback_message(
 async def add_messages_to_memory(
     update: Update, context: ContextTypes.DEFAULT_TYPE, message_id: Message
 ):
+    if update.effective_chat.id not in context.chat_data:
+        context.chat_data[update.effective_chat.id] = []
+
     context.chat_data[update.effective_chat.id].append(message_id)
 
 
@@ -565,7 +572,9 @@ async def get_paginated_response(
     if context.chat_data[update.effective_chat.id]:
         await catalog_delete_messages_from_memory(update, context)
     try:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(ssl=ssl_context)
+        ) as session:
             if method == 'POST':
                 response_context_manager = await session.post(
                     url, json=request_data
@@ -685,13 +694,17 @@ async def read_more_about_product(
     query = update.callback_query
     await query.answer()
     try:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(ssl=False)
+        ) as session:
             url = query.data.split('_')[-1]
             async with session.get(url) as response:
                 if response.status == HTTPStatus.OK:
                     firework = await response.json()
                     await query.edit_message_text(
-                        build_firework_card(firework, full_info=True),
+                        escape_markdown_v2(
+                            build_firework_card(firework, full_info=True)
+                        ),
                         reply_markup=InlineKeyboardMarkup(
                             build_read_more_about_keyboard(firework['id'])
                         ),
@@ -1323,3 +1336,11 @@ def setup_catalog_handler(application: ApplicationBuilder) -> None:
         ],
     )
     application.add_handler(conversation_handler)
+
+
+def escape_markdown_v2(text: str) -> str:
+    """Экранирует спецсимволы для MarkdownV2."""
+    escape_chars = r'\_*[]()~`>#+-=|{}.!'
+    return ''.join(
+        f'\\{char}' if char in escape_chars else char for char in text
+    )
