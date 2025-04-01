@@ -22,7 +22,7 @@ from telegram.ext import (
 
 from src.bot.keyboards import keyboard_main  # Импортируем keyboard_main
 
-API_URL = 'http://localhost:8000'
+API_URL = 'http://127.0.0.1:8000'
 (
     MAIN_MENU,
     EDIT_PROFILE,
@@ -36,8 +36,6 @@ API_URL = 'http://localhost:8000'
     ADMIN_EDIT_PASSWORD,
     AGE_VERIFICATION,
 ) = range(11)
-
-
 
 
 class TelegramUserManager:

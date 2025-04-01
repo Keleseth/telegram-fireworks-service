@@ -308,7 +308,7 @@ def build_show_all_products_keyboard(
         1. В корзину.
         2. В избранное.
     """
-    firework_url = f'http://nginx:8000/fireworks/{firework_id}'
+    firework_url = f'http://127.0.0.1:8000/fireworks/{firework_id}'
     return [
         [add_to_cart_button(firework_id), add_to_favorite_button(firework_id)],
         [firework_read_more_button(firework_url)],
@@ -355,7 +355,7 @@ async def add_to_cart(
             telegram_id = update.effective_user.id
             firework_id = int(query.data.split('_')[-1])
             async with session.post(
-                'http://nginx:8000/user/cart',
+                'http://127.0.0.1:8000/user/cart',
                 json=dict(
                     create_data=dict(amount=1, firework_id=firework_id),
                     user_ident=UserIdentificationSchema(
@@ -394,7 +394,7 @@ async def add_to_favorite(
             telegram_id = update.effective_user.id
             firework_id = int(query.data.split('_')[-1])
             async with session.post(
-                'http://nginx:8000/favorites',
+                'http://127.0.0.1:8000/favorites',
                 json=dict(telegram_id=telegram_id, firework_id=firework_id),
             ):
                 new_keyboard = [
@@ -652,7 +652,7 @@ async def get_paginated_response(
 async def show_all_products(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    url: str | None = 'http://nginx:8000/fireworks',
+    url: str | None = 'http://127.0.0.1:8000/fireworks',
 ) -> None:
     """Возвращает весь список товаров."""
     global_keyboard = [
@@ -719,7 +719,7 @@ async def read_more_about_product(
 async def show_all_categories(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    url: str | None = 'http://nginx:8000/categories',
+    url: str | None = 'http://127.0.0.1:8000/categories',
 ) -> None:
     """Возвращает все категории."""
     query = update.callback_query
@@ -807,7 +807,7 @@ async def show_categories_fireworks(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
     url: str | None = (
-        'http://nginx:8000/fireworks/by_category/{category_id}'
+        'http://127.0.0.1:8000/fireworks/by_category/{category_id}'
     ),
 ) -> None:
     """Возвращает товары определенной категории."""
@@ -1195,7 +1195,7 @@ async def cancel_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def apply_filters(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    url: str = 'http://nginx:8000/fireworks',
+    url: str = 'http://127.0.0.1:8000/fireworks',
     request_data: dict = None,
 ) -> None:
     if context.chat_data[update.effective_chat.id]:

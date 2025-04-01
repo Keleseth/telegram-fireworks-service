@@ -201,13 +201,14 @@ def main() -> None:
     application.run_polling()
 
     # Запуск вебхука
+
+
 #     application.run_webhook(
 #         listen="0.0.0.0",
 #         port=8443,
 #         url_path="/webhook",
 #         webhook_url="https://jf-team2.rsateam.ru/webhook",
 #     )
-
 
 
 if __name__ == '__main__':

@@ -30,7 +30,7 @@ BAD_REQUEST_MESSAGE = 'Ошибка❗ Код: {code}. Вернуться в м�
 CLIENT_CONNECTION_ERROR = '❗Ошибка соединения❗'
 
 
-API_BASE_URL = 'http://nginx:8000/api/v1'
+API_BASE_URL = 'http://127.0.0.1:8000/api/v1'
 
 
 async def get_user_id_from_telegram(update: Update) -> str | None:
