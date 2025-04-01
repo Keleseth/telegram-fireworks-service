@@ -1,11 +1,13 @@
 """Файл с обработчиками кнопок для каталога."""
 
 import os
+import ssl
 import tempfile
 from http import HTTPStatus
 from typing import Any, Callable, Union
 
 import aiohttp
+import certifi
 from telegram import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -192,6 +194,8 @@ main_menu_back_button = InlineKeyboardButton(
     MAIN_MENU_BACK_MESSAGE, callback_data=MAIN_MENU_CALLBACK
 )
 
+ssl_context = ssl.create_default_context(cafile=certifi.where())
+
 
 def build_firework_card(fields: dict, full_info: bool = True) -> str:
     """Заполняет карточку продукта."""
@@ -308,7 +312,7 @@ def build_show_all_products_keyboard(
         1. В корзину.
         2. В избранное.
     """
-    firework_url = f'http://nginx:8000/fireworks/{firework_id}'
+    firework_url = f'http://127.0.0.1:8000/fireworks/{firework_id}'
     return [
         [add_to_cart_button(firework_id), add_to_favorite_button(firework_id)],
         [firework_read_more_button(firework_url)],
@@ -355,7 +359,7 @@ async def add_to_cart(
             telegram_id = update.effective_user.id
             firework_id = int(query.data.split('_')[-1])
             async with session.post(
-                'http://nginx:8000/user/cart',
+                'http://127.0.0.1:8000/user/cart',
                 json=dict(
                     create_data=dict(amount=1, firework_id=firework_id),
                     user_ident=UserIdentificationSchema(
@@ -394,7 +398,7 @@ async def add_to_favorite(
             telegram_id = update.effective_user.id
             firework_id = int(query.data.split('_')[-1])
             async with session.post(
-                'http://nginx:8000/favorites',
+                'http://127.0.0.1:8000/favorites',
                 json=dict(telegram_id=telegram_id, firework_id=firework_id),
             ):
                 new_keyboard = [
@@ -529,6 +533,9 @@ async def send_callback_message(
 async def add_messages_to_memory(
     update: Update, context: ContextTypes.DEFAULT_TYPE, message_id: Message
 ):
+    if update.effective_chat.id not in context.chat_data:
+        context.chat_data[update.effective_chat.id] = []
+
     context.chat_data[update.effective_chat.id].append(message_id)
 
 
@@ -565,7 +572,9 @@ async def get_paginated_response(
     if context.chat_data[update.effective_chat.id]:
         await catalog_delete_messages_from_memory(update, context)
     try:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(ssl=ssl_context)
+        ) as session:
             if method == 'POST':
                 response_context_manager = await session.post(
                     url, json=request_data
@@ -652,7 +661,7 @@ async def get_paginated_response(
 async def show_all_products(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    url: str | None = 'http://nginx:8000/fireworks',
+    url: str | None = 'http://127.0.0.1:8000/fireworks',
 ) -> None:
     """Возвращает весь список товаров."""
     global_keyboard = [
@@ -685,13 +694,17 @@ async def read_more_about_product(
     query = update.callback_query
     await query.answer()
     try:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(ssl=False)
+        ) as session:
             url = query.data.split('_')[-1]
             async with session.get(url) as response:
                 if response.status == HTTPStatus.OK:
                     firework = await response.json()
                     await query.edit_message_text(
-                        build_firework_card(firework, full_info=True),
+                        escape_markdown_v2(
+                            build_firework_card(firework, full_info=True)
+                        ),
                         reply_markup=InlineKeyboardMarkup(
                             build_read_more_about_keyboard(firework['id'])
                         ),
@@ -719,7 +732,7 @@ async def read_more_about_product(
 async def show_all_categories(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    url: str | None = 'http://nginx:8000/categories',
+    url: str | None = 'http://127.0.0.1:8000/categories',
 ) -> None:
     """Возвращает все категории."""
     query = update.callback_query
@@ -807,7 +820,7 @@ async def show_categories_fireworks(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
     url: str | None = (
-        'http://nginx:8000/fireworks/by_category/{category_id}'
+        'http://127.0.0.1:8000/fireworks/by_category/{category_id}'
     ),
 ) -> None:
     """Возвращает товары определенной категории."""
@@ -1195,7 +1208,7 @@ async def cancel_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def apply_filters(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    url: str = 'http://nginx:8000/fireworks',
+    url: str = 'http://127.0.0.1:8000/fireworks',
     request_data: dict = None,
 ) -> None:
     if context.chat_data[update.effective_chat.id]:
@@ -1323,3 +1336,11 @@ def setup_catalog_handler(application: ApplicationBuilder) -> None:
         ],
     )
     application.add_handler(conversation_handler)
+
+
+def escape_markdown_v2(text: str) -> str:
+    """Экранирует спецсимволы для MarkdownV2."""
+    escape_chars = r'\_*[]()~`>#+-=|{}.!'
+    return ''.join(
+        f'\\{char}' if char in escape_chars else char for char in text
+    )
