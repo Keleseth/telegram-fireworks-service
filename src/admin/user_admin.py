@@ -33,6 +33,7 @@ class UserView(ModelView, model=User):
         'phone_number',
     ]
     column_details_exclude_list = [
+        'id',
         'hashed_password',
         'favorite_fireworks',
         'cart',
@@ -110,10 +111,10 @@ class UserView(ModelView, model=User):
         stmt = select(User)
         selected_filters = request.query_params.getlist('filters')
 
-        for f in selected_filters:
-            if ':' not in f:
+        for filter_str in selected_filters:
+            if ':' not in filter_str:
                 continue
-            field, val = f.split(':')
+            field, val = filter_str.split(':')
             val = val.lower()
             if field == 'is_admin':
                 stmt = stmt.where(

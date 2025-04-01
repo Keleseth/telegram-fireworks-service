@@ -12,7 +12,7 @@ from src.bot.utils import show_media
 from src.schemas.cart import UserIdentificationSchema
 
 # Конфигурация
-API_BASE_URL = 'http://127.0.0.1:8000'
+API_BASE_URL = 'http://nginx:8000'
 FAVORITES_STATE = 1
 
 

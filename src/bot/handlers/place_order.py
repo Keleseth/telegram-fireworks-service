@@ -278,7 +278,7 @@ async def handle_operator_call(
     if not dialog_data['address_id']:
         async with ClientSession() as session:
             async with session.post(
-                f'{API_BASE_URL}/addresses/',
+                f'{API_BASE_URL}/addresses',
                 json={
                     'telegram_id': telegram_id,
                     'address': dialog_data['address'],
@@ -303,9 +303,12 @@ async def handle_operator_call(
     async with ClientSession() as session:
         async with session.patch(
             f'{API_BASE_URL}/orders/{order_id}/address',
-            json=json_data,
+            json={
+                'data': json_data,
+                'telegram_schema': {'telegram_id': telegram_id},
+            },
         ) as response:
-            if response.status != 200:
+            if response.status != 201:
                 await query.edit_message_text(
                     f'Ошибка при обновлении заказа: {await response.text()}'
                 )
