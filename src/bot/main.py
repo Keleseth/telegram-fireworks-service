@@ -208,6 +208,7 @@ def main() -> None:
     application.add_handler(
         CallbackQueryHandler(clear_cart_handler, pattern='clear_cart')
     )
+    # To poll
     application.run_polling()
 
 
