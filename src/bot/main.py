@@ -197,15 +197,17 @@ def main() -> None:
     application.add_handler(
         CallbackQueryHandler(clear_cart_handler, pattern='clear_cart')
     )
+    # To poll
+    application.run_polling()
 
-    # application.run_polling()
     # Запуск вебхука
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=8443,
-        url_path="/webhook",
-        webhook_url="https://jf-team2.rsateam.ru/webhook",
-    )
+#     application.run_webhook(
+#         listen="0.0.0.0",
+#         port=8443,
+#         url_path="/webhook",
+#         webhook_url="https://jf-team2.rsateam.ru/webhook",
+#     )
+
 
 
 if __name__ == '__main__':
