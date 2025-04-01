@@ -68,9 +68,9 @@ class TelegramUserManager:
             MessageHandler(
                 filters.Text(['🔙 Вернуться в меню']), self.back_to_menu
             ),
-            MessageHandler(
-                filters.TEXT & ~filters.COMMAND, self.check_data_input
-            ),
+            # MessageHandler(
+            #     filters.TEXT & ~filters.COMMAND, self.check_data_input
+            # ),
         ]
         for handler in handlers:
             self.app.add_handler(handler)

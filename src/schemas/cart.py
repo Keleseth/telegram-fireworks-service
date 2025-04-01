@@ -12,6 +12,7 @@ class MessageResponse(BaseModel):
 class FireworkNameSchema(BaseModel):
     """Схема для данных о фейерверке, без id и price."""
 
+    id: int
     name: str
     price: condecimal(max_digits=10, decimal_places=2)
 
