@@ -1,5 +1,7 @@
 """Файл с обработчиками кнопок для каталога."""
 
+import os
+import tempfile
 from http import HTTPStatus
 from typing import Any, Callable, Union
 
@@ -9,7 +11,6 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     InputMediaPhoto,
-    InputMediaVideo,
     Message,
     Update,
 )
@@ -435,26 +436,77 @@ async def catalog_menu(
     )
 
 
+async def get_direct_yandex_url(public_url: str) -> str | None:
+    api_url = 'https://cloud-api.yandex.net/v1/disk/public/resources/download'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            api_url, params={'public_key': public_url}
+        ) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                return data.get('href')
+            print(f'⚠️ Ошибка получения href: {resp.status}')
+    return None
+
+
+async def download_yandex_image(public_url: str) -> str | None:
+    direct_url = await get_direct_yandex_url(public_url)
+    if not direct_url:
+        print('❌ Не удалось получить прямую ссылку.')
+        return None
+
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(direct_url) as resp:
+                if resp.status == 200:
+                    suffix = '.jpg' if '.jpg' in public_url else '.png'
+                    with tempfile.NamedTemporaryFile(
+                        delete=False, suffix=suffix
+                    ) as tmp_file:
+                        tmp_file.write(await resp.read())
+                        return tmp_file.name
+                print(f'❌ Ошибка скачивания файла: {resp.status}')
+        except Exception as e:
+            print(f'❌ Исключение при скачивании: {e}')
+    return None
+
+
+PHOTO_FORMATS = ('.jpg', '.jpeg', '.png')
+VIDEO_FORMATS = ('.mp4', '.mov')
+
+
 async def show_media(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-    media_list: list[str],
+    update: Update, context: ContextTypes.DEFAULT_TYPE, media_list: list[dict]
 ):
     media_group = []
-    media_urls = [media['media_url'] for media in media_list][
-        :TELEGRAM_MEDIA_LIMIT
-    ]
-    for media_url in media_urls:
-        if media_url.endswith(PHOTO_FORMATS):
-            media_group.append(InputMediaPhoto(media=media_url, caption=None))
-        elif media_url.endswith(VIDEO_FORMATS):
-            media_group.append(InputMediaVideo(media=media_url, caption=None))
-    media_messages = await context.bot.send_media_group(
-        chat_id=update.effective_chat.id, media=media_group
-    )
+    temp_files = []  # пути к временным файлам
+
+    for media in media_list[:10]:  # ограничение Telegram
+        url = media['media_url']
+        media_type = media['media_type']
+
+        if 'disk.yandex.ru' in url:
+            file_path = await download_yandex_image(url)
+            if not file_path:
+                continue
+            temp_files.append(file_path)
+            with open(file_path, 'rb') as f:  # noqa: ASYNC230
+                if media_type == 'image':
+                    media_group.append(InputMediaPhoto(media=f.read()))
+        else:
+            continue
+
     if media_group:
-        for message in media_messages:
-            await add_messages_to_memory(update, context, message.id)
+        media_messages = await context.bot.send_media_group(
+            chat_id=update.effective_chat.id, media=media_group
+        )
+        # Сохраняем message_id всех отправленных сообщений с фото
+        media_ids = [msg.message_id for msg in media_messages]
+        await add_messages_to_memory(update, context, *media_ids)
+
+    # Удаляем временные файлы
+    for path in temp_files:
+        os.remove(path)
 
 
 async def send_callback_message(
@@ -467,7 +519,7 @@ async def send_callback_message(
 ) -> Message:
     """Отправляет сообщение в Markdown2 формате."""
     message = await query.message.reply_text(
-        content, parse_mode='MarkdownV2', reply_markup=reply_markup
+        content, parse_mode=None, reply_markup=reply_markup
     )
     if add_to_chat_data:
         await add_messages_to_memory(update, context, message.id)
