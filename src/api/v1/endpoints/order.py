@@ -58,16 +58,19 @@ async def get_order(
     return order
 
 
-@router.patch('/{order_id}/address', response_model=ReadOrderSchema)
+@router.patch(
+    '/{order_id}/address',
+    response_model=ReadOrderSchema,
+    status_code=status.HTTP_201_CREATED,
+)
 async def update_order_address(
     order_id: int,
     data: UpdateOrderAddressSchema,
     user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ):
-    print('YA xxxxxxxxxx')
+    print(data.user_address_id, data.fio, data.phone, data.operator_call)
     order = await session.get(Order, order_id)
-    print('vVvvVVVvVVvVvVv')
     if not order or order.user_id != user_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail='Заказ не найден'
