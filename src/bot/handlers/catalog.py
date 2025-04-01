@@ -1,5 +1,6 @@
 """Файл с обработчиками кнопок для каталога."""
 
+import logging
 from http import HTTPStatus
 from typing import Any, Callable, Union
 
@@ -190,6 +191,19 @@ filters_keyboard = [
 main_menu_back_button = InlineKeyboardButton(
     MAIN_MENU_BACK_MESSAGE, callback_data=MAIN_MENU_CALLBACK
 )
+
+
+async def get_direct_yandex_url(public_url: str) -> str | None:
+    """Получает прямую ссылку на файл с Яндекс.Диска."""
+    api_url = 'https://cloud-api.yandex.net/v1/disk/public/resources/download'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            api_url, params={'public_key': public_url}
+        ) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                return data.get('href')
+            return None
 
 
 def build_firework_card(fields: dict, full_info: bool = True) -> str:
@@ -445,16 +459,26 @@ async def show_media(
         :TELEGRAM_MEDIA_LIMIT
     ]
     for media_url in media_urls:
+        if not media_url.startswith('http'):
+            # logger.warning(f'❌ Невалидный URL (не http): {media_url}')
+            continue
         if media_url.endswith(PHOTO_FORMATS):
             media_group.append(InputMediaPhoto(media=media_url, caption=None))
         elif media_url.endswith(VIDEO_FORMATS):
             media_group.append(InputMediaVideo(media=media_url, caption=None))
-    media_messages = await context.bot.send_media_group(
-        chat_id=update.effective_chat.id, media=media_group
-    )
+        else:
+            logging.warning(f'❌ Неподдерживаемый формат: {media_url}')
+            continue
+
     if media_group:
-        for message in media_messages:
-            await add_messages_to_memory(update, context, message.id)
+        try:
+            media_messages = await context.bot.send_media_group(
+                chat_id=update.effective_chat.id, media=media_group
+            )
+            for message in media_messages:
+                await add_messages_to_memory(update, context, message.id)
+        except Exception as e:
+            logging.error(f'Ошибка отправки медиа: {e}')
 
 
 async def send_callback_message(
@@ -467,7 +491,7 @@ async def send_callback_message(
 ) -> Message:
     """Отправляет сообщение в Markdown2 формате."""
     message = await query.message.reply_text(
-        content, parse_mode='MarkdownV2', reply_markup=reply_markup
+        content, parse_mode=None, reply_markup=reply_markup
     )
     if add_to_chat_data:
         await add_messages_to_memory(update, context, message.id)
