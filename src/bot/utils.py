@@ -29,7 +29,8 @@ NAVIGATION_MESSAGE = '🤖 Навигация'
 BAD_REQUEST_MESSAGE = 'Ошибка❗ Код: {code}. Вернуться в меню каталога:'
 CLIENT_CONNECTION_ERROR = '❗Ошибка соединения❗'
 
-API_BASE_URL = 'http://localhost:8000'
+
+API_BASE_URL = 'http://nginx:8000/api/v1'
 
 
 async def get_user_id_from_telegram(update: Update) -> str | None:

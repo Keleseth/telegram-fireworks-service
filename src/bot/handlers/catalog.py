@@ -1,6 +1,7 @@
 """Файл с обработчиками кнопок для каталога."""
 
-import logging
+import os
+import tempfile
 from http import HTTPStatus
 from typing import Any, Callable, Union
 
@@ -10,7 +11,6 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     InputMediaPhoto,
-    InputMediaVideo,
     Message,
     Update,
 )
@@ -193,19 +193,6 @@ main_menu_back_button = InlineKeyboardButton(
 )
 
 
-async def get_direct_yandex_url(public_url: str) -> str | None:
-    """Получает прямую ссылку на файл с Яндекс.Диска."""
-    api_url = 'https://cloud-api.yandex.net/v1/disk/public/resources/download'
-    async with aiohttp.ClientSession() as session:
-        async with session.get(
-            api_url, params={'public_key': public_url}
-        ) as resp:
-            if resp.status == 200:
-                data = await resp.json()
-                return data.get('href')
-            return None
-
-
 def build_firework_card(fields: dict, full_info: bool = True) -> str:
     """Заполняет карточку продукта."""
     if not fields['discounts']:
@@ -321,7 +308,7 @@ def build_show_all_products_keyboard(
         1. В корзину.
         2. В избранное.
     """
-    firework_url = f'http://127.0.0.1:8000/fireworks/{firework_id}'
+    firework_url = f'http://nginx:8000/fireworks/{firework_id}'
     return [
         [add_to_cart_button(firework_id), add_to_favorite_button(firework_id)],
         [firework_read_more_button(firework_url)],
@@ -368,7 +355,7 @@ async def add_to_cart(
             telegram_id = update.effective_user.id
             firework_id = int(query.data.split('_')[-1])
             async with session.post(
-                'http://127.0.0.1:8000/user/cart',
+                'http://nginx:8000/user/cart',
                 json=dict(
                     create_data=dict(amount=1, firework_id=firework_id),
                     user_ident=UserIdentificationSchema(
@@ -407,7 +394,7 @@ async def add_to_favorite(
             telegram_id = update.effective_user.id
             firework_id = int(query.data.split('_')[-1])
             async with session.post(
-                'http://127.0.0.1:8000/favorites',
+                'http://nginx:8000/favorites',
                 json=dict(telegram_id=telegram_id, firework_id=firework_id),
             ):
                 new_keyboard = [
@@ -449,36 +436,77 @@ async def catalog_menu(
     )
 
 
+async def get_direct_yandex_url(public_url: str) -> str | None:
+    api_url = 'https://cloud-api.yandex.net/v1/disk/public/resources/download'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            api_url, params={'public_key': public_url}
+        ) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                return data.get('href')
+            print(f'⚠️ Ошибка получения href: {resp.status}')
+    return None
+
+
+async def download_yandex_image(public_url: str) -> str | None:
+    direct_url = await get_direct_yandex_url(public_url)
+    if not direct_url:
+        print('❌ Не удалось получить прямую ссылку.')
+        return None
+
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(direct_url) as resp:
+                if resp.status == 200:
+                    suffix = '.jpg' if '.jpg' in public_url else '.png'
+                    with tempfile.NamedTemporaryFile(
+                        delete=False, suffix=suffix
+                    ) as tmp_file:
+                        tmp_file.write(await resp.read())
+                        return tmp_file.name
+                print(f'❌ Ошибка скачивания файла: {resp.status}')
+        except Exception as e:
+            print(f'❌ Исключение при скачивании: {e}')
+    return None
+
+
+PHOTO_FORMATS = ('.jpg', '.jpeg', '.png')
+VIDEO_FORMATS = ('.mp4', '.mov')
+
+
 async def show_media(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-    media_list: list[str],
+    update: Update, context: ContextTypes.DEFAULT_TYPE, media_list: list[dict]
 ):
     media_group = []
-    media_urls = [media['media_url'] for media in media_list][
-        :TELEGRAM_MEDIA_LIMIT
-    ]
-    for media_url in media_urls:
-        if not media_url.startswith('http'):
-            # logger.warning(f'❌ Невалидный URL (не http): {media_url}')
-            continue
-        if media_url.endswith(PHOTO_FORMATS):
-            media_group.append(InputMediaPhoto(media=media_url, caption=None))
-        elif media_url.endswith(VIDEO_FORMATS):
-            media_group.append(InputMediaVideo(media=media_url, caption=None))
+    temp_files = []  # пути к временным файлам
+
+    for media in media_list[:10]:  # ограничение Telegram
+        url = media['media_url']
+        media_type = media['media_type']
+
+        if 'disk.yandex.ru' in url:
+            file_path = await download_yandex_image(url)
+            if not file_path:
+                continue
+            temp_files.append(file_path)
+            with open(file_path, 'rb') as f:  # noqa: ASYNC230
+                if media_type == 'image':
+                    media_group.append(InputMediaPhoto(media=f.read()))
         else:
-            logging.warning(f'❌ Неподдерживаемый формат: {media_url}')
             continue
 
     if media_group:
-        try:
-            media_messages = await context.bot.send_media_group(
-                chat_id=update.effective_chat.id, media=media_group
-            )
-            for message in media_messages:
-                await add_messages_to_memory(update, context, message.id)
-        except Exception as e:
-            logging.error(f'Ошибка отправки медиа: {e}')
+        media_messages = await context.bot.send_media_group(
+            chat_id=update.effective_chat.id, media=media_group
+        )
+        # Сохраняем message_id всех отправленных сообщений с фото
+        media_ids = [msg.message_id for msg in media_messages]
+        await add_messages_to_memory(update, context, *media_ids)
+
+    # Удаляем временные файлы
+    for path in temp_files:
+        os.remove(path)
 
 
 async def send_callback_message(
@@ -624,7 +652,7 @@ async def get_paginated_response(
 async def show_all_products(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    url: str | None = 'http://127.0.0.1:8000/fireworks',
+    url: str | None = 'http://nginx:8000/fireworks',
 ) -> None:
     """Возвращает весь список товаров."""
     global_keyboard = [
@@ -691,7 +719,7 @@ async def read_more_about_product(
 async def show_all_categories(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    url: str | None = 'http://127.0.0.1:8000/categories',
+    url: str | None = 'http://nginx:8000/categories',
 ) -> None:
     """Возвращает все категории."""
     query = update.callback_query
@@ -779,7 +807,7 @@ async def show_categories_fireworks(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
     url: str | None = (
-        'http://127.0.0.1:8000/fireworks/by_category/{category_id}'
+        'http://nginx:8000/fireworks/by_category/{category_id}'
     ),
 ) -> None:
     """Возвращает товары определенной категории."""
@@ -1167,7 +1195,7 @@ async def cancel_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def apply_filters(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    url: str = 'http://127.0.0.1:8000/fireworks',
+    url: str = 'http://nginx:8000/fireworks',
     request_data: dict = None,
 ) -> None:
     if context.chat_data[update.effective_chat.id]:
