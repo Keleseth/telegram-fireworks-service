@@ -21,6 +21,7 @@ from telegram.ext import (
 from src.bot.keyboards import keyboard_main  # Импортируем keyboard_main
 
 API_URL = 'http://127.0.0.1:8000'
+EMAIL, NAME, PHONE, NICKNAME, DATE = range(5)
 
 
 class TelegramUserManager:
