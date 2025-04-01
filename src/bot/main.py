@@ -5,7 +5,6 @@ import httpx
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    ReplyKeyboardRemove,
     Update,
 )
 from telegram.ext import (
@@ -57,17 +56,7 @@ keyboard_back = [[InlineKeyboardButton('Назад', callback_data='back')]]
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_manager = context.application.user_manager
-    user_data = await user_manager.check_registration(update.effective_user.id)
-
-    if user_data:
-        await user_manager._send_main_menu(
-            update,
-        )
-    else:
-        await update.message.reply_text(
-            'Добро пожаловать! Введите ваш возраст:',
-            reply_markup=ReplyKeyboardRemove(),
-        )
+    return await user_manager.start(update, context)
 
 
 async def menu(update: Update, context: CallbackContext):
@@ -75,7 +64,7 @@ async def menu(update: Update, context: CallbackContext):
     user_data = await user_manager.check_registration(update.effective_user.id)
 
     if user_data:
-        await user_manager._send_main_menu(update)
+        await user_manager.show_main_menu(update, context)
     else:
         await update.message.reply_text(
             'Пожалуйста, сначала зарегистрируйтесь через /start'
@@ -137,7 +126,7 @@ async def button(update: Update, context: CallbackContext):
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f'{API_BASE_URL}/orders/me',
-                headers={'user-id': str(user_id)},
+                json={'telegram_id': update.effective_user.id},
             )
             if response.status_code != 200:
                 await query.edit_message_text('Ошибка при загрузке заказов.')
