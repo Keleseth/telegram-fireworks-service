@@ -1,6 +1,7 @@
 from typing import Generic, List, Optional, TypeVar
 from uuid import UUID
 
+from fastapi import HTTPException
 from fastapi_users.password import PasswordHelper
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -37,7 +38,13 @@ class UserCRUD(Generic[ModelType, SchemaType]):
                 self.model.telegram_id == schema_data.telegram_id
             )
         )
-        return result.scalar_one_or_none()
+        result = result.scalar_one_or_none()
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail="Пользователь с указанным telegram_id не найден"
+            )
+        return result
 
     async def get_user_by_telegram_id(
         self,
