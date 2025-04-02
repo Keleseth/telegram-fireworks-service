@@ -106,7 +106,7 @@ class FireworkView(ModelView, model=Firework):
     column_filters_enabled = True
     writing_filters = {'Категория': 'category', 'Тег': 'tag'}
     column_formatters = generate_clickable_formatters(
-        Firework, '/admin/newsletter/details', column_list
+        Firework, '/admin/firework/details', column_list
     )
     column_filters_enabled = True
 

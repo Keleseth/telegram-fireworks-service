@@ -23,6 +23,7 @@ class TagView(ModelView, model=Tag):
         'id',
         'updated_at',
         'created_at',
+        'newsletters',
     ]
     column_labels = {
         'id': 'ID',
