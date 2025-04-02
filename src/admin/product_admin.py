@@ -122,7 +122,7 @@ class FireworkView(ModelView, model=Firework):
     }
 
     def list_query(self, request: Request) -> Select:
-        stmt = select(Firework).distinct()
+        stmt = select(Firework).group_by(Firework.id)
 
         category = request.query_params.get('category')
         if category:
