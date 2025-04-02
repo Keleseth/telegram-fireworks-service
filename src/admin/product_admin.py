@@ -23,7 +23,7 @@ from src.models.product import Category, Firework, Tag
 
 
 class FireworkView(ModelView, model=Firework):
-    """Представление фейерверков в админке."""
+    """Представление пиротехники в админке."""
 
     name = 'товар'
     name_plural = 'Товары'
@@ -81,7 +81,7 @@ class FireworkView(ModelView, model=Firework):
         'description': 'описание - как на рутуб',
         'article': 'артикул',
         'code': 'код',
-        'discounts': 'акции фейерверка',
+        'discounts': 'акции',
         'ordered_count': Markup(
             '<span title="Количество пользователей, заказавших'
             ' данный товар">Заказан</span>',
@@ -106,7 +106,7 @@ class FireworkView(ModelView, model=Firework):
     column_filters_enabled = True
     writing_filters = {'Категория': 'category', 'Тег': 'tag'}
     column_formatters = generate_clickable_formatters(
-        Firework, '/admin/newsletter/details', column_list
+        Firework, '/admin/firework/details', column_list
     )
     column_filters_enabled = True
 
@@ -122,7 +122,7 @@ class FireworkView(ModelView, model=Firework):
     }
 
     def list_query(self, request: Request) -> Select:
-        stmt = select(Firework).distinct()
+        stmt = select(Firework).group_by(Firework.id)
 
         category = request.query_params.get('category')
         if category:
