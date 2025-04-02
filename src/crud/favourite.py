@@ -48,7 +48,6 @@ class CRUDFavourite:
             ).limit(1)
         )
         if existing:
-            print(user_id)
             raise HTTPException(status_code=409, detail="Уже в избранном")
         db_obj = self.model(
             user_id=user_id,
@@ -72,7 +71,6 @@ class CRUDFavourite:
             .order_by(self.model.created_at)
         )
         db_objs = await session.execute(query)
-        print(db_objs)
         return db_objs.unique().scalars().all()
 
     async def remove_by_telegram_id(
