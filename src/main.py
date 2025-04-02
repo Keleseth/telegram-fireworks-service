@@ -32,17 +32,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Добавляем middleware для перенаправления HTTP на HTTPS
-#@app.middleware("http")
-#async def redirect_to_https(request: Request, call_next):
-#    if request.headers.get("x-forwarded-proto", "http") == "http":
-#        # Если запрос пришел по HTTP, перенаправляем на HTTPS
-#        url = request.url.replace(scheme="https")
-#        response = Response(status_code=307)
-#        response.headers["Location"] = str(url)
-#        return response
-#    return await call_next(request)
-
 
 @app.middleware('http')
 async def check_http(request: Request, call_next):  # noqa: ANN001, ANN201
@@ -53,11 +42,8 @@ async def check_http(request: Request, call_next):  # noqa: ANN001, ANN201
     return await call_next(request)
 
 
-
-# setup_admin(app)
 app.router.include_router(main_router)
 
-#app.mount("/statics/admin", StaticFiles(directory="/app/statics/admin"), name="static_admin")
 
 def main():
     """Функция запустит управляющую функцию. Для доступа извне."""
