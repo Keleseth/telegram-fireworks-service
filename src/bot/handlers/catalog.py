@@ -25,6 +25,7 @@ from telegram.ext import (
     filters,
 )
 
+from src.bot.bot_messages import build_firework_card
 from src.bot.utils import croling_content
 from src.schemas.cart import UserIdentificationSchema
 
@@ -195,51 +196,6 @@ main_menu_back_button = InlineKeyboardButton(
 )
 
 ssl_context = ssl.create_default_context(cafile=certifi.where())
-
-
-def build_firework_card(fields: dict, full_info: bool = True) -> str:
-    """Заполняет карточку продукта."""
-    if not fields['discounts']:
-        fields['discounts'] = croling_content(EMPTY_DISCOUNS_MESSAGE)
-    else:
-        fields['discounts'] = ', '.join([
-            f'✅ {discount["type"]}' for discount in fields['discounts']
-        ])
-    if not full_info:
-        return FIREWORK_SHORT_CARD.format(
-            name=fields['name'],
-            price=croling_content(fields['price']),
-            discounts=fields['discounts'],
-        )
-    if not fields['description']:
-        fields['description'] = croling_content(EMPTY_DESCRIPTION_MESSAGE)
-    if not fields['price']:
-        fields['price'] = croling_content(EMPTY_PRICE_MESSAGE)
-    if not fields['tags']:
-        fields['tags'] = croling_content(EMPTY_TAGS_MESSAGE)
-    else:
-        fields['tags'] = ', '.join(
-            f'💥 `{tag["name"]}`' for tag in fields['tags']
-        )
-    if not fields['packing_material']:
-        fields['packing_material'] = croling_content(
-            EMPTY_PACKING_MATERIAL_MESSAGE
-        )
-    return FIREWORK_CARD.format(
-        name=fields['name'],
-        code=fields['code'],
-        price=croling_content(fields['price']),
-        discounts=fields['discounts'],
-        measurement_unit=fields['measurement_unit'],
-        description=fields['description'],
-        category_id=fields['category_id'],
-        product_size=fields['product_size'],
-        packing_material=fields['packing_material'],
-        charges_count=fields['charges_count'],
-        effects_count=fields['effects_count'],
-        article=fields['article'],
-        tags=fields['tags'],
-    )
 
 
 def build_category_card(fields: dict, full_info: bool = True) -> str:
@@ -520,10 +476,11 @@ async def send_callback_message(
     content: str,
     reply_markup: InlineKeyboardMarkup | None,
     add_to_chat_data: bool = True,
+    parse_mode: str = None,
 ) -> Message:
     """Отправляет сообщение в Markdown2 формате."""
     message = await query.message.reply_text(
-        content, parse_mode=None, reply_markup=reply_markup
+        content, parse_mode=parse_mode, reply_markup=reply_markup
     )
     if add_to_chat_data:
         await add_messages_to_memory(update, context, message.id)
@@ -605,6 +562,7 @@ async def get_paginated_response(
                             reply_markup=InlineKeyboardMarkup(
                                 object_keyboard_builder(obj['id'])
                             ),
+                            parse_mode='MarkdownV2',
                         )
                     print(context.chat_data[update.effective_chat.id])
                     next_page_url = data['next_page_url']
@@ -693,40 +651,38 @@ async def read_more_about_product(
     """Возвращает подробную информацию о конкретном продукте."""
     query = update.callback_query
     await query.answer()
-    try:
-        async with aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(ssl=False)
-        ) as session:
-            url = query.data.split('_')[-1]
-            async with session.get(url) as response:
-                if response.status == HTTPStatus.OK:
-                    firework = await response.json()
-                    await query.edit_message_text(
-                        escape_markdown_v2(
-                            build_firework_card(firework, full_info=True)
-                        ),
-                        reply_markup=InlineKeyboardMarkup(
-                            build_read_more_about_keyboard(firework['id'])
-                        ),
-                        parse_mode='MarkdownV2',
-                    )
-                else:
-                    await send_callback_message(
-                        query,
-                        update,
-                        context,
-                        BAD_REQUEST_MESSAGE.format(code=response.status),
-                        InlineKeyboardMarkup(keyboard_back),
-                        add_to_chat_data=False,
-                    )
-    except Exception:
-        await send_callback_message(
-            query,
-            update,
-            context,
-            CLIENT_CONNECTION_ERROR,
-            InlineKeyboardMarkup(keyboard_back),
-        )
+    # try:
+    async with aiohttp.ClientSession(
+        connector=aiohttp.TCPConnector(ssl=False)
+    ) as session:
+        url = query.data.split('_')[-1]
+        async with session.get(url) as response:
+            if response.status == HTTPStatus.OK:
+                firework = await response.json()
+                await query.edit_message_text(
+                    build_firework_card(firework, full_info=True),
+                    reply_markup=InlineKeyboardMarkup(
+                        build_read_more_about_keyboard(firework['id'])
+                    ),
+                    parse_mode='MarkdownV2',
+                )
+            else:
+                await send_callback_message(
+                    query,
+                    update,
+                    context,
+                    BAD_REQUEST_MESSAGE.format(code=response.status),
+                    InlineKeyboardMarkup(keyboard_back),
+                    add_to_chat_data=False,
+                )
+    # except Exception:
+    #     await send_callback_message(
+    #         query,
+    #         update,
+    #         context,
+    #         CLIENT_CONNECTION_ERROR,
+    #         InlineKeyboardMarkup(keyboard_back),
+    #     )
 
 
 async def show_all_categories(

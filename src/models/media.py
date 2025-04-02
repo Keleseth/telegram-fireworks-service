@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, LargeBinary
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.annotations import int_pk, str_not_null_and_unique
@@ -53,6 +53,26 @@ class Media(BaseJFModel):
         lazy='selectin',
         cascade='all, delete',
     )
+    formatted_media: Mapped[list['FormattedMedia']] = relationship(
+        'FormattedMedia',
+        back_populates='media',
+        lazy='selectin',
+        cascade='all, delete',
+    )
 
     def __repr__(self) -> str:
         return self.media_url
+
+
+class FormattedMedia(BaseJFModel):
+    id: Mapped[int_pk]
+    file: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    media_id: Mapped[int] = mapped_column(
+        ForeignKey('media.id'), primary_key=True
+    )
+    media: Mapped[Media] = relationship(
+        'Media', back_populates='formatted_media', lazy='selectin'
+    )
+
+    def __repr__(self) -> str:
+        return f'{self.id}: {self.type}'
