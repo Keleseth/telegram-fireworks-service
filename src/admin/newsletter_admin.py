@@ -22,7 +22,6 @@ class NewsletterView(ModelView, model=Newsletter):
     form_excluded_columns = [
         'created_at',
         'updated_at',
-        'switch_send',
     ]
     column_details_exclude_list = [
         'id',
