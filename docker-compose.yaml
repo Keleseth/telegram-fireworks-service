@@ -20,7 +20,7 @@ services:
       retries: 5
 
   redis:
-    container_name: redis
+    container_name: redis_local
     image: redis:7.0-alpine
     restart: always
     volumes:
@@ -75,7 +75,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "8443:8443" # Порт для бота
+      - "8443:8443"
     expose:
       - "8443"
     working_dir: /bot
