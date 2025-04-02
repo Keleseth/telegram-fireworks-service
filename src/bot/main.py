@@ -20,6 +20,7 @@ from src.bot.handlers.bot_info import show_bot_info
 from src.bot.handlers.cart import (
     checkout,
     clear_cart_handler,
+    delete_cart_messages,
     remove_item,
     setup_cart_handler,
     view_cart,
@@ -84,8 +85,9 @@ async def button(update: Update, context: CallbackContext):
     option = query.data
 
     if option == 'back':
+        await delete_cart_messages(update, context)
         reply_markup = InlineKeyboardMarkup(keyboard_main)
-        await query.edit_message_text(
+        await query.message.reply_text(
             text='Выберите пункт меню:', reply_markup=reply_markup
         )
     elif option == 'catalog':
@@ -202,13 +204,12 @@ def main() -> None:
 
     # Запуск вебхука
 
-
-#     application.run_webhook(
-#         listen="0.0.0.0",
-#         port=8443,
-#         url_path="/webhook",
-#         webhook_url="https://jf-team2.rsateam.ru/webhook",
-#     )
+    # application.run_webhook(
+    #     listen="0.0.0.0",
+    #     port=8443,
+    #     url_path="/webhook",
+    #     webhook_url="https://jf-team2.rsateam.ru/webhook",
+    # )
 
 
 if __name__ == '__main__':
