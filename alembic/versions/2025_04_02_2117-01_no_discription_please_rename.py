@@ -1,16 +1,16 @@
-"""base_migration
+"""no_discription_please_rename
 
 Revision ID: 01
 Revises:
-Create Date: 2025-04-01 16:35:36.886430
+Create Date: 2025-04-02 21:17:53.850398
 
 """
 from typing import Sequence, Union
 
 from alembic import op
-import fastapi_users_db_sqlalchemy
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+import fastapi_users_db_sqlalchemy
 
 # revision identifiers, used by Alembic.
 revision: str = '01'
@@ -161,6 +161,16 @@ def upgrade() -> None:
     sa.UniqueConstraint('id'),
     sa.UniqueConstraint('name')
     )
+    op.create_table('formattedmedia',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('file', sa.LargeBinary(), nullable=False),
+    sa.Column('media_id', sa.Integer(), nullable=False),
+    sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['media_id'], ['media.id'], ),
+    sa.PrimaryKeyConstraint('id', 'media_id'),
+    sa.UniqueConstraint('id')
+    )
     op.create_table('newslettermedialink',
     sa.Column('newsletter_id', sa.Integer(), nullable=False),
     sa.Column('media_id', sa.Integer(), nullable=False),
@@ -303,6 +313,7 @@ def downgrade() -> None:
     op.drop_table('useraddress')
     op.drop_table('newslettertag')
     op.drop_table('newslettermedialink')
+    op.drop_table('formattedmedia')
     op.drop_table('firework')
     op.drop_table('user')
     op.drop_table('tag')
