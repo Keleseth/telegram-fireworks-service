@@ -159,3 +159,15 @@ class MediaUpdate(MediaBase):
         """
 
         title = MEDIA_UPDATE_SCHEMA_TITLE
+
+
+class FormattedMediaBase(BaseModel):
+    file: bytes
+    media_id: int
+
+
+class FormattedMediaCreate(FormattedMediaBase): ...
+
+
+class FormattedMediaDB(FormattedMediaBase):
+    id: int

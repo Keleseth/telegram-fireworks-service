@@ -5,6 +5,7 @@ from src.api.v1.endpoints.cart import router as cart_router
 from src.api.v1.endpoints.custom_admin import router as custom_admin_router
 from src.api.v1.endpoints.discounts import router as discount_router
 from src.api.v1.endpoints.favorite import router as favorite_router
+from src.api.v1.endpoints.media import router as media_router
 from src.api.v1.endpoints.order import router as order_router
 from src.api.v1.endpoints.payment import router as payment_router
 from src.api.v1.endpoints.product import router as product_router
@@ -22,4 +23,5 @@ __all__ = [
     'product_router',
     'user_router',
     'custom_admin_router',
+    'media_router',
 ]
