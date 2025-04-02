@@ -29,8 +29,8 @@ class NewsletterView(ModelView, model=Newsletter):
         'updated_at',
     ]
     column_labels = {
-        'mediafiles': 'медиафайлы рассылки',
-        'tags': 'теги рассылки',
+        'mediafiles': 'медиафайлы',
+        'tags': 'теги',
         'content': 'контент рассылки',
         'number_of_orders': 'фильтр по кол-ву заказов',
         'age_verified': 'фильтр совершеннолетия',
@@ -67,7 +67,7 @@ class NewsletterMediaView(ModelView, model=NewsletterMedia):
         'updated_at',
     ]
     column_labels = {
-        'newsletters': 'связанные рассылки',
+        'newsletters': 'рассылки',
         'media_url': 'ссылка на медиа',
     }
 

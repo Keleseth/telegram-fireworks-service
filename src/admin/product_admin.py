@@ -23,7 +23,7 @@ from src.models.product import Category, Firework, Tag
 
 
 class FireworkView(ModelView, model=Firework):
-    """Представление фейерверков в админке."""
+    """Представление пиротехники в админке."""
 
     name = 'товар'
     name_plural = 'Товары'
@@ -81,7 +81,7 @@ class FireworkView(ModelView, model=Firework):
         'description': 'описание - как на рутуб',
         'article': 'артикул',
         'code': 'код',
-        'discounts': 'акции фейерверка',
+        'discounts': 'акции',
         'ordered_count': Markup(
             '<span title="Количество пользователей, заказавших'
             ' данный товар">Заказан</span>',

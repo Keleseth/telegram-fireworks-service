@@ -35,7 +35,7 @@ class CategoryView(ModelView, model=Category):
         'created_at': 'дата создания',
         'updated_at': 'дата обновления',
         'categories': 'подкатегории',
-        'fireworks': 'связанные фейерверки',
+        'fireworks': 'фейерверки',
     }
     column_sortable_list = ['name', 'id']
     column_default_sort = 'name'

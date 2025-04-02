@@ -243,10 +243,10 @@
             <td>
               <div class="dropdown">
                 <button class="btn btn-light dropdown-toggle" type="button"
-                        id="dropdownMenuButton_{{ row.id }}"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false">
-                  связанные объекты
+                  id="dropdownMenuButton_{{ row.id }}"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false">
+                  {{ model_view._column_labels.get(name, name)|lower }}: {{ value|length }}
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton_{{ row.id }}">
                   {% for elem, formatted_elem in zip(value, formatted_value) %}
