@@ -73,8 +73,8 @@ async def show_favorites(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         fireworks = [favorite['firework'] for favorite in favorites]
         for firework in fireworks:
-            if firework.get('media'):
-                await show_media(query, context, firework['media'])
+            #if firework.get('media'):
+                #await show_media(query, context, firework['media'])
             await query.message.reply_text(
                 text=build_firework_card(firework, full_info=False),
                 reply_markup=get_product_keyboard(firework['id']),

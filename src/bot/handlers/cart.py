@@ -10,8 +10,8 @@ from telegram.ext import (
     filters,
 )
 
-
 API_BASE_URL = 'http://nginx:8000'
+
 CHANGE_QUANTITY = 1
 
 

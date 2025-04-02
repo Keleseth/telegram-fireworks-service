@@ -370,7 +370,7 @@ class TelegramUserManager:
         """Обработка ввода password."""
         try:
             await self._admin_update_profile(
-                update, 'hashed_password', update.message.text
+                update, 'password', update.message.text
             )
             await update.message.reply_text('✅ Пароль успешно обновлен!')
             return await self.show_profile(update, context)
@@ -570,11 +570,15 @@ class TelegramUserManager:
         try:
             user_telegram_id = update.effective_user.id
             logging.debug(f'Отправка PATCH-запроса для поля {field}')
+            print(field, value)
 
             async with ClientSession() as session:
                 async with session.patch(
-                    f'{API_URL}/moderator/{user_telegram_id}',
-                    json={field: value},
+                    f'{API_URL}/moderator/update-profile/',
+                    json={
+                        'admin_schema': {field: value},
+                        'telegram_schema': {'telegram_id': user_telegram_id},
+                    },
                 ) as response:
                     response_data = await response.json()
                     logging.debug(

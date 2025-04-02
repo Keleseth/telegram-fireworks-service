@@ -20,7 +20,6 @@ from src.database.db_dependencies import get_async_session
 from src.models import User
 from src.schemas.user import (
     AdminUserUpdate,
-    BaseUserUpdate,
     TelegramAdminUserRead,
     TelegramAdminUserUpdate,
     TelegramIDSchema,
@@ -61,7 +60,7 @@ async def get_user(
     },
 )
 async def update_user_parameters(
-    update_data: BaseUserUpdate,
+    update_data: UserUpdate,
     session: AsyncSession = Depends(get_async_session),
 ):
     user = await user_crud.get_user_by_telegram_id(
@@ -150,6 +149,7 @@ async def update_admin_profile(
     user_manager: UserManager = Depends(get_user_manager),
 ):
     """Обновить email и пароль админа через менеджер."""
+    print(admin_schema)
     return await user_manager.update(
         user_update=admin_schema,
         user=admin,

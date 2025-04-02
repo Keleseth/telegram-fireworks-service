@@ -13,5 +13,8 @@ class MediaView(ModelView, model=Media):
         'created_at',
         'updated_at',
     ]
+    column_labels = {
+        'media_url': 'url медиафайла',
+    }
 
     page_size = PAGE_SIZE
