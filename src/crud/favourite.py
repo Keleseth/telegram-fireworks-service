@@ -33,27 +33,23 @@ class CRUDFavourite:
     ):
         """Метод для добавления фейерверка в избранное по telegram_id."""
         obj_in_data = obj_in.dict()
-        existing = await session.execute(
-            select(self.model).where(
-                self.model.user_id == user_id,
-                self.model.firework_id == obj_in_data['firework_id']
-            )
-        )
-        if existing.scalar_one_or_none():
-            raise HTTPException(
-                status_code=409,
-                detail="Этот фейерверк уже добавлен в избранное"
-            )
         firework = await session.execute(
-            select(Firework).where(
-                id == obj_in_data['firework_id']
-            )
+            select(Firework).where(Firework.id == obj_in_data["firework_id"])
         )
-        if not firework.scalar_one_or_none():
+        if not firework.unique().scalar_one_or_none():
             raise HTTPException(
                 status_code=404,
                 detail="Такого фейерверка не существует"
             )
+        existing = await session.scalar(
+            select(FavoriteFirework).where(
+                FavoriteFirework.user_id == user_id,
+                FavoriteFirework.firework_id == obj_in_data["firework_id"]
+            ).limit(1)
+        )
+        if existing:
+            print(user_id)
+            raise HTTPException(status_code=409, detail="Уже в избранном")
         db_obj = self.model(
             user_id=user_id,
             firework_id=obj_in_data['firework_id']
@@ -76,6 +72,7 @@ class CRUDFavourite:
             .order_by(self.model.created_at)
         )
         db_objs = await session.execute(query)
+        print(db_objs)
         return db_objs.unique().scalars().all()
 
     async def remove_by_telegram_id(
