@@ -21,7 +21,7 @@ from src.bot.handlers.users import TelegramUserManager
 
 logging.basicConfig(level=logging.INFO)
 
-API_BASE_URL = 'http://127.0.0.1:8000'
+API_BASE_URL = 'http://nginx:8000'
 
 
 class CartState(Enum):

@@ -446,7 +446,7 @@ async def show_media(
         url = media['media_url']
         # async with aiohttp.ClientSession() as session:
         # async with session.post(
-        #     f'http://127.0.0.1:8000/converted_media/{media["id"]}'
+        #     f'http://nginx:8000/converted_media/{media["id"]}'
         # ) as response:
         #     data = await response.json()
         #     with open(file_path, 'rb') as f:  # noqa: ASYNC230
