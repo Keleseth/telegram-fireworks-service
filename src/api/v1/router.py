@@ -7,6 +7,7 @@ from src.api.v1.endpoints import (
     custom_admin_router,
     discount_router,
     favorite_router,
+    media_router,
     order_router,
     product_router,
     user_router,
@@ -23,3 +24,4 @@ main_router.include_router(user_router, tags=['Пользователи'])
 main_router.include_router(favorite_router, tags=['Избранные'])
 main_router.include_router(bot_info_router, tags=['Информация о боте'])
 main_router.include_router(custom_admin_router, tags=['Кастомная админка'])
+main_router.include_router(media_router, tags=['Медиа'])
