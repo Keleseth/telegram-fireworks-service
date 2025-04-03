@@ -12,7 +12,6 @@ class DiscountView(ModelView, model=Discount):
     name_plural = 'Акции'
 
     column_list = [
-        Discount.id,
         Discount.type,
         Discount.value,
         Discount.description,
@@ -25,10 +24,17 @@ class DiscountView(ModelView, model=Discount):
         'updated_at',
     ]
     column_details_exclude_list = [
+        'id',
         'hashed_password',
         'favorite_fireworks',
         'cart',
         'is_verified',
+        'created_at',
+        'updated_at',
+    ]
+    column_sortable_list = [
+        'start_date',
+        'end_date',
     ]
     column_labels = {
         'id': 'ID',
@@ -37,8 +43,9 @@ class DiscountView(ModelView, model=Discount):
         'start_date': 'дата и время начала акции',
         'end_date': 'дата и время окончания акции',
         'description': 'описание',
-        'fireworks': 'акционные фейерверки',
+        'fireworks': 'товары акции',
     }
+    column_searchable_list = ['type', 'value']
     column_formatters = generate_clickable_formatters(
         Discount, '/admin/newsletter/details', column_list
     )

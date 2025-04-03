@@ -251,3 +251,16 @@ async def test_user_token(
     """Тестовый эндпоинт. Для проверки работы токена."""
     name = admin.name
     return f'Привет {name}. Лучший админ.'
+
+
+# @router.get(
+# "/newsletter/{newsletter_id}/users", response_model=list[UserRead])
+# async def get_filtered_users(
+# newsletter_id: int, session: AsyncSession = Depends(get_async_session)):
+#     newsletter = await session.get(Newsletter, newsletter_id)
+#     if not newsletter:
+#         raise HTTPException(status_code=404, detail="Newsletter not found")
+
+#     users = await newsletter_crud.filtered_users_for_newsletter(
+# newsletter, session)
+#     return users

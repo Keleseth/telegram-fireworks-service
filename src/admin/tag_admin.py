@@ -11,14 +11,9 @@ class TagView(ModelView, model=Tag):
 
     column_list = [Tag.id, Tag.name, Tag.fireworks]
     column_details_list = [
-        'id',
         'name',
-        'created_at',
         'fireworks',
     ]
-    # form_columns = [
-    #     'name'
-    # ]
     form_excluded_columns = [
         'id',
         'updated_at',
@@ -28,7 +23,7 @@ class TagView(ModelView, model=Tag):
     column_labels = {
         'id': 'ID',
         'name': 'название',
-        'fireworks': 'фейерверки тега',
+        'fireworks': 'товары',
         'created_at': 'дата создания',
         'updated_at': 'дата обновления',
     }
@@ -40,6 +35,9 @@ class TagView(ModelView, model=Tag):
             f'{getattr(m, "id")}">{getattr(m, "name")}</a>'
         ),
     }
+    column_searchable_list = [
+        'name',
+    ]
 
     page_size = PAGE_SIZE
     form_widget_args = {'fireworks': {'data-role': 'tagsinput'}}
