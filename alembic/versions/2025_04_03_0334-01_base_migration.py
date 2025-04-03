@@ -1,8 +1,8 @@
-"""no_discription_please_rename
+"""base_migration
 
 Revision ID: 01
 Revises:
-Create Date: 2025-04-02 21:17:53.850398
+Create Date: 2025-04-03 03:34:28.224116
 
 """
 from typing import Sequence, Union
@@ -10,7 +10,6 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-import fastapi_users_db_sqlalchemy
 
 # revision identifiers, used by Alembic.
 revision: str = '01'
@@ -79,6 +78,8 @@ def upgrade() -> None:
     sa.Column('age_verified', sa.Boolean(), nullable=False),
     sa.Column('datetime_send', sa.DateTime(), nullable=False),
     sa.Column('switch_send', sa.Boolean(), server_default=sa.text('false'), nullable=False),
+    sa.Column('account_age', sa.Enum('LESS_3_MONTHS', 'FROM_3_TO_12_MONTHS', 'FROM_1_TO_3_YEARS', 'MORE_THAN_3_YEARS', name='account_age_enum'), nullable=True),
+    sa.Column('users_related_to_tag', sa.Boolean(), nullable=True),
     sa.Column('canceled', sa.Boolean(), nullable=False),
     sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', postgresql.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
