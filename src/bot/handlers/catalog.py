@@ -104,7 +104,7 @@ SKIP_MESSAGE = '⏭️ Пропустить'
 CATALOG_BACK_MESSAGE = '📋 В каталог'
 ADD_TO_CART_MESSAGE = '🛒 В корзину'
 ADD_TO_FAVORITE_MESSAGE = '💥 В избранное'
-MAIN_MENU_BACK_MESSAGE = '🏠 Перейти в главное меню'
+MAIN_MENU_BACK_MESSAGE = '🏠 В главное меню'
 NAVIGATION_MESSAGE = '🤖 Навигация'
 BAD_REQUEST_MESSAGE = 'Ошибка❗ Код: {code}. Вернуться в меню каталога:'
 READ_MORE_MESSAGE = '📖 Подробнее'
@@ -818,7 +818,7 @@ async def back_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if context.chat_data[update.effective_chat.id]:
             await catalog_delete_messages_from_memory(update, context)
     else:
-        await query.message.reply('Пока в разработке /menu')
+        await query.message.reply_text('Пока в разработке /menu')
 
 
 async def pagination_handler(

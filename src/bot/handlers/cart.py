@@ -2,7 +2,12 @@ import logging
 from enum import Enum
 
 import aiohttp
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardRemove,
+    Update,
+)
 from telegram.ext import (
     ApplicationBuilder,
     CallbackContext,
@@ -11,6 +16,8 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+
+from src.bot.handlers.users import TelegramUserManager
 
 logging.basicConfig(level=logging.INFO)
 
@@ -68,7 +75,7 @@ async def view_cart(update: Update, context: CallbackContext) -> None:
         update.message if update.message else update.callback_query.message
     )
     user_id = str(update.effective_user.id)
-
+    await delete_cart_messages(update, context)
     data = await send_request(
         'post', f'{API_BASE_URL}/user/cart/me', {'telegram_id': user_id}
     )
@@ -88,6 +95,12 @@ async def view_cart(update: Update, context: CallbackContext) -> None:
 
     total_price = 0
     buttons = []
+
+    message_start = await message.reply_text(
+        '🛒 Ваша корзина:',
+        parse_mode='Markdown',
+    )
+    context.user_data['cart_messages'].append(message_start.message_id)
 
     for item in cart_items:
         firework_id = item['firework']['id']
@@ -189,11 +202,21 @@ async def change_quantity_entry(
     context.user_data['current_item_id'] = item_id
     product_name = get_product_name(context, item_id)
     await delete_cart_messages(update, context)
+    back_button = InlineKeyboardButton('🔙 Назад', callback_data='main-menu')
+    reply_markup = InlineKeyboardMarkup([[back_button]])
 
-    await query.message.reply_text(
-        f'Введите новое количество для товара *{product_name}*:',
+    message_1 = await query.message.reply_text(
+        f'Введите новое количество для товара *{product_name}*, '
+        f'или нажмите "Назад" для отмены.',
         parse_mode='Markdown',
+        reply_markup=reply_markup,
     )
+    message_2 = await query.message.reply_text(
+        'Чтобы прервать выполнение, нажмите Назад',
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    context.user_data['cart_messages'].append(message_1.message_id)
+    context.user_data['cart_messages'].append(message_2.message_id)
     return CartState.CHANGE_QUANTITY.value
 
 
@@ -229,7 +252,26 @@ async def handle_new_quantity(update: Update, context: CallbackContext) -> int:
         f'обновлено на *{new_amount}* шт.',
         parse_mode='Markdown',
     )
+    user_manager = TelegramUserManager(application=context.application)
+    keyboard = user_manager.main_keyboard()
 
+    await update.message.reply_text(
+        text='Ваша корзина обновлена', reply_markup=keyboard
+    )
+    await view_cart(update, context)
+    return ConversationHandler.END
+
+
+async def handle_back_to_cart(update: Update, context: CallbackContext) -> int:
+    """Универсальный выход из любого ConversationHandler."""
+    query = update.callback_query
+    await query.answer()
+    user_manager = TelegramUserManager(application=context.application)
+    keyboard = user_manager.main_keyboard()
+    message = (
+        update.message if update.message else update.callback_query.message
+    )
+    await message.reply_text(text='Изменения отменены', reply_markup=keyboard)
     await view_cart(update, context)
     return ConversationHandler.END
 
@@ -245,10 +287,12 @@ def setup_cart_handler(application: ApplicationBuilder) -> None:
             CHANGE_QUANTITY: [
                 MessageHandler(
                     filters.TEXT & ~filters.COMMAND, handle_new_quantity
-                )
+                ),
             ],
         },
-        fallbacks=[],
+        fallbacks=[
+            CallbackQueryHandler(handle_back_to_cart, pattern='^main-menu$')
+        ],
     )
     application.add_handler(cart_conv_handler)
 

@@ -21,6 +21,7 @@ from src.bot.handlers.cart import (
     checkout,
     clear_cart_handler,
     delete_cart_messages,
+    handle_back_to_cart,
     remove_item,
     setup_cart_handler,
     view_cart,
@@ -85,6 +86,7 @@ async def button(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()
     option = query.data
+    print(f'Данные callback_query: {query.data}')
 
     if option == 'back':
         await delete_cart_messages(update, context)
@@ -172,6 +174,7 @@ def main() -> None:
     print(f'Loaded TOKEN: {config.TOKEN}')
     application = ApplicationBuilder().token(config.TOKEN).build()
     application.user_manager = TelegramUserManager(application)
+    # application.add_handler(conv_handler)
 
     start_handler = CommandHandler('start', start)
     application.add_handler(start_handler)
@@ -202,6 +205,10 @@ def main() -> None:
     application.add_handler(
         CallbackQueryHandler(clear_cart_handler, pattern='clear_cart')
     )
+    application.add_handler(
+        CallbackQueryHandler(handle_back_to_cart, pattern='^main-menu$')
+    )
+
     # To poll
     application.run_polling()
 
