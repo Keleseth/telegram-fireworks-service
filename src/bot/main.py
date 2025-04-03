@@ -205,6 +205,7 @@ def main() -> None:
     application.add_handler(
         CallbackQueryHandler(handle_back_to_cart, pattern='^main-menu$')
     )
+
     # To poll
     application.run_polling()
 
