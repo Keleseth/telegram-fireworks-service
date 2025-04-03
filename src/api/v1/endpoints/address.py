@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from src.api.auth.dependencies import current_age_verified_user
 from src.crud.address import address_crud, useraddress_crud
 from src.crud.user import user_crud
 from src.database.db_dependencies import get_async_session
@@ -22,6 +23,7 @@ router = APIRouter()
 
 @router.post(
     '/addresses',
+    dependencies=[Depends(current_age_verified_user)],
     status_code=status.HTTP_201_CREATED,
     response_model=UserAddressResponseSchema,
 )

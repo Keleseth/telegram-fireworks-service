@@ -8,7 +8,6 @@ from telegram import (
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
     Update,
-    WebAppInfo,
 )
 from telegram.ext import (
     ApplicationBuilder,
@@ -36,7 +35,6 @@ API_URL = 'http://127.0.0.1:8000'
     ADMIN_EDIT_PASSWORD,
     AGE_VERIFICATION,
 ) = range(11)
-
 
 
 class TelegramUserManager:
@@ -239,15 +237,13 @@ class TelegramUserManager:
             )
             return ADMIN_MENU
 
-        # TODO: заменить на ссылку на вход в админку!!!
-        web_app_url = 'https://habr.com/ru/companies/amvera/articles/849836/'
+        admin_url = 'https://jf-team2.rsateam.ru/admin/login'
         keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    'Открыть админку 🚀', web_app=WebAppInfo(url=web_app_url)
-                )
-            ]
+            [InlineKeyboardButton('Открыть админку 🚀', url=admin_url)]
         ])
+        await update.message.reply_text(
+            'Открываю админку:', reply_markup=keyboard
+        )
 
         await update.message.reply_text(
             '🔐 Панель администратора:', reply_markup=keyboard

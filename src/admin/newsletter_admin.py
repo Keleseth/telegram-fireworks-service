@@ -18,11 +18,12 @@ class NewsletterView(ModelView, model=Newsletter):
         Newsletter.age_verified,
         Newsletter.switch_send,
         Newsletter.canceled,
+        Newsletter.account_age,
+        Newsletter.users_related_to_tag,
     ]
     form_excluded_columns = [
         'created_at',
         'updated_at',
-        'switch_send',
     ]
     column_details_exclude_list = [
         'id',
@@ -38,6 +39,8 @@ class NewsletterView(ModelView, model=Newsletter):
         'switch_send': 'отправлена',
         'canceled': 'отмена рассылки',
         'created_at': 'дата создания',
+        'account_age': 'возраст аккаунта',
+        'users_related_to_tag': 'тег для пользователя',
     }
     column_sortable_list = [
         'switch_send',
@@ -47,6 +50,9 @@ class NewsletterView(ModelView, model=Newsletter):
     column_formatters = generate_clickable_formatters(
         Newsletter, '/admin/newsletter/details', column_list
     )
+    column_searchable_list = [
+        'content',
+    ]
 
 
 class NewsletterMediaView(ModelView, model=NewsletterMedia):

@@ -30,7 +30,6 @@ from src.bot.handlers.catalog import (
     setup_catalog_handler,
 )
 from src.bot.handlers.favorites import setup_favorites_handler, show_favorites
-from src.bot.handlers.newsletter import handle_newsletter_tag
 
 # from src.bot.handlers.catalog import catalog_menu, catalog_register
 from src.bot.handlers.order_history import (
@@ -47,6 +46,7 @@ from src.bot.handlers.select_filters import (
 from src.bot.handlers.users import TelegramUserManager
 from src.bot.keyboards import keyboard_main, orders_summary_keyboard
 from src.bot.utils import API_BASE_URL, get_user_id_from_telegram
+from src.utils.scheduler.send_newsletter import handle_tag_callback
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -102,8 +102,6 @@ async def button(update: Update, context: CallbackContext):
         await promotions_handler(update, context)
     elif option == 'bot_info':
         await show_bot_info(update, context)
-    elif option.startswith(('newsletter_tag_',)):
-        await handle_newsletter_tag(update, context)
     # TODO 126-138 добавит один обработчик для корзины
     elif option == 'cart':
         await view_cart(update, context)
@@ -189,6 +187,9 @@ def main() -> None:
     register_place_order(application)
     # Регистрация хэндлеров из place_order.py
     setup_cart_handler(application)
+    application.add_handler(
+        CallbackQueryHandler(handle_tag_callback, pattern=r'newsletter_tag_.*')
+    )
 
     button_handler = CallbackQueryHandler(button)
     application.add_handler(button_handler)

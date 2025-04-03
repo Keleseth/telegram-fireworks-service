@@ -1,13 +1,30 @@
+import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, Integer, text
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import BaseJFModel
 
 if TYPE_CHECKING:
     from src.models import Tag
+
+
+class AccountAge(enum.Enum):
+    LESS_3_MONTHS = 'less_3_months'
+    FROM_3_TO_12_MONTHS = 'from_3_to_12_months'
+    FROM_1_TO_3_YEARS = 'from_1_to_3_years'
+    MORE_THAN_3_YEARS = 'more_than_3_years'
+
+    def __str__(self) -> str:
+        return {
+            self.LESS_3_MONTHS: 'моложе 3 месяцев',
+            self.FROM_3_TO_12_MONTHS: 'от 3 месяцев до года',
+            self.FROM_1_TO_3_YEARS: 'от года до 3 лет',
+            self.MORE_THAN_3_YEARS: 'от 3 лет и старше',
+        }[self]
 
 
 class Newsletter(BaseJFModel):
@@ -49,6 +66,10 @@ class Newsletter(BaseJFModel):
         default=False,
         server_default=text('false'),
     )
+    account_age: Mapped[AccountAge | None] = mapped_column(
+        SQLEnum(AccountAge, name='account_age_enum'), nullable=True
+    )
+    users_related_to_tag: Mapped[bool | None]
     canceled: Mapped[bool] = mapped_column(Boolean, default=False)
 
     def __repr__(self) -> str:
