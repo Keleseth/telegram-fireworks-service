@@ -44,7 +44,6 @@ async def create_user_address(
     return {'user_address_id': user_address.id, 'address': address.address}
 
 
-
 @router.post(
     '/useraddresses/me',
     status_code=status.HTTP_200_OK,

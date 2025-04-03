@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, condecimal, conint
 
+from src.schemas.user import TelegramIDSchema
+
 
 class BaseOrderSchema(BaseModel):
     pass
@@ -38,6 +40,12 @@ class UpdateOrderAddressSchema(BaseOrderSchema):
     fio: Optional[str]
     phone: Optional[str]
     operator_call: bool
+
+
+class OrderAddressUpdateRequest(BaseModel):
+    # Новая схема для PATCH /orders/{order_id}/address
+    telegram_schema: TelegramIDSchema
+    data: UpdateOrderAddressSchema
 
 
 class UpdateOrderStatusSchema(BaseOrderSchema):

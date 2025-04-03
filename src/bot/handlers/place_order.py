@@ -155,20 +155,17 @@ async def place_order_start(update: Update, context: CallbackContext) -> int:
 async def confirm_cart(update: Update, context: CallbackContext) -> int:
     query = update.callback_query
     await query.answer()
-
     if query.data == 'cancel':
         await query.edit_message_text('❌ Оформление заказа отменено.')
         return ConversationHandler.END
 
     dialog_data = context.user_data[DIALOG_DATA]
     telegram_id = dialog_data['telegram_id']
-    user_id = dialog_data['user_id']
 
     async with ClientSession() as session:
         async with session.post(
             f'{API_BASE_URL}/orders/',
             json={'telegram_id': telegram_id},
-            headers={'user-id': str(user_id)},
         ) as response:
             if response.status != 200:
                 await query.edit_message_text(
@@ -179,13 +176,14 @@ async def confirm_cart(update: Update, context: CallbackContext) -> int:
             dialog_data['order_id'] = order['id']
 
         async with session.post(
-            f'{API_BASE_URL}/useraddresses/me',  # Изменено с /addresses/me
+            f'{API_BASE_URL}/useraddresses/me',
             json={'telegram_id': telegram_id},
         ) as response:
             if response.status != 200:
                 await query.edit_message_text('😿 Ошибка при загрузке адресов')
                 return ConversationHandler.END
             user_addresses = await response.json()
+            dialog_data['user_addresses'] = user_addresses
             logger.info(f'User addresses response: {user_addresses}')
 
     if not user_addresses:
@@ -195,9 +193,7 @@ async def confirm_cart(update: Update, context: CallbackContext) -> int:
     keyboard = [
         [
             InlineKeyboardButton(
-                ua['address'],
-                callback_data=f'addr_{ua["user_address_id"]}',
-                # Используем user_address_id
+                ua['address'], callback_data=f'addr_{ua["user_address_id"]}'
             )
         ]
         for ua in user_addresses
@@ -221,7 +217,6 @@ async def handle_address(update: Update, context: CallbackContext) -> int:
         await query.answer()
         if query.data.startswith('addr_'):
             user_address_id = int(query.data.split('_')[1])
-            # Теперь это user_address_id
             async with ClientSession() as session:
                 async with session.post(
                     f'{API_BASE_URL}/useraddresses/me',
@@ -248,13 +243,11 @@ async def handle_address(update: Update, context: CallbackContext) -> int:
             dialog_data['address'] = selected_user_address['address']
             dialog_data['user_address_id'] = user_address_id
             dialog_data['address_id'] = None
-            # Не нужен, так как используем user_address_id
             await query.edit_message_text(PLACE_ORDER_FIO_PROMPT)
             return AWAITING_FIO
         if query.data == 'new_addr':
             await query.edit_message_text(PLACE_ORDER_ADDRESS_PROMPT)
             return AWAITING_ADDRESS
-    # Новый адрес от пользователя
     dialog_data['address'] = update.message.text.strip()
     dialog_data['user_address_id'] = None
     dialog_data['address_id'] = None
@@ -307,9 +300,9 @@ async def handle_operator_call(
     dialog_data = context.user_data[DIALOG_DATA]
     operator_call = query.data == 'operator_yes'
     dialog_data['operator_call'] = operator_call
-    user_id = dialog_data['user_id']
     telegram_id = dialog_data['telegram_id']
     order_id = dialog_data['order_id']
+
     json_data = {
         'telegram_schema': {'telegram_id': telegram_id},
         'data': {
@@ -323,14 +316,13 @@ async def handle_operator_call(
         async with session.patch(
             f'{API_BASE_URL}/orders/{order_id}/address',
             json=json_data,
-            headers={'user-id': str(user_id)},
         ) as response:
             response_text = await response.text()
             logger.info(
                 f'PATCH /orders/{order_id}/address response: '
                 f'status={response.status}, body={response_text}'
             )
-            if response.status != 200:
+            if response.status not in (200, 201):  # Исправлено
                 await query.edit_message_text(
                     f'😿 Ошибка при обновлении заказа: {response_text}'
                 )
@@ -342,7 +334,6 @@ async def handle_operator_call(
     if operator_call:
         confirmation_text += '\nОжидайте звонка оператора 😺'
     if not dialog_data.get('user_address_id'):
-        # Спрашиваем сохранить только для нового адреса
         await query.edit_message_text(
             confirmation_text
             + f'\n\n{
@@ -352,7 +343,6 @@ async def handle_operator_call(
         )
         return AWAITING_SAVE_ADDRESS
     await query.edit_message_text(confirmation_text)
-    # Для существующего адреса завершаем
     context.user_data.pop(DIALOG_DATA, None)
     return ConversationHandler.END
 
@@ -363,7 +353,6 @@ async def handle_save_address(update: Update, context: CallbackContext) -> int:
 
     dialog_data = context.user_data[DIALOG_DATA]
     telegram_id = dialog_data['telegram_id']
-    user_id = dialog_data['user_id']
     order_id = dialog_data['order_id']
 
     if query.data == 'save_yes':
@@ -374,7 +363,6 @@ async def handle_save_address(update: Update, context: CallbackContext) -> int:
                     'telegram_id': telegram_id,
                     'address': dialog_data['address'],
                 },
-                allow_redirects=True,
             ) as response:
                 response_text = await response.text()
                 logger.info(
@@ -404,14 +392,13 @@ async def handle_save_address(update: Update, context: CallbackContext) -> int:
             async with session.patch(
                 f'{API_BASE_URL}/orders/{order_id}/address',
                 json=json_data,
-                headers={'user-id': str(user_id)},
             ) as response:
                 response_text = await response.text()
                 logger.info(
                     f'PATCH /orders/{order_id}/address response: '
                     f'status={response.status}, body={response_text}'
                 )
-                if response.status != 200:
+                if response.status not in (200, 201):  # Исправлено
                     logger.error(
                         f'Failed to update order with address: {response_text}'
                     )
@@ -433,18 +420,17 @@ async def cancel(update: Update, context: CallbackContext) -> int:
     await query.answer()
     dialog_data = context.user_data.get(DIALOG_DATA, {})
     if dialog_data.get('order_id'):
-        user_id = dialog_data['user_id']
+        telegram_id = dialog_data['telegram_id']
         order_id = dialog_data['order_id']
         async with ClientSession() as session:
             async with session.patch(
                 f'{API_BASE_URL}/orders/{order_id}/status',
-                json={'status_id': 3},  # "Shipped" как заглушка
-                headers={'user-id': str(user_id)},
+                json={'telegram_id': telegram_id, 'status_id': 3},
             ) as response:
                 if response.status != 200:
                     logger.error(
-                        f'Failed to cancel order '
-                        f'{order_id}: {await response.text()}'
+                        f'Failed to cancel order {order_id}:'
+                        f' {await response.text()}'
                     )
     await query.edit_message_text('Оформление заказа отменено 💔')
     context.user_data.pop(DIALOG_DATA, None)

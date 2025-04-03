@@ -729,7 +729,7 @@ async def repeat_order(update: Update, context: CallbackContext) -> int:
             async with session.post(
                 f'{API_BASE_URL}/orders/{order_id_to_repeat}/repeat_direct',
                 headers=get_auth_headers(telegram_id),
-                json={},
+                json={'telegram_id': telegram_id},
             ) as response:
                 if response.status != 200:
                     logger.error(
