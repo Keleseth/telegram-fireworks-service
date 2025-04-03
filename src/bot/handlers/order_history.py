@@ -11,7 +11,6 @@ from telegram.ext import (
     filters,
 )
 
-# Предполагаем, что эти утилиты работают как надо
 from src.bot.utils import API_BASE_URL
 
 logger = logging.getLogger(__name__)
@@ -21,15 +20,11 @@ AWAITING_ORDER_DETAILS, AWAITING_NEW_ADDRESS = range(2)
 
 # Ключи context.user_data
 DIALOG_DATA = 'dialog_data'
-# Кэш адресов теперь будет частью DIALOG_DATA
-# ADDRESS_CACHE = 'address_cache'
 
 # Кнопки
 BACK_KEYBOARD = InlineKeyboardMarkup([
     [InlineKeyboardButton('Назад', callback_data='back')]
 ])
-# Используем CANCEL_KEEP_KEYBOARD для отмены повторного заказа,
-# где пользователь НЕ выбрал адрес (заказ остается без адреса)
 CANCEL_REPEAT_NO_ADDRESS_KEYBOARD = InlineKeyboardMarkup([
     [
         InlineKeyboardButton(
@@ -37,14 +32,12 @@ CANCEL_REPEAT_NO_ADDRESS_KEYBOARD = InlineKeyboardMarkup([
         )
     ]
 ])
-# Кнопка Отмены для ввода нового адреса (возврат к выбору адреса)
 CANCEL_NEW_ADDRESS_INPUT_KEYBOARD = InlineKeyboardMarkup([
     [InlineKeyboardButton('Отмена', callback_data='cancel_new_addr_input')]
 ])
 
 # Сообщения
 ORDER_HISTORY_MESSAGE = 'История ваших заказов:\n\n{history_text}'
-# Используем ТЕКСТ адреса
 ORDER_DETAILS_MESSAGE = (
     'Заказ #{order_id} ({status}):\n'
     'Состав:\n{order_summary}\n'
@@ -58,7 +51,7 @@ ORDER_REPEAT_MESSAGE = (
     'Заказ #{order_id} успешно повторён!\n'
     'Состав:\n{order_summary}\n'
     'Итого: {total} руб.\n'
-    'Адрес: {address}'  # <--- ТЕКСТ АДРЕСА
+    'Адрес: {address}'
 )
 PLACE_ORDER_ADDRESS_PROMPT = (
     '📍 Введите адрес доставки\n💬 Пример: г. Москва ул. Ленина, д. 1'
@@ -101,12 +94,10 @@ INFO_ORDER_NOT_SHIPPED = 'ℹ️ Заказ не найден или еще не
 
 
 def get_auth_headers(telegram_id: int) -> dict:
-    """Возвращает заголовки для аутентификации."""
     return {'telegram-id': str(telegram_id)}
 
 
 async def order_history(update: Update, context: CallbackContext) -> int:
-    """Начало диалога: загрузка заказов и адресов пользователя."""
     query = update.callback_query
     await query.answer()
 
@@ -137,34 +128,6 @@ async def order_history(update: Update, context: CallbackContext) -> int:
         except Exception:
             logger.exception('Exception during order fetch:')
             await query.edit_message_text(ERROR_FETCHING_ORDERS)
-            return ConversationHandler.END
-
-        # 3. Загружаем адреса пользователя
-        try:
-            async with session.post(
-                f'{API_BASE_URL}/useraddresses/me',
-                json={'telegram_id': telegram_id},
-            ) as response:
-                if response.status != 200:
-                    logger.error(
-                        f'Failed to get user addresses for {telegram_id}: '
-                        f'{response.status} {await response.text()}'
-                    )
-                    await context.bot.send_message(
-                        chat_id=telegram_id, text=ERROR_FETCHING_ADDRESSES
-                    )
-                else:
-                    user_addresses_list = await response.json()
-                    user_addresses_map = {
-                        ua['user_address_id']: ua['address']
-                        for ua in user_addresses_list
-                        if 'user_address_id' in ua and 'address' in ua
-                    }
-        except Exception:
-            logger.exception('Exception during address fetch:')
-            await context.bot.send_message(
-                chat_id=telegram_id, text=ERROR_FETCHING_ADDRESSES
-            )
             return ConversationHandler.END
 
         try:
@@ -256,7 +219,6 @@ async def order_history(update: Update, context: CallbackContext) -> int:
 
 
 async def show_order(update: Update, context: CallbackContext) -> int:
-    """Показывает детальную информацию о выбранном заказе."""
     query = update.callback_query
     await query.answer()
 
@@ -329,7 +291,6 @@ async def show_order(update: Update, context: CallbackContext) -> int:
 
 
 async def back_to_list(update: Update, context: CallbackContext):
-    """Возврат к отображению списка заказов (перезапуск order_history)."""
     update.callback_query.data = 'orders'
     return await order_history(update, context)
 
@@ -337,7 +298,6 @@ async def back_to_list(update: Update, context: CallbackContext):
 async def check_delivery_status(
     update: Update, context: CallbackContext
 ) -> int:
-    """Проверяет статус доставки заказа."""
     query = update.callback_query
     await query.answer()
 
@@ -395,7 +355,6 @@ async def check_delivery_status(
 
 
 async def edit_order_address(update: Update, context: CallbackContext) -> int:
-    """Показывает кнопки выбора адреса для изменения в заказе."""
     query = update.callback_query
     await query.answer()
 
@@ -475,7 +434,6 @@ async def edit_order_address(update: Update, context: CallbackContext) -> int:
 async def ask_new_address_input(
     update: Update, context: CallbackContext
 ) -> int:
-    """Запрашивает ввод нового адреса текстом (при изменении)."""
     query = update.callback_query
     await query.answer()
 
@@ -500,10 +458,6 @@ async def ask_new_address_input(
 async def set_existing_address(
     update: Update, context: CallbackContext
 ) -> int:
-    """Устанавливает выбранный СУЩЕСТВУЮЩИЙ адрес.
-
-    для заказа (при изменении).
-    """
     query = update.callback_query
     await query.answer('Обновляю адрес...')
 
@@ -527,9 +481,12 @@ async def set_existing_address(
         async with session.patch(
             f'{API_BASE_URL}/orders/{order_id}/address',
             headers=get_auth_headers(telegram_id),
-            json={'user_address_id': user_address_id},
+            json={
+                'telegram_schema': {'telegram_id': telegram_id},
+                'data': {'user_address_id': user_address_id},
+            },
         ) as response:
-            if response.status != 200:
+            if response.status not in (200, 201):
                 logger.error(
                     f'Failed to update address '
                     f'for order {order_id} to existing '
@@ -569,10 +526,6 @@ async def set_existing_address(
 async def handle_new_address_input(
     update: Update, context: CallbackContext
 ) -> int:
-    """Обрабатывает введенный пользователем текст.
-
-    нового адреса (при изменении).
-    """
     if not update.message or not update.message.text:
         return AWAITING_NEW_ADDRESS
 
@@ -648,9 +601,12 @@ async def handle_new_address_input(
             async with session.patch(
                 f'{API_BASE_URL}/orders/{order_id}/address',
                 headers=get_auth_headers(telegram_id),
-                json={'user_address_id': user_address_id},
+                json={
+                    'telegram_schema': {'telegram_id': telegram_id},
+                    'data': {'user_address_id': user_address_id},
+                },
             ) as response:
-                if response.status != 200:
+                if response.status not in (200, 201):
                     logger.error(
                         f'Edit Order: '
                         f'Failed to update order {order_id} with NEW '
@@ -694,7 +650,6 @@ async def handle_new_address_input(
 async def cancel_new_addr_input(
     update: Update, context: CallbackContext
 ) -> int:
-    """Отмена ввода нового адреса, возврат к выбору."""
     query = update.callback_query
     await query.answer()
     dialog_data = context.user_data.get(DIALOG_DATA, {})
@@ -707,7 +662,6 @@ async def cancel_new_addr_input(
 
 
 async def repeat_order(update: Update, context: CallbackContext) -> int:
-    """Запускает процесс повторения заказа и запрашивает адрес."""
     query = update.callback_query
     await query.answer('Повторяем заказ...')
 
@@ -791,7 +745,6 @@ async def repeat_order(update: Update, context: CallbackContext) -> int:
 async def repeat_set_existing_address(
     update: Update, context: CallbackContext
 ) -> int:
-    """Устанавливает выбранный СУЩЕСТВУЮЩИЙ адрес для ПОВТОРЕННОГО заказа."""
     query = update.callback_query
     await query.answer('Применяю адрес к новому заказу...')
 
@@ -820,9 +773,12 @@ async def repeat_set_existing_address(
         async with session.patch(
             f'{API_BASE_URL}/orders/{new_order_id}/address',
             headers=get_auth_headers(telegram_id),
-            json={'user_address_id': user_address_id},
+            json={
+                'telegram_schema': {'telegram_id': telegram_id},
+                'data': {'user_address_id': user_address_id},
+            },
         ) as response:
-            if response.status != 200:
+            if response.status not in (200, 201):
                 logger.error(
                     f'Repeat: '
                     f'Failed to set address for order {new_order_id} to '
@@ -860,7 +816,6 @@ async def repeat_set_existing_address(
 async def repeat_ask_new_address_input(
     update: Update, context: CallbackContext
 ) -> int:
-    """Запрашивает ввод нового адреса текстом для ПОВТОРЕННОГО заказа."""
     query = update.callback_query
     await query.answer()
 
@@ -890,12 +845,10 @@ async def repeat_ask_new_address_input(
 async def repeat_back_to_choice(
     update: Update, context: CallbackContext
 ) -> int:
-    """Возврат к выбору адреса для повторного заказа после отмены ввода."""
     query = update.callback_query
     await query.answer()
 
     dialog_data = context.user_data.get(DIALOG_DATA, {})
-    # telegram_id = dialog_data.get('telegram_id')
     new_order_details = dialog_data.get('new_order_details')
     order_id_to_repeat = '?'
 
@@ -942,12 +895,10 @@ async def repeat_back_to_choice(
 async def repeat_handle_new_address_input(
     update: Update, context: CallbackContext
 ) -> int:
-    """Обрабатывает введенный текст нового адреса для ПОВТОРЕННОГО заказа."""
     if not update.message or not update.message.text:
         return AWAITING_NEW_ADDRESS
 
     address_text = update.message.text.strip()
-    # chat_id = update.effective_chat.id
 
     dialog_data = context.user_data.get(DIALOG_DATA, {})
     telegram_id = dialog_data.get('telegram_id')
@@ -1024,9 +975,12 @@ async def repeat_handle_new_address_input(
             async with session.patch(
                 f'{API_BASE_URL}/orders/{new_order_id}/address',
                 headers=get_auth_headers(telegram_id),
-                json={'user_address_id': user_address_id},
+                json={
+                    'telegram_schema': {'telegram_id': telegram_id},
+                    'data': {'user_address_id': user_address_id},
+                },
             ) as response:
-                if response.status != 200:
+                if response.status not in (200, 201):
                     logger.error(
                         f'Repeat: '
                         f'Failed to update order {new_order_id} with NEW '
@@ -1066,10 +1020,6 @@ async def repeat_handle_new_address_input(
 async def repeat_cancel_address(
     update: Update, context: CallbackContext
 ) -> int:
-    """Отмена выбора адреса для повторного заказа.
-
-    (оставляет заказ без адреса).
-    """
     query = update.callback_query
     await query.answer()
 
@@ -1098,7 +1048,6 @@ async def repeat_cancel_address(
 
 
 async def cancel_and_cleanup(update: Update, context: CallbackContext) -> int:
-    """Общий обработчик отмены/назад, который чистит user_data."""
     query = update.callback_query
     await query.answer()
     try:
@@ -1127,7 +1076,6 @@ def register_handlers(application: Application) -> None:
                 ),
                 CallbackQueryHandler(repeat_order, pattern=r'^repeat_\d+$'),
                 CallbackQueryHandler(back_to_list, pattern=r'^back_to_list$'),
-                CallbackQueryHandler(show_order, pattern=r'^order_\d+$'),
             ],
             AWAITING_NEW_ADDRESS: [
                 CallbackQueryHandler(

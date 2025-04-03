@@ -136,8 +136,7 @@ async def place_order_start(update: Update, context: CallbackContext) -> int:
         'total': total,
         'order_id': None,
         'address': None,
-        'address_id': None,
-        'user_address_id': None,
+        'user_address_id': None,  # Убрано address_id как неиспользуемое
         'fio': None,
         'phone': None,
         'operator_call': False,
@@ -210,39 +209,29 @@ async def confirm_cart(update: Update, context: CallbackContext) -> int:
 
 async def handle_address(update: Update, context: CallbackContext) -> int:
     dialog_data = context.user_data[DIALOG_DATA]
-    telegram_id = dialog_data['telegram_id']
+    # telegram_id = dialog_data['telegram_id']
 
     if update.callback_query:
         query = update.callback_query
         await query.answer()
         if query.data.startswith('addr_'):
             user_address_id = int(query.data.split('_')[1])
-            async with ClientSession() as session:
-                async with session.post(
-                    f'{API_BASE_URL}/useraddresses/me',
-                    json={'telegram_id': telegram_id},
-                ) as response:
-                    if response.status != 200:
-                        await query.edit_message_text(
-                            '😿 Ошибка при загрузке связей адресов.'
-                        )
-                        return ConversationHandler.END
-                    user_addresses = await response.json()
-                    selected_user_address = next(
-                        (
-                            ua
-                            for ua in user_addresses
-                            if ua['user_address_id'] == user_address_id
-                        ),
-                        None,
-                    )
-                    if not selected_user_address:
-                        await query.edit_message_text('😿 Адрес не найден.')
-                        return ConversationHandler.END
+            user_addresses = dialog_data['user_addresses']
+            # Используем сохранённые данные
+            selected_user_address = next(
+                (
+                    ua
+                    for ua in user_addresses
+                    if ua['user_address_id'] == user_address_id
+                ),
+                None,
+            )
+            if not selected_user_address:
+                await query.edit_message_text('😿 Адрес не найден.')
+                return ConversationHandler.END
 
             dialog_data['address'] = selected_user_address['address']
             dialog_data['user_address_id'] = user_address_id
-            dialog_data['address_id'] = None
             await query.edit_message_text(PLACE_ORDER_FIO_PROMPT)
             return AWAITING_FIO
         if query.data == 'new_addr':
@@ -250,7 +239,6 @@ async def handle_address(update: Update, context: CallbackContext) -> int:
             return AWAITING_ADDRESS
     dialog_data['address'] = update.message.text.strip()
     dialog_data['user_address_id'] = None
-    dialog_data['address_id'] = None
     await update.message.reply_text(PLACE_ORDER_FIO_PROMPT)
     return AWAITING_FIO
 
@@ -322,7 +310,7 @@ async def handle_operator_call(
                 f'PATCH /orders/{order_id}/address response: '
                 f'status={response.status}, body={response_text}'
             )
-            if response.status not in (200, 201):  # Исправлено
+            if response.status not in (200, 201):
                 await query.edit_message_text(
                     f'😿 Ошибка при обновлении заказа: {response_text}'
                 )
@@ -360,8 +348,11 @@ async def handle_save_address(update: Update, context: CallbackContext) -> int:
             async with session.post(
                 f'{API_BASE_URL}/addresses/',
                 json={
-                    'telegram_id': telegram_id,
-                    'address': dialog_data['address'],
+                    'telegram_schema': {'telegram_id': telegram_id},
+                    'create_data': {
+                        'telegram_id': telegram_id,
+                        'address': dialog_data['address'],
+                    },
                 },
             ) as response:
                 response_text = await response.text()
@@ -398,7 +389,7 @@ async def handle_save_address(update: Update, context: CallbackContext) -> int:
                     f'PATCH /orders/{order_id}/address response: '
                     f'status={response.status}, body={response_text}'
                 )
-                if response.status not in (200, 201):  # Исправлено
+                if response.status not in (200, 201):
                     logger.error(
                         f'Failed to update order with address: {response_text}'
                     )
