@@ -129,7 +129,8 @@ class CRUDUserAdress(CRUDBase):
         address: Address,
         user_id: int,
         session: AsyncSession,
-    ) -> None:
+    ) -> UserAddress:
+        # Проверяем, существует ли уже такая связь
         user_address_obj = await session.execute(
             select(UserAddress).where(
                 (UserAddress.user_id == user_id)
@@ -144,7 +145,9 @@ class CRUDUserAdress(CRUDBase):
             )
             session.add(new_user_address)
             await session.commit()
-            await session.commit()
+            await session.refresh(new_user_address)
+            return new_user_address
+        return user_address_obj
 
     async def remove(
         self, user_id: int, address_id: int, session: AsyncSession
