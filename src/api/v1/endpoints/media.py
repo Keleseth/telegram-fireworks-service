@@ -21,11 +21,11 @@ router = APIRouter()
 async def create_formatted_media(
     media_id: int, session: AsyncSession = Depends(get_async_session)
 ) -> FormattedMediaDB:
-    media = await media_crud.get(media_id)
+    media = await media_crud.get(media_id, session)
     await check_media_exists_by_id(media_id, session)
     await check_formatted_media_exists_by_media_id(media_id, session)
-    async with aiohttp.ClientSession as session:
-        async with session.get(media.url) as response:
+    async with aiohttp.ClientSession() as get_media_session:
+        async with get_media_session.get(media.media_url) as response:
             if response.status != 200:
                 raise HTTPException(
                     status_code=400, detail='Ошибка при переходе по media_url!'
@@ -35,5 +35,5 @@ async def create_formatted_media(
         media_id=media.id, file=media_data
     )
     return await formatted_media_crud.create(
-        formatted_media_create_data, session
+        session, formatted_media_create_data
     )

@@ -37,7 +37,7 @@ async def check_category_exists(
 async def check_media_exists_by_id(
     media_id: int, session: AsyncSession
 ) -> None:
-    media = await media_crud.get(media_id)
+    media = await media_crud.get(media_id, session)
     if not media:
         raise HTTPException(
             status_code=400, detail=f'Медиа с id={media_id} не существует!'

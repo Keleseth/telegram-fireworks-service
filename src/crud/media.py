@@ -30,7 +30,7 @@ class FormattedMediaCRUD:
     ) -> ModelType:
         schema_data = formatted_media_schema.model_dump()
         db_object = self.model(
-            file=schema_data.file, media_id=schema_data.media_id
+            file=schema_data['file'], media_id=schema_data['media_id']
         )
         try:
             session.add(db_object)

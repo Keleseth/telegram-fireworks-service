@@ -162,11 +162,11 @@ class MediaUpdate(MediaBase):
 
 
 class FormattedMediaBase(BaseModel):
-    file: bytes
     media_id: int
 
 
-class FormattedMediaCreate(FormattedMediaBase): ...
+class FormattedMediaCreate(FormattedMediaBase):
+    file: bytes
 
 
 class FormattedMediaDB(FormattedMediaBase):
