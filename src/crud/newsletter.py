@@ -1,11 +1,34 @@
+import asyncio
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.crud.base import CRUDBase
-from src.models import Newsletter, Order, User
+from src.database.db_dependencies import get_async_session
+from src.models.newsletter import AccountAge, Newsletter
+from src.models.order import Order
+from src.models.user import User
 from src.schemas.newsletter import NewsletterCreate, NewsletterUpdate
+
+current_now = datetime.now(timezone.utc)
+
+
+account_age_filters = {
+    AccountAge.LESS_3_MONTHS: lambda: User.created_at
+    >= current_now - timedelta(days=90),
+    AccountAge.FROM_3_TO_12_MONTHS: lambda: and_(
+        User.created_at < current_now - timedelta(days=90),
+        User.created_at >= current_now - timedelta(days=365),
+    ),
+    AccountAge.FROM_1_TO_3_YEARS: lambda: and_(
+        User.created_at < current_now - timedelta(days=365),
+        User.created_at >= current_now - timedelta(days=365 * 3),
+    ),
+    AccountAge.MORE_THAN_3_YEARS: lambda: User.created_at
+    < current_now - timedelta(days=365 * 3),
+}
 
 
 class NewsletterCRUD(CRUDBase[Newsletter, NewsletterCreate, NewsletterUpdate]):
@@ -57,6 +80,8 @@ class NewsletterCRUD(CRUDBase[Newsletter, NewsletterCreate, NewsletterUpdate]):
         #     order_count = len(user.orders)
         #     if order_count >= newsletter.number_of_orders:
         #         filtered_users.append(user)
+        if newsletter.account_age:
+            query = query.where(account_age_filters[newsletter.account_age]())
         query = query.where(
             order_count_subquery >= newsletter.number_of_orders
         )
@@ -65,3 +90,24 @@ class NewsletterCRUD(CRUDBase[Newsletter, NewsletterCreate, NewsletterUpdate]):
 
 
 newsletter_crud = NewsletterCRUD(Newsletter)
+
+
+async def test_filter():
+    async with get_async_session() as session:
+        newsletter = Newsletter(
+            age_verified=True,
+            account_age=AccountAge.MORE_THAN_3_YEARS,
+            number_of_orders=1,
+        )
+
+        users = await newsletter_crud.filtered_users_for_newsletter(
+            newsletter=newsletter, session=session
+        )
+
+        print(f'Найдено пользователей: {len(users)}')
+        for user in users:
+            print(user.id, user.created_at, user.age_verified)
+
+
+if __name__ == '__main__':
+    asyncio.run(test_filter())
