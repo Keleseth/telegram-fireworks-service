@@ -12,8 +12,8 @@ from src.models.cart import Cart
 from src.models.order import Order
 from src.schemas.order import (
     DeleteOrderSchema,
+    OrderAddressUpdateRequest,
     ReadOrderSchema,
-    UpdateOrderAddressSchema,
     UpdateOrderStatusSchema,
 )
 
@@ -65,10 +65,13 @@ async def get_order(
 )
 async def update_order_address(
     order_id: int,
-    data: UpdateOrderAddressSchema,
-    user_id: UUID = Depends(get_user_id),
+    request_data: OrderAddressUpdateRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
+    user_id = await get_user_id(request_data.telegram_schema, session)
+    # Извлекаем user_id
+    data = request_data.data
+    # Извлекаем данные адреса
     print(data.user_address_id, data.fio, data.phone, data.operator_call)
     order = await session.get(Order, order_id)
     if not order or order.user_id != user_id:
