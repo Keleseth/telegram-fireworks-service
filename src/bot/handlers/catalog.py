@@ -443,6 +443,14 @@ async def show_media(
 
     for media in media_list[:10]:  # ограничение Telegram
         url = media['media_url']
+        # async with aiohttp.ClientSession() as session:
+        # async with session.post(
+        #     f'http://127.0.0.1:8000/converted_media/{media["id"]}'
+        # ) as response:
+        #     data = await response.json()
+        #     with open(file_path, 'rb') as f:  # noqa: ASYNC230
+        #     if media_type == 'image':
+        #         media_group.append(InputMediaPhoto(media=f.read()))
         media_type = media['media_type']
 
         if 'disk.yandex.ru' in url:
@@ -558,7 +566,7 @@ async def get_paginated_response(
                             query,
                             update,
                             context,
-                            caption,
+                            escape_markdown_v2(caption),
                             reply_markup=InlineKeyboardMarkup(
                                 object_keyboard_builder(obj['id'])
                             ),
