@@ -38,6 +38,7 @@ API_URL = 'http://127.0.0.1:8000'
 ) = range(11)
 
 
+
 class TelegramUserManager:
     def __init__(self, application: ApplicationBuilder) -> None:
         """Инициализация."""

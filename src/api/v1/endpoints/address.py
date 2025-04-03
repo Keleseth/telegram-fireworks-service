@@ -1,16 +1,20 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from src.crud.address import address_crud, useraddress_crud
 from src.crud.user import user_crud
 from src.database.db_dependencies import get_async_session
+from src.models.address import UserAddress
 from src.schemas.address import (
-    BaseAddressSchema,
     CreateAddressSchema,
+    DeleteAddressSchema,
     ReadAddressSchema,
     UpdateAddressSchema,
+    UserAddressResponseSchema,
 )
 
 router = APIRouter()
@@ -19,7 +23,7 @@ router = APIRouter()
 @router.post(
     '/addresses',
     status_code=status.HTTP_201_CREATED,
-    response_model=BaseAddressSchema,
+    response_model=UserAddressResponseSchema,
 )
 async def create_user_address(
     create_data: CreateAddressSchema,
@@ -32,40 +36,49 @@ async def create_user_address(
     user_id = await user_crud.get_user_id_by_telegram_id(
         schema_data=create_data, session=session
     )
-    await useraddress_crud.create(
+    user_address = await useraddress_crud.create(
         session=session,
         address=address,
         user_id=user_id,
     )
-    return address
+    return {'user_address_id': user_address.id, 'address': address.address}
+
 
 
 @router.post(
-    '/addresses/me',
+    '/useraddresses/me',
     status_code=status.HTTP_200_OK,
-    response_model=List[BaseAddressSchema],
+    response_model=List[UserAddressResponseSchema],
 )
-async def get_user_addressess(
-    schema: ReadAddressSchema,
+async def get_user_address_ids(
+    schema: DeleteAddressSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Получить адреса юзера."""
+    """Получить все связи useraddress для пользователя."""
     user_id = await user_crud.get_user_id_by_telegram_id(
         session=session, schema_data=schema
     )
-    return await address_crud.get_addresses_by_user_id(
-        session=session, user_id=user_id
+    result = await session.execute(
+        select(UserAddress)
+        .where(UserAddress.user_id == user_id)
+        .options(joinedload(UserAddress.address))
+        # Подгружаем отношение address
     )
+    user_addresses = result.scalars().all()
+    return [
+        {'user_address_id': ua.id, 'address': ua.address.address}
+        for ua in user_addresses
+    ]
 
 
 @router.post(
     '/addresses/{address_id}',
     status_code=status.HTTP_200_OK,
-    response_model=BaseAddressSchema,
+    response_model=ReadAddressSchema,  # Возвращаем id и address
 )
 async def get_user_address(
     address_id: str,
-    schema: ReadAddressSchema,
+    schema: DeleteAddressSchema,  # Используем telegram_id
     session: AsyncSession = Depends(get_async_session),
 ):
     """Получить конкретный адрес пользователя по id."""
@@ -82,7 +95,7 @@ async def get_user_address(
 @router.patch(
     '/addresses/{address_id}',
     status_code=status.HTTP_200_OK,
-    response_model=BaseAddressSchema,
+    response_model=ReadAddressSchema,  # Возвращаем id и address
 )
 async def update_user_address(
     address_id: str,
@@ -113,9 +126,10 @@ async def update_user_address(
 )
 async def delete_user_address(
     address_id: str,
-    schema: ReadAddressSchema,
+    schema: DeleteAddressSchema,  # Используем telegram_id
     session: AsyncSession = Depends(get_async_session),
 ):
+    """Удалить адрес пользователя."""
     user_id = await user_crud.get_user_id_by_telegram_id(
         session=session, schema_data=schema
     )
