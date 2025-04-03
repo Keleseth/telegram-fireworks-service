@@ -1,0 +1,103 @@
+services:
+  db:
+    container_name: postgres
+    image: postgres:17.2-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    container_name: redis
+    image: redis:7.0-alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    container_name: app
+    build: .
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    expose:
+      - "8000"
+    working_dir: /app
+    command: ["sh", "-c", "uvicorn src.main:app --host 0.0.0.0 --port 8000"]
+    restart: unless-stopped
+
+  bot:
+    container_name: bot
+    build:
+      context: .
+      dockerfile: Dockerfile_bot
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8443:8443" # Порт для бота
+    expose:
+      - "8443"
+    working_dir: /bot
+    command: ["sh", "-c", "python -m src.bot.main --port 8443 --webhook-url https://jf-team2.rsateam.ru/webhook"]
+    restart: unless-stopped
+
+  nginx:
+    container_name: nginx
+    build:
+      context: .
+      dockerfile: Dockerfile_nginx
+    depends_on:
+      - app
+      - bot
+    networks:
+      - app_network
+    ports:
+      - "8000:8000" # Проксируем FastAPI через Nginx
+    restart: unless-stopped
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

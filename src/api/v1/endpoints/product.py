@@ -1,6 +1,8 @@
 from typing import Union
 
+import aiohttp
 from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.utils import build_next_and_prev_urls
@@ -27,6 +29,30 @@ from src.schemas.product import (
 )
 
 router = APIRouter()
+
+
+@router.get('/proxy')
+async def proxy(url: str):
+    api_url = 'https://cloud-api.yandex.net/v1/disk/public/resources/download'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(api_url, params={'public_key': url}) as r:
+            if r.status != 200:
+                return {'error': 'Failed to get direct link'}
+            href = (await r.json()).get('href')
+
+        if not href:
+            return {'error': 'No href returned'}
+
+        async with session.get(href) as media_resp:
+            if media_resp.status != 200:
+                return {'error': 'Failed to fetch media'}
+
+            return StreamingResponse(
+                media_resp.content,
+                media_type=media_resp.headers.get(
+                    'Content-Type', 'application/octet-stream'
+                ),
+            )
 
 
 @router.get(

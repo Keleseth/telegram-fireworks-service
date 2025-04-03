@@ -310,7 +310,6 @@ async def handle_operator_call(
     user_id = dialog_data['user_id']
     telegram_id = dialog_data['telegram_id']
     order_id = dialog_data['order_id']
-
     json_data = {
         'telegram_schema': {'telegram_id': telegram_id},
         'data': {

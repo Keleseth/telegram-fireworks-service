@@ -14,6 +14,12 @@ from pydantic.types import PositiveInt
 from pydantic_extra_types.phone_numbers import PhoneNumber
 
 
+class TelegramIDSchema(BaseModel):
+    """Схема для извлечения telegram_id из запроса."""
+
+    telegram_id: int
+
+
 class UserRead(BaseModel):
     """Схема чтения пользователя (возвращаемые данные)."""
 
@@ -65,7 +71,6 @@ class UserCreate(BaseModel):
 class BaseUserUpdate(BaseModel):
     """Базовая схема обновления профиля пользователя."""
 
-    telegram_id: int
     email: EmailStr | None = Field(None, title='Почта пользователя.')
     name: str | None = Field(None, title='Имя пользователя.')
     nickname: str | None = Field(None, title='Никнейм пользователя.')
@@ -119,7 +124,7 @@ class BaseUserUpdate(BaseModel):
 class UserUpdate(BaseUserUpdate):
     """Схема обновления профиля телеграмм пользователя."""
 
-    pass
+    telegram_id: int | None
 
 
 class AdminUserUpdate(BaseUserUpdate):
