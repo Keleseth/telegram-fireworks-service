@@ -1,6 +1,7 @@
 import logging
 from typing import List
 
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from telegram import (
     Bot,
@@ -8,9 +9,14 @@ from telegram import (
     InlineKeyboardMarkup,
     InputMediaPhoto,
     InputMediaVideo,
+    Update,
 )
+from telegram.ext import CallbackContext
 
+from src.bot.handlers.catalog import build_firework_card
 from src.models import Newsletter, User
+
+API_URL = 'http://localhost:8000/fireworks'
 
 PHOTO_FORMATS = ('.jpg', '.jpeg', '.png')
 VIDEO_FORMATS = ('.mp4', '.mov')
@@ -33,8 +39,6 @@ async def send_newsletter_to_users(
         4) bot_token (str) - токен Telegram-бота.
     """
     bot = Bot(token=bot_token)
-
-    # Создаем клавиатуру с тегами
     if newsletter.tags:
         keyboard = [
             [
@@ -47,8 +51,6 @@ async def send_newsletter_to_users(
         reply_markup = InlineKeyboardMarkup(keyboard)
     else:
         reply_markup = None
-
-    # Формируем медиагруппу
     media_group = []
     media_urls = [media.media_url for media in newsletter.mediafiles][
         :TELEGRAM_MEDIA_LIMIT
@@ -58,18 +60,14 @@ async def send_newsletter_to_users(
             media_group.append(InputMediaPhoto(media=media_url, caption=None))
         elif media_url.endswith(VIDEO_FORMATS):
             media_group.append(InputMediaVideo(media=media_url, caption=None))
-
     for user in users:
         if not user.telegram_id or user.is_admin:
             continue
-
         try:
             if media_group:
-                # Отправляем медиагруппу
                 await bot.send_media_group(
                     chat_id=user.telegram_id, media=media_group
                 )
-                # Отправляем кнопки отдельным сообщением
             if reply_markup:
                 await bot.send_message(
                     chat_id=user.telegram_id,
@@ -79,7 +77,71 @@ async def send_newsletter_to_users(
         except Exception as e:
             logging.error(f'User {user.id}: {str(e)}')
             continue
-
-    # Обновляем статус рассылки
     newsletter.switch_send = True
     await session.commit()
+
+
+async def handle_tag_callback(update: Update, context: CallbackContext):
+    query = update.callback_query
+    await query.answer()
+    tag_name = query.data.replace('newsletter_tag_', '')
+    params = {'offset': 0, 'limit': 10}
+    json_data = {'tags': [tag_name]}
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                API_URL, params=params, json=json_data
+            )
+            response.raise_for_status()
+            data = response.json()
+    except httpx.HTTPError as e:
+        await query.edit_message_text(f'Ошибка при запросе данных: {str(e)}')
+        return
+    fireworks = data.get('fireworks', [])
+    if not fireworks:
+        await query.edit_message_text('По этому тегу ничего не найдено.')
+        return
+    for firework in fireworks:
+        card_text = build_firework_card(firework, full_info=True)
+        media_urls = firework.get('media_urls', [])
+        if media_urls:
+            media_group = []
+            for idx, url in enumerate(media_urls[:TELEGRAM_MEDIA_LIMIT]):
+                if url.endswith(PHOTO_FORMATS):
+                    if idx == 0:
+                        media_group.append(
+                            InputMediaPhoto(
+                                media=url,
+                                caption=card_text,
+                                parse_mode='Markdown',
+                            )
+                        )
+                    else:
+                        media_group.append(InputMediaPhoto(media=url))
+                elif url.endswith(VIDEO_FORMATS):
+                    if idx == 0:
+                        media_group.append(
+                            InputMediaVideo(
+                                media=url,
+                                caption=card_text,
+                                parse_mode='Markdown',
+                            )
+                        )
+                    else:
+                        media_group.append(InputMediaVideo(media=url))
+            if media_group:
+                await context.bot.send_media_group(
+                    chat_id=query.message.chat_id, media=media_group
+                )
+            else:
+                await context.bot.send_message(
+                    chat_id=query.message.chat_id,
+                    text=card_text,
+                    parse_mode='Markdown',
+                )
+        else:
+            await context.bot.send_message(
+                chat_id=query.message.chat_id,
+                text=card_text,
+                parse_mode='Markdown',
+            )

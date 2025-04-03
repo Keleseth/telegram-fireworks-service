@@ -73,13 +73,6 @@ class NewsletterCRUD(CRUDBase[Newsletter, NewsletterCreate, NewsletterUpdate]):
         query = select(User)
         if newsletter.age_verified:
             query = query.where(User.age_verified.is_(True))
-        # result = await session.execute(query)
-        # users = result.scalars().all()
-        # filtered_users = []
-        # for user in users:
-        #     order_count = len(user.orders)
-        #     if order_count >= newsletter.number_of_orders:
-        #         filtered_users.append(user)
         if newsletter.account_age:
             query = query.where(account_age_filters[newsletter.account_age]())
         query = query.where(
