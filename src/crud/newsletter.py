@@ -93,20 +93,20 @@ newsletter_crud = NewsletterCRUD(Newsletter)
 
 
 async def test_filter():
-    async with get_async_session() as session:
-        newsletter = Newsletter(
-            age_verified=True,
-            account_age=AccountAge.MORE_THAN_3_YEARS,
-            number_of_orders=1,
-        )
+    session = await anext(get_async_session())
+    newsletter = Newsletter(
+        age_verified=True,
+        account_age=AccountAge.MORE_THAN_3_YEARS,
+        number_of_orders=1,
+    )
 
-        users = await newsletter_crud.filtered_users_for_newsletter(
-            newsletter=newsletter, session=session
-        )
+    users = await newsletter_crud.filtered_users_for_newsletter(
+        newsletter=newsletter, session=session
+    )
 
-        print(f'Найдено пользователей: {len(users)}')
-        for user in users:
-            print(user.id, user.created_at, user.age_verified)
+    print(f'Найдено пользователей: {len(users)}')
+    for user in users:
+        print(user.id, user.created_at, user.age_verified)
 
 
 if __name__ == '__main__':
