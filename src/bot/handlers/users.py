@@ -55,6 +55,10 @@ class TelegramUserManager:
             states={
                 MAIN_MENU: [
                     MessageHandler(
+                        filters.Text(['🏠 В главное меню']),
+                        self.back_to_menu,
+                    ),
+                    MessageHandler(
                         filters.Text(['👤 Просмотреть профиль']),
                         self.show_profile,
                     ),
@@ -82,6 +86,10 @@ class TelegramUserManager:
                     MessageHandler(
                         filters.Text(['📱 Изменить телефон']),
                         self.start_edit_phone,
+                    ),
+                    MessageHandler(
+                        filters.Text(['🚧 Изменить пароль']),
+                        self.admin_start_edit_password,
                     ),
                     MessageHandler(
                         filters.Text(['🔙 Вернуться в меню']),
@@ -281,6 +289,7 @@ class TelegramUserManager:
             ['🔙 Вернуться в меню'],
         ]
         if is_admin:
+            buttons[-2].append('🚧 Изменить пароль')
             buttons[-1].append('🚧 Перейти в админку')
         return buttons
 
@@ -607,7 +616,7 @@ class TelegramUserManager:
         user_data = await self._fetch_user_data(user_id)
         is_admin = user_data.get('is_admin', False) if user_data else False
 
-        buttons = [['👤 Просмотреть профиль']]
+        buttons = buttons = [['🏠 В главное меню', '👤 Просмотреть профиль']]
         if is_admin:
             buttons[0].append('🚧 Перейти в админку')
 
@@ -661,14 +670,14 @@ class TelegramUserManager:
 
     def main_keyboard(self, is_admin: bool = False):
         """Генерация reply-клавиатуры."""
-        buttons = [['👤 Просмотреть профиль']]
+        buttons = [['🏠 В главное меню', '👤 Просмотреть профиль']]
         if is_admin:
             buttons[0].append('🚧 Перейти в админку')
         return ReplyKeyboardMarkup(
             buttons,
             resize_keyboard=True,
             one_time_keyboard=False,
-            input_field_placeholder='↓ Выберите действие ↓',
+            input_field_placeholder='Выберите действие',
         )
 
     async def check_age_input(

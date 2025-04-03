@@ -93,7 +93,8 @@ APPLY_FILTERS_CALLBACK = 'apply_filters'
 CANCEL_FILTERS_CALLBACK = 'cancel_filters'
 
 CATALOG_MESSAGE = '🎆 Каталог продуктов'
-SUCCESS_ADD_MESSAGE = '✅ Добавлено'
+SUCCESS_ADD_MESSAGE_TO_CART = '✅ В корзине'
+SUCCESS_ADD_MESSAGE_TO_FAVORITE = '✅ В избранном'
 ALL_CATEGORIES_MESSAGE = '📋 Список категорий'
 ALL_PRODUCTS_MESSAGE = '✨ Все товары'
 CATEGORY_MESSAGE = '✨ Категории'
@@ -104,7 +105,7 @@ SKIP_MESSAGE = '⏭️ Пропустить'
 CATALOG_BACK_MESSAGE = '📋 В каталог'
 ADD_TO_CART_MESSAGE = '🛒 В корзину'
 ADD_TO_FAVORITE_MESSAGE = '💥 В избранное'
-MAIN_MENU_BACK_MESSAGE = '🏠 Перейти в главное меню'
+MAIN_MENU_BACK_MESSAGE = '🏠 В главное меню'
 NAVIGATION_MESSAGE = '🤖 Навигация'
 BAD_REQUEST_MESSAGE = 'Ошибка❗ Код: {code}. Вернуться в меню каталога:'
 READ_MORE_MESSAGE = '📖 Подробнее'
@@ -326,7 +327,7 @@ async def add_to_cart(
                 new_keyboard = [
                     [
                         InlineKeyboardButton(
-                            SUCCESS_ADD_MESSAGE,
+                            SUCCESS_ADD_MESSAGE_TO_CART,
                             callback_data=ADD_TO_CART_CALLBACK.format(
                                 id=firework_id
                             ),
@@ -361,7 +362,7 @@ async def add_to_favorite(
                     [
                         add_to_cart_button(firework_id),
                         InlineKeyboardButton(
-                            SUCCESS_ADD_MESSAGE,
+                            SUCCESS_ADD_MESSAGE_TO_FAVORITE,
                             callback_data=ADD_TO_FAVORITE_CALLBACK.format(
                                 id=firework_id
                             ),
@@ -818,7 +819,7 @@ async def back_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if context.chat_data[update.effective_chat.id]:
             await catalog_delete_messages_from_memory(update, context)
     else:
-        await query.message.reply('Пока в разработке /menu')
+        await query.message.reply_text('Пока в разработке /menu')
 
 
 async def pagination_handler(

@@ -8,7 +8,6 @@ from telegram.ext import (
 )
 
 from src.bot.bot_messages import build_firework_card
-from src.bot.utils import show_media
 from src.schemas.cart import UserIdentificationSchema
 
 # Конфигурация
@@ -73,8 +72,8 @@ async def show_favorites(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         fireworks = [favorite['firework'] for favorite in favorites]
         for firework in fireworks:
-            #if firework.get('media'):
-                #await show_media(query, context, firework['media'])
+            # if firework.get('media'):
+            # await show_media(query, context, firework['media'])
             await query.message.reply_text(
                 text=build_firework_card(firework, full_info=False),
                 reply_markup=get_product_keyboard(firework['id']),
@@ -157,7 +156,9 @@ async def handle_favorites_actions(
                             json={'telegram_id': telegram_id},
                         ) as response:
                             if response.status == 200:
-                                await query.edit_message_text('❌ Товар убран')
+                                await query.edit_message_text(
+                                    '❌ Товар удалён из избранного'
+                                )
                             else:
                                 error = await response.text()
                                 print(f'Delete error: {error}')

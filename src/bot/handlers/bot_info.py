@@ -16,7 +16,8 @@ BOT_INFO_CARD = """
 ──────────────────────
 """
 
-API_URL = 'http://app:8000'
+# API_URL = 'http://app:8000'
+API_URL = 'http://127.0.0.1:8000'
 
 
 def build_bot_info_card(fields: dict) -> str:
@@ -41,6 +42,7 @@ async def show_bot_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     async with ClientSession() as session:
         async with session.get(f'{API_URL}/botinfo') as response:
+            data = await response.json()
             if response.status == 200:
                 data = await response.json()
             else:
