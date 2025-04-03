@@ -1,7 +1,7 @@
+from typing import Any
+
 from sqladmin import ModelView
-from sqlalchemy import select
 from sqlalchemy.sql import Select
-from starlette.requests import Request
 
 from src.admin.constants import PAGE_SIZE
 from src.admin.utils import generate_clickable_formatters
@@ -57,6 +57,9 @@ class FireworkPropertyView(ModelView, model=FireworkProperty):
     #     'firework',
     #     'field',
     # ]
+    column_searchable_list = [
+        'firework',
+    ]
     form_excluded_columns = [
         'id',
         'created_at',
@@ -75,29 +78,32 @@ class FireworkPropertyView(ModelView, model=FireworkProperty):
         FireworkProperty, '/admin/firework-property/details', column_list
     )
 
-    def list_query(self, request: Request) -> Select:
-        stmt = (
-            select(FireworkProperty)
-            .join(FireworkProperty.firework)
-            .join(FireworkProperty.field)
+    page_size = PAGE_SIZE
+
+    def search_query(self, stmt: Select[Any], term: str) -> Select[Any]:
+        return stmt.join(FireworkProperty.firework).filter(
+            Firework.name.ilike(f'%{term}%')
         )
 
-        # обрабатываем фильтр, вводимый вручную
-        firework_name = request.query_params.get('firework_name')
-        if firework_name:
-            stmt = stmt.where(Firework.name.ilike(f'%{firework_name}%'))
+    # def list_query(self, request: Request) -> Select:
+    #     stmt = (
+    #         select(FireworkProperty)
+    #         .join(FireworkProperty.firework)
+    #         .join(FireworkProperty.field)
+    #     )
 
-        # если вдруг в будущем будут ещё стандартные фильтры
-        selected_filters = request.query_params.getlist('filters')
-        for filter_str in selected_filters:
-            if ':' not in filter_str:
-                continue
-            field, val = filter_str.split(':', 1)
-            val = val.strip().lower()
+    #     firework_name = request.query_params.get('firework_name')
+    #     if firework_name:
+    #         stmt = stmt.where(Firework.name.ilike(f'%{firework_name}%'))
 
-            if field == 'field':
-                stmt = stmt.where(PropertyField.field_name.ilike(f'%{val}%'))
+    #     selected_filters = request.query_params.getlist('filters')
+    #     for filter_str in selected_filters:
+    #         if ':' not in filter_str:
+    #             continue
+    #         field, val = filter_str.split(':', 1)
+    #         val = val.strip().lower()
 
-        return stmt
+    #         if field == 'field':
+    #             stmt = stmt.where(PropertyField.field_name.ilike(f'%{val}%'))
 
-    page_size = PAGE_SIZE
+    #     return stmt

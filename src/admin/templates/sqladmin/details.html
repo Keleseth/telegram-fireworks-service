@@ -16,10 +16,10 @@
               <td>
                 <div class="dropdown">
                   <button class="btn btn-light dropdown-toggle" type="button"
-                          id="dropdownMenuButton_{{ name }}_{{ get_object_identifier(model) }}"
-                          data-bs-toggle="dropdown"
-                          aria-expanded="false">
-                    Связанных объектов: {{ value|length }}
+                    id="dropdownMenuButton_{{ name }}_{{ get_object_identifier(model) }}"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false">
+                    {{ model_view._column_labels.get(name, name)|lower }}: {{ value|length }}
                   </button>
                   <ul class="dropdown-menu"
                       aria-labelledby="dropdownMenuButton_{{ name }}_{{ get_object_identifier(model) }}">
