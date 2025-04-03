@@ -46,7 +46,7 @@ from src.bot.handlers.select_filters import (
 )
 from src.bot.handlers.users import TelegramUserManager
 from src.bot.keyboards import keyboard_main, orders_summary_keyboard
-from src.bot.utils import API_BASE_URL, get_user_id_from_telegram
+from src.bot.utils import API_BASE_URL
 from src.utils.scheduler.send_newsletter import handle_tag_callback
 
 logging.basicConfig(
@@ -122,11 +122,11 @@ async def button(update: Update, context: CallbackContext):
     )):
         await promotions_handler(update, context)
     elif option == 'orders':
-        user_id = await get_user_id_from_telegram(update)
-        if not user_id:
-            await query.edit_message_text('Пользователь не найден.')
-            return
-
+        query = update.callback_query
+        await query.answer()
+        await query.message.chat.send_message(
+            '⛔ История заказов временно недоступна. Функция в разработке.'
+        )
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f'{API_BASE_URL}/orders/me',
