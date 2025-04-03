@@ -33,9 +33,9 @@ from src.bot.handlers.catalog import (
 from src.bot.handlers.favorites import setup_favorites_handler, show_favorites
 
 # from src.bot.handlers.catalog import catalog_menu, catalog_register
-from src.bot.handlers.order_history import (
-    register_handlers as register_order_history,
-)
+# from src.bot.handlers.order_history import (
+#     register_handlers as register_order_history,
+# )
 from src.bot.handlers.place_order import (
     register_handlers as register_place_order,
 )
@@ -164,8 +164,8 @@ async def button(update: Update, context: CallbackContext):
             orders_summary_keyboard(last_order_id)
         )
         await query.edit_message_text(summary_text, reply_markup=reply_markup)
-    elif option == 'show_all_orders':
-        await register_order_history(update, context)
+    # elif option == 'show_all_orders':
+    #     await register_order_history(update, context)
 
     # await user_manager.refresh_keyboard(update)
 
@@ -185,7 +185,7 @@ def main() -> None:
     setup_catalog_handler(application)
     setup_favorites_handler(application)
     setup_select_filters(application)
-    register_order_history(application)
+    # register_order_history(application)
     # Регистрация хэндлеров из order_history.py
     register_place_order(application)
     # Регистрация хэндлеров из place_order.py
