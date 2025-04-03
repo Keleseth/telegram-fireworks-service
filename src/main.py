@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
+from fastapi.staticfiles import StaticFiles
 
 # from src.database import alembic_models  # noqa
 from sqlalchemy.orm import configure_mappers
@@ -30,7 +31,17 @@ app = FastAPI(
     description=settings.description,
     lifespan=lifespan,
 )
-# setup_admin(app)
+
+
+@app.middleware('http')
+async def check_http(request: Request, call_next):  # noqa: ANN001, ANN201
+    """Проверка протокола."""
+    protocol = request.headers.get('X-Forwarded-Protocol', None)
+    if protocol in ('http', 'https'):
+        request.scope['scheme'] = protocol
+    return await call_next(request)
+
+
 app.router.include_router(main_router)
 
 
