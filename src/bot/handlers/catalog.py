@@ -93,7 +93,8 @@ APPLY_FILTERS_CALLBACK = 'apply_filters'
 CANCEL_FILTERS_CALLBACK = 'cancel_filters'
 
 CATALOG_MESSAGE = '🎆 Каталог продуктов'
-SUCCESS_ADD_MESSAGE = '✅ Добавлено'
+SUCCESS_ADD_MESSAGE_TO_CART = '✅ В корзине'
+SUCCESS_ADD_MESSAGE_TO_FAVORITE = '✅ В избранном'
 ALL_CATEGORIES_MESSAGE = '📋 Список категорий'
 ALL_PRODUCTS_MESSAGE = '✨ Все товары'
 CATEGORY_MESSAGE = '✨ Категории'
@@ -326,7 +327,7 @@ async def add_to_cart(
                 new_keyboard = [
                     [
                         InlineKeyboardButton(
-                            SUCCESS_ADD_MESSAGE,
+                            SUCCESS_ADD_MESSAGE_TO_CART,
                             callback_data=ADD_TO_CART_CALLBACK.format(
                                 id=firework_id
                             ),
@@ -361,7 +362,7 @@ async def add_to_favorite(
                     [
                         add_to_cart_button(firework_id),
                         InlineKeyboardButton(
-                            SUCCESS_ADD_MESSAGE,
+                            SUCCESS_ADD_MESSAGE_TO_FAVORITE,
                             callback_data=ADD_TO_FAVORITE_CALLBACK.format(
                                 id=firework_id
                             ),

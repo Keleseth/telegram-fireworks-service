@@ -13,6 +13,7 @@ from telegram.ext import (
     filters,
 )
 
+from src.bot.handlers.cart import delete_cart_messages
 from src.bot.utils import API_BASE_URL, get_user_id_from_telegram
 
 logger = logging.getLogger(__name__)
@@ -96,9 +97,11 @@ async def place_order_start(update: Update, context: CallbackContext) -> int:
     query = update.callback_query
     await query.answer()
 
+    await delete_cart_messages(update, context)
+
     user_id = await get_user_id_from_telegram(update)
     if not user_id:
-        await query.edit_message_text('🙀 Пользователь не найден ')
+        await query.message.reply_text('🙀 Пользователь не найден ')
         return ConversationHandler.END
 
     async with ClientSession() as session:
@@ -107,14 +110,14 @@ async def place_order_start(update: Update, context: CallbackContext) -> int:
             json={'telegram_id': update.effective_user.id},
         ) as response:
             if response.status != 200:
-                await query.edit_message_text(
+                await query.message.reply_textt(
                     '🆘 - Не удалось загрузить корзину, попробуйте еще'
                 )
                 return ConversationHandler.END
             cart_items = await response.json()
 
     if not cart_items:
-        await query.edit_message_text(
+        await query.message.reply_text(
             'Ваша корзина пуста.😿 '
             'Давай заглянем в каталог и подберём что-нибудь!'
         )
@@ -142,7 +145,7 @@ async def place_order_start(update: Update, context: CallbackContext) -> int:
         'operator_call': False,
     }
 
-    await query.edit_message_text(
+    await query.message.reply_text(
         PLACE_ORDER_START_MESSAGE.format(
             cart_summary=cart_summary, total=total
         ),
