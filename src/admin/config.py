@@ -6,6 +6,7 @@ from src.admin.bot_info import BotInfoView
 from src.admin.category_admin import CategoryView
 from src.admin.media_admin import MediaView
 from src.admin.newsletter_admin import NewsletterMediaView, NewsletterView
+from src.admin.orderstatus import OrderStatusView
 from src.admin.product_admin import FireworkView
 from src.admin.product_extra_properties import (
     FireworkPropertyView,
@@ -50,6 +51,7 @@ async def setup_admin(app: FastAPI) -> Admin:
     admin.add_view(MediaView)
     admin.add_view(NewsletterView)
     admin.add_view(NewsletterMediaView)
+    admin.add_view(OrderStatusView)
     admin.add_view(BotInfoView)
     admin.add_view(AdminUploadCSVView)
     return admin
