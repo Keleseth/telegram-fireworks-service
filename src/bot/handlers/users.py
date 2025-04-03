@@ -89,6 +89,10 @@ class TelegramUserManager:
                         self.start_edit_phone,
                     ),
                     MessageHandler(
+                        filters.Text(['🚧 Изменить пароль']),
+                        self.admin_start_edit_password,
+                    ),
+                    MessageHandler(
                         filters.Text(['🔙 Вернуться в меню']),
                         self.back_to_menu,
                     ),
@@ -288,6 +292,7 @@ class TelegramUserManager:
             ['🔙 Вернуться в меню'],
         ]
         if is_admin:
+            buttons[-2].append('🚧 Изменить пароль')
             buttons[-1].append('🚧 Перейти в админку')
         return buttons
 
