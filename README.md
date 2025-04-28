@@ -107,7 +107,7 @@ docker compose -f infra/docker-compose.local.yaml up -d
 - `http://localhost:8000/redoc` — Redoc UI
 
 
-### Проект разработан командой из 6 разработчиков:
+### Проект разработан командой из 7 разработчиков:
 - Тимлид Келесидис Александр [Keleseth](https://github.com/Keleseth)
 - Разработчик Константин Походяев [KonstantinPohodyaev](https://github.com/KonstantinPohodyaev)
 - Разработчик Евгений Лепёха [Evgn22](https://github.com/Evgn22)
