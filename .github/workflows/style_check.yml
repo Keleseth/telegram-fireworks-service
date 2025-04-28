@@ -18,9 +18,9 @@ jobs:
         # Указываем имя тестовой базы, имя и пароль пользователя в открытом виде,
         # ведь эта база будет работать только во время прогона тестов
         env:
-          POSTGRES_USER: joker_fireworks
-          POSTGRES_PASSWORD: joker_fireworks_password
-          POSTGRES_DB: joker_fireworks
+          POSTGRES_USER: fireworks_shop_bot
+          POSTGRES_PASSWORD: fireworks_shop_bot_password
+          POSTGRES_DB: fireworks_shop_bot
         ports:
           - 5432:5432
         # Эта конструкция описывает проверку готовности сервиса postgres
@@ -63,18 +63,18 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build and push app image
         run: |
-          docker build -t anium/joker_fireworks_app:latest -f ./infra/Dockerfile .
-          docker push anium/joker_fireworks_app:latest
+          docker build -t anium/fireworks_shop_bot_app:latest -f ./infra/Dockerfile .
+          docker push anium/fireworks_shop_bot_app:latest
 
       - name: Build and push bot image
         run: |
-          docker build -t anium/joker_fireworks_bot:latest -f ./infra/Dockerfile_bot .
-          docker push anium/joker_fireworks_bot:latest
+          docker build -t anium/fireworks_shop_bot_app:latest -f ./infra/Dockerfile_bot .
+          docker push anium/fireworks_shop_bot_app:latest
 
       - name: Build and push nginx image
         run: |
-          docker build -t anium/joker_fireworks_nginx:latest -f ./infra/Dockerfile.nginx .
-          docker push anium/joker_fireworks_nginx:latest
+          docker build -t anium/fireworks_shop_bot_app:latest -f ./infra/Dockerfile.nginx .
+          docker push anium/fireworks_shop_bot_app:latest
 
   deploy:
     runs-on: ubuntu-20.04
@@ -94,7 +94,7 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         source: "docker-compose.yaml"
-        target: "/opt/jokerfire/joker_fireworks_team2/"
+        target: "/opt/fireworks_shop_bot/"
     - name: Executing remote ssh commands to deploy
       uses: appleboy/ssh-action@master
       with:
@@ -103,7 +103,7 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         script: |
-          cd /opt/jokerfire/joker_fireworks_team2
+          cd /opt/fireworks_shop_bot
           # Удаляет контейнеры, образы, сети, кэш сборки
           docker system prune -a --volumes --force
           # Чистая сборка с игнорированием кэша
