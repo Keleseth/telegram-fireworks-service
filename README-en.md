@@ -27,6 +27,13 @@ Main functionality:
 - Database administration via the SQLAdmin-based management panel.
 - Asynchronous service operation using FastAPI and SQLAlchemy.
 
+## ⚠️ Project Status
+
+This project is currently under active development.  
+Some features in the Telegram bot are temporarily unavailable — for example, the order placement and certain buttons are disabled.
+
+Please note that the current version is not final.
+
 ## Getting Started
 
 ### Deploying the Project to a Server
